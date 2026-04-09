@@ -1,0 +1,64 @@
+{
+  "appTitle": "WanderPal",
+  "langLabel": "اللغة",
+
+  "loginTitle": "تسجيل الدخول",
+  "registerTitle": "إنشاء حساب",
+
+  "email": "البريد الإلكتروني",
+  "password": "كلمة المرور",
+  "createPassword": "إنشاء كلمة مرور",
+  "namePlaceholder": "الاسم",
+  "companyName": "اسم الشركة",
+  "website": "الموقع الرسمي",
+
+  "remember": "تذكّرني",
+  "forgot": "هل نسيت كلمة المرور؟",
+  "forgotTitle": "إعادة تعيين كلمة المرور",
+  "forgotDesc": "أدخل بريدك الإلكتروني وسنرسل رابط إعادة التعيين.",
+  "forgotCancel": "إلغاء",
+  "forgotSend": "إرسال",
+  "forgotSuccess": "إن وُجد حساب، فقد أرسلنا رابط إعادة التعيين.",
+  "forgotError": "تعذر معالجة طلبك.",
+
+  "loginBtn": "تسجيل الدخول",
+  "registerBtn": "إنشاء حساب",
+  "or": "أو",
+  "noAccount": "ليس لديك حساب؟",
+  "signup": "سجّل الآن",
+  "haveAccount": "لديك حساب بالفعل؟",
+  "signin": "سجّل الدخول",
+
+  "invalidCreds": "بيانات اعتماد غير صحيحة",
+  "suspendedMsg": "هذا الحساب موقوف. يرجى التواصل مع الدعم.",
+
+  "networkError": "خطأ في الشبكة",
+  "registerSuccess": "تم إنشاء الحساب. يمكنك الآن تسجيل الدخول.",
+  "registerFail": "تعذر إنشاء الحساب (البريد مستخدم؟)",
+
+  "hostTitle": "المضيف",
+  "hostLogin": "المضيف — تسجيل الدخول",
+  "hostRegister": "المضيف — إنشاء حساب",
+  "hostForgotTitle": "إعادة تعيين كلمة مرور المضيف",
+  "hostForgotDesc": "ستصلك رابط إذا كان البريد مسجلاً كمضيف.",
+
+  "partnerTitle": "الشريك",
+  "partnerLogin": "الشريك — تسجيل الدخول",
+  "partnerRegister": "الشريك — إنشاء حساب",
+  "partnerForgotTitle": "إعادة تعيين كلمة مرور الشريك",
+  "partnerForgotDesc": "ستصلك رابط إذا كان البريد مسجلاً كشريك.",
+
+  "chooseSector": "اختر القطاع",
+  "recommendedServices": "الخدمات الموصى بها",
+
+  "museum": "متحف / معرض / معلم",
+  "doctor": "طبيب / عيادة / طبيب أسنان",
+  "salon": "تجميل / سبا / حلاقة",
+  "event": "منظّم فعاليات / موقع",
+  "restaurant": "مطعم / مقهى / بار",
+  "hotel": "فندق / دار ضيافة / مبيت وإفطار",
+  "retail": "متجر / مركز تجاري",
+  "sports": "مركز رياضي / نادي / ملعب",
+  "public": "إدارة عامة / بنك / بريد",
+  "other": "أخرى"
+}

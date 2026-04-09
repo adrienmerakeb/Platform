@@ -1,0 +1,2437 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>In-Time — Manage my Virtual Queues</title>
+
+  <link rel="stylesheet" href="/css/style.css"/>
+
+  <style>
+    :root{
+      --chip-bg:#f1f3f4;
+      --chip-tx:#444;
+      --chip-border:#d0d7de;
+      --chip-bg-active:#1e88e5;
+      --chip-tx-active:#fff;
+      --danger:#c62828;
+      --success:#2e7d32;
+
+      --queue-event:#1e88e5;      /* BLUE = bookings from the app */
+      --calendar-event:#43a047;   /* GREEN = external calendar */
+      --lock-event:#616161;       /* GRAY = host locks */
+      --grid-line:#e6e6e6;
+
+      /* Calendar sizing */
+      --cv-time-col: 92px;
+      --cv-day-col: 170px;
+
+      /* One row = one hour */
+      --cv-slot-h: 54px;
+
+      --cv-month-h: 44px;   /* month sticky row height */
+      --cv-day-h: 112px;    /* day sticky row height (circle fits) */
+
+      /* Shading */
+      --shade-off: #f2f2f2; /* off hours + weekends */
+      --shade-lunch: rgba(150, 205, 90, 0.22); /* light apple green */
+
+      /* Separators */
+      --sep-week: 2px;
+      --sep-month: 4px;
+      --sep-year: 6px;
+    }
+
+    /* ===== Global layout: only capsules frame scrolls ===== */
+    html, body{
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    body.has-top-band.has-bottom-band main.container{
+      padding-top: 8vh;
+      padding-bottom: 0;
+      height: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header layout in FAB top band */
+    .top-band header.site{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+    header.site .title{ display:block; }
+    header.site .subtitle{
+      margin-top:2px;
+      font-size:.85rem;
+      opacity:.85;
+    }
+
+    /* Toolbar / filters */
+    .queue-toolbar{
+      position: sticky;
+      top: 8px;
+      z-index: 50;
+      max-width: 1100px;
+      margin: 8px auto 12px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: #ffffff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.10);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.85rem;
+    }
+    body.has-top-band .queue-toolbar{
+      top: calc(var(--topband-h, 68px) + 8px);
+    }
+    .toolbar-section{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
+    .toolbar-section-right{ margin-left:auto; }
+    .toolbar-section label{
+      font-size:.8rem;
+      color:#555;
+    }
+    .toolbar-search-input{
+      padding:6px 8px;
+      border-radius:999px;
+      border:1px solid #d0d7de;
+      min-width: min(260px, 60vw);
+      font-size:.85rem;
+    }
+    .toolbar-search-wrapper{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+    }
+    .toolbar-refresh-btn{
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid #d0d7de;
+      background:#f6f8fa;
+      font-size:.85rem;
+      cursor:pointer;
+      line-height:1;
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+    .toolbar-refresh-btn:hover{
+      background:#333;
+      color:#fff;
+      border-color:#fff;
+    }
+    .toolbar-select{
+      appearance:none;
+      -webkit-appearance:none;
+      -moz-appearance:none;
+      padding: 6px 34px 6px 12px;
+      border-radius: 999px;
+      border: 1px solid #d0d7de;
+      font-size: 0.85rem;
+      color: #444;
+      background: #fff;
+      background-image: url("data:image/svg+xml;utf8,<svg fill='%23666' height='14' width='14' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'><polygon points='0,0 20,0 10,10'/></svg>");
+      background-repeat:no-repeat;
+      background-position: calc(100% - 12px) center;
+      background-size: 10px;
+      cursor:pointer;
+      transition:.18s ease;
+    }
+    .toolbar-select:hover{
+      border-color:#b6bec8;
+      background-color:#f6f8fa;
+    }
+    .toolbar-select:focus{
+      outline:none;
+      border-color:#1e88e5;
+      box-shadow:0 0 0 3px rgba(30,136,229,0.25);
+    }
+
+    /* Queue list meta */
+    .queue-list-meta{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin:0 0 6px;
+      padding:0 10px;
+      font-size:.82rem;
+      color:#fff;
+      text-shadow:0 1px 3px rgba(0,0,0,0.7);
+    }
+
+    /* Scrollable frame for capsules */
+    .queue-list-wrapper{
+      max-width:1100px;
+      margin:0 auto 0px;
+      padding-bottom:6.8vh;
+      flex: 1 1 auto;
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+    }
+    .queue-list-frame{
+      border-radius:16px;
+      border:none;
+      background:transparent;
+      backdrop-filter:none;
+      overflow-y:auto;
+      padding:12px 10px;
+      flex: 1 1 auto;
+      min-height:0;
+      -ms-overflow-style:none;
+      scrollbar-width:none;
+    }
+    .queue-list-frame::-webkit-scrollbar{ width:0; height:0; display:none; }
+
+    .queue-cards{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      margin:0;
+      max-width:100%;
+    }
+    .queue-card{
+      width:100%;
+      border-radius:18px;
+      background:#ffffff;
+      box-shadow:0 6px 18px rgba(0,0,0,0.10);
+      border:1px solid #e0e0e0;
+      padding:10px 12px 12px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      font-size:.85rem;
+    }
+    .queue-card-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:8px;
+    }
+    .queue-title{
+      font-weight:600;
+      font-size:.98rem;
+      color:#222;
+      margin:0;
+    }
+    .queue-subtitle{
+      margin:0;
+      font-size:.78rem;
+      color:#666;
+    }
+
+    .status-pill{
+      padding:3px 10px;
+      border-radius:999px;
+      font-size:.75rem;
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      border:1px solid transparent;
+    }
+    .status-pill.active{
+      background:#e8f5e9;
+      color: var(--success);
+      border-color:#c8e6c9;
+    }
+    .status-pill.inactive{
+      background:#ffebee;
+      color: var(--danger);
+      border-color:#ffcdd2;
+    }
+
+    .queue-tags{
+      display:flex;
+      flex-wrap:wrap;
+      gap:4px;
+    }
+    .queue-tag{
+      padding:2px 8px;
+      border-radius:999px;
+      font-size:.74rem;
+      background:#f1f3f4;
+      color:#444;
+      border:1px solid #e0e0e0;
+    }
+    .queue-tag.mode-live{ background:#e3f2fd; border-color:#bbdefb; color:#1e88e5; }
+    .queue-tag.mode-advance{ background:#ede7f6; border-color:#d1c4e9; color:#5e35b1; }
+    .queue-tag.mode-mixed{ background:#fff8e1; border-color:#ffecb3; color:#ff8f00; }
+
+    .queue-body{ display:flex; flex-direction:column; gap:4px; color:#444; }
+    .queue-body-row{
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      font-size:.8rem;
+    }
+    .queue-body-row span.label{ color:#777; }
+
+    .queue-actions{
+      margin-top:6px;
+      display:flex;
+      justify-content:space-between;
+      gap:6px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .queue-actions-main, .queue-actions-secondary{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      align-items:center;
+    }
+    .queue-actions button{
+      padding:5px 10px;
+      border-radius:999px;
+      border:1px solid #d0d7de;
+      background:#f6f8fa;
+      font-size:.78rem;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      color:#333;
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+    .queue-actions button:hover{
+      background:#333;
+      color:#fff;
+      border-color:#fff;
+    }
+    .queue-actions button.danger{
+      border-color:#ffcdd2;
+      background:#ffebee;
+      color: var(--danger);
+    }
+    .queue-actions button.danger:hover{
+      background: var(--danger);
+      color:#fff;
+      border-color:#fff;
+    }
+
+    .toggle-switch{ position:relative; width:44px; height:22px; }
+    .toggle-switch input{ position:absolute; opacity:0; width:0; height:0; }
+    .toggle-slider{
+      position:absolute;
+      cursor:pointer;
+      inset:0;
+      background:#cfd8dc;
+      border-radius:999px;
+      transition:.2s;
+    }
+    .toggle-slider::before{
+      content:"";
+      position:absolute;
+      height:18px; width:18px;
+      left:2px; top:2px;
+      border-radius:50%;
+      background:#fff;
+      box-shadow:0 1px 4px rgba(0,0,0,0.3);
+      transition:.2s;
+    }
+    .toggle-switch input:checked + .toggle-slider{ background:#66bb6a; }
+    .toggle-switch input:checked + .toggle-slider::before{ transform: translateX(22px); }
+    .toggle-label{ font-size:.78rem; color:#555; margin-left:4px; }
+
+    /* New queue button */
+    .queue-new-wrapper{
+      position: fixed;
+      left: 50%;
+      top: 90%;
+      transform: translateX(-50%);
+      bottom: calc(var(--band-h, 68px) - (var(--fab-size, 56px) / 2));
+      z-index: 9999;
+      width: 75px;
+      height: 75px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      pointer-events:none;
+    }
+    .queue-new-btn{
+      pointer-events:auto;
+      border:2px solid rgba(255,255,255,0.7);
+      background:#ffffff;
+      cursor:pointer;
+      width:100%; height:100%;
+      border-radius:999px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      box-shadow:0 8px 24px rgba(0,0,0,0.35);
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+    .queue-new-btn img.queue-new-icon{
+      width:62%; height:62%;
+      object-fit:contain;
+      transition: transform .15s ease, opacity .15s ease, filter .15s ease;
+      filter:none;
+    }
+    .queue-new-btn:hover{
+      background:#121212;
+      border-color:#ffffff;
+    }
+    .queue-new-btn:hover img.queue-new-icon{
+      transform: scale(1.06);
+      filter: invert(1);
+    }
+    .queue-new-btn:active img.queue-new-icon{ transform: scale(0.96); }
+
+    /* Empty state */
+    .empty-state{
+      margin-top:14px;
+      padding:16px 14px;
+      border-radius:18px;
+      border:1px dashed #cfd8dc;
+      background:#fafbfc;
+      font-size:.85rem;
+      color:#555;
+    }
+    .empty-state strong{
+      display:block;
+      margin-bottom:4px;
+      font-size:.92rem;
+      color:#222;
+    }
+
+    /* Modals */
+    .modal-overlay{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,0.55);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:3000;
+    }
+    .modal-dialog{
+      max-width:420px;
+      width:92vw;
+      background:#ffffff;
+      color:#000;
+      border-radius:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.25);
+      padding:14px 16px 12px;
+      font-size:.9rem;
+    }
+    .modal-dialog h3{ margin:0 0 6px; font-size:1.02rem; }
+    .modal-dialog p{ margin:0 0 8px; font-size:.84rem; color:#444; }
+    .modal-footer{
+      margin-top:10px;
+      display:flex;
+      justify-content:flex-end;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .modal-footer button{
+      padding:6px 13px;
+      border-radius:999px;
+      border:none;
+      cursor:pointer;
+      font-size:.85rem;
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+    .modal-btn-secondary{ background:#eeeeee; color:#333; }
+    .modal-btn-secondary:hover{ background:#333; color:#fff; }
+    .modal-btn-danger{ background: var(--danger); color:#fff; }
+    .modal-btn-danger:hover{ background:#fff; color: var(--danger); }
+    .modal-btn-primary{ background:#1e88e5; color:#fff; border:1px solid transparent; }
+    .modal-btn-primary:hover{ background:#fff; color:#1e88e5; border-color:#1e88e5; }
+    .modal-error{ margin-top:4px; color: var(--danger); font-size:.8rem; }
+
+    .qr-modal-dialog{ max-width:360px; text-align:center; }
+    .qr-modal-dialog img{ max-width:240px; width:100%; height:auto; margin:8px auto; display:block; }
+    .qr-hint{ font-size:.78rem; color:#555; margin-top:2px; }
+
+    /* Allowed-list modal */
+    .allowlist-dialog{ max-width:520px; }
+    .allowlist-top-row{ display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap; }
+    .allowlist-top-row input{
+      flex: 1 1 260px;
+      padding:6px 8px;
+      border-radius:999px;
+      border:1px solid #ccc;
+      font-size:.86rem;
+    }
+    .allowlist-top-row button{
+      padding:5px 10px;
+      border-radius:999px;
+      border:1px solid #d0d7de;
+      background:#f6f8fa;
+      font-size:.78rem;
+      cursor:pointer;
+      white-space:nowrap;
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+    .allowlist-top-row button:hover{ background:#333; color:#fff; border-color:#fff; }
+    .allowlist-bulk{ font-size:.82rem; margin:6px 0 4px; color:#555; }
+    .allowlist-bulk textarea{
+      width:100%;
+      min-height:90px;
+      resize:vertical;
+      border-radius:8px;
+      border:1px solid #ccc;
+      padding:6px 8px;
+      font-size:.85rem;
+      font-family: system-ui, sans-serif;
+    }
+    .allowlist-list{
+      margin-top:8px;
+      max-height:160px;
+      overflow-y:auto;
+      border-radius:8px;
+      border:1px solid #eee;
+      padding:6px 8px;
+      font-size:.82rem;
+      background:#fafafa;
+    }
+    .allowlist-list-item{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:2px 0;
+      border-bottom:1px dashed #eee;
+    }
+    .allowlist-list-item:last-child{ border-bottom:none; }
+    .allowlist-email{ word-break:break-all; }
+    .allowlist-remove-one{
+      border:none;
+      background:transparent;
+      color: var(--danger);
+      font-size:.78rem;
+      cursor:pointer;
+    }
+    .allowlist-meta{ margin-top:4px; font-size:.78rem; color:#666; }
+
+    /* Calendar chips (used by calendar-sync.js) */
+    .calendar-chip{
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid #ccc;
+      background:#f5f5f5;
+      font-size:.84rem;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      color:#333;
+      margin:2px 6px 6px 0;
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+      user-select:none;
+    }
+    .calendar-chip.connected{ border-color:#43a047; background:#e8f5e9; }
+    .calendar-chip.enabled{ border-color:#1e88e5; background:#e3f2fd; }
+    .calendar-chip:hover{ background:#333; color:#fff; border-color:#fff; }
+
+    .inline-badge{
+      margin-left:2px;
+      padding:2px 8px;
+      border-radius:999px;
+      font-size:.72rem;
+      font-weight:900;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.75);
+      color:#000;
+    }
+
+    /* Wide shells */
+    .wide-dialog{
+      max-width:1080px;
+      width:96%;
+      max-height:92vh;
+      display:flex;
+      flex-direction:column;
+      padding:16px 16px 12px;
+      border-radius:18px;
+      background:#fff;
+      box-shadow:0 10px 30px rgba(0,0,0,0.25);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .wide-header{ margin-bottom:10px; }
+    .wide-header h2{
+      margin:0 0 6px 0;
+      font-size:1.05rem;
+      font-weight:900;
+      color:#000;
+    }
+    .wide-header .sub{
+      font-size:.9rem;
+      color:#555;
+      margin:0;
+    }
+    .wide-body{
+      flex:1;
+      min-height:260px;
+      max-height:66vh;
+      border-radius:14px;
+      background:#fff;
+      overflow:hidden;
+      border:1px solid #eee;
+    }
+    /* IMPORTANT: give the inner a real height so its children can scroll */
+    .wide-body-inner{
+      height:100%;
+      max-height:100%;
+      padding:10px 10px 12px;
+      font-size:.9rem;
+      box-sizing:border-box;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      min-height:0;
+    }
+    .wide-footer{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-top:12px;
+      gap:10px;
+      flex-wrap:wrap;
+
+      position: sticky;
+      bottom: 0;
+      background: #fff;
+      padding-top: 10px;
+      z-index: 200;
+    }
+    .wide-footer .left, .wide-footer .right{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+    /* =========================
+       VIEW CALENDAR
+       ========================= */
+
+    /* Legend above table (outside scroll) */
+    .cv-legend{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+      padding:8px 10px;
+      border-radius:14px;
+      border:1px solid #eee;
+      background:#fafafa;
+      font-size:.82rem;
+      color:#333;
+      flex:0 0 auto;
+    }
+    .cv-legend-item{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,0.08);
+      background:#fff;
+      white-space:nowrap;
+      font-weight:900;
+    }
+    .cv-swatch{
+      width:18px;
+      height:12px;
+      border-radius:6px;
+      border:1px solid rgba(0,0,0,0.12);
+      flex:0 0 auto;
+    }
+    .cv-swatch.queue{ background: rgba(30,136,229,0.16); border-color: rgba(30,136,229,0.35); }
+    .cv-swatch.calendar{ background: rgba(67,160,71,0.16); border-color: rgba(67,160,71,0.35); }
+    .cv-swatch.lock{ background: rgba(97,97,97,0.16); border-color: rgba(97,97,97,0.35); }
+
+    /* Scroll container (FIXED) */
+    .cv-grid-scroll{
+      width:100%;
+      flex: 1 1 auto;
+      min-height:0;              /* critical for flex children */
+      overflow-x:auto;
+      overflow-y:auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      background:#fff;
+      border-radius:14px;
+      border:1px solid #eee;
+      position:relative;
+    }
+
+    .cv-grid-stack{
+      position:relative;
+      width:max-content;
+      height:max-content;
+      background:#fff;
+    }
+
+    .cv-grid-cells{
+      display:grid;
+      width:max-content;
+      background:#fff;
+      position:relative;
+      z-index:50;
+    }
+
+    .cv-grid-blocks{
+      display:grid;
+      width:max-content;
+      background:transparent;
+      position:absolute;
+      inset:0;
+      z-index:90;
+      pointer-events:none;
+    }
+
+    .cv-cell{
+      border-right:1px solid var(--grid-line);
+      border-bottom:1px solid var(--grid-line);
+      box-sizing:border-box;
+      background:#fff;
+    }
+
+    /* Sticky month row */
+    .cv-cell.header.month{
+      height:var(--cv-month-h);
+      position:sticky;
+      top:0;
+      z-index:70;
+      background:#fafafa;
+      font-weight:1000;
+      color:#111;
+      padding:10px 12px;
+      font-size:.88rem;
+      display:flex;
+      align-items:center;
+      white-space:nowrap;
+    }
+
+    /* Sticky day row (under month row) */
+    .cv-cell.header.day{
+      height:var(--cv-day-h);
+      position:sticky;
+      top:var(--cv-month-h);
+      z-index:65;
+      background:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .cv-cell.header.day.weekend{ background:var(--shade-off); }
+
+    /* Sticky left time col */
+    .cv-cell.corner,
+    .cv-cell.time{
+      position:sticky;
+      left:0;
+    }
+    .cv-cell.corner.month{
+      top:0;
+      z-index:120;
+      background:#fafafa;
+      height:var(--cv-month-h);
+      display:flex;
+      align-items:center;
+      padding:10px 12px;
+      font-weight:1000;
+    }
+    .cv-cell.corner.day{
+      top:var(--cv-month-h);
+      z-index:115;
+      background:#fafafa;
+      height:var(--cv-day-h);
+      display:flex;
+      align-items:center;
+      padding:10px 12px;
+      font-weight:1000;
+    }
+
+    .cv-cell.time{
+      z-index:60;
+      background:#fff;
+      color:#666;
+      font-size:.78rem;
+      padding:6px 10px 0 10px;
+      display:flex;
+      align-items:flex-start;
+      white-space:nowrap;
+      font-weight:1100;
+    }
+
+    /* Sticky current month label over first calendar column (not time col) */
+    .cv-current-month{
+      position:sticky;
+      top:0;
+      left:var(--cv-time-col);
+      z-index:130;
+      height:var(--cv-month-h);
+      display:flex;
+      align-items:center;
+      justify-content:flex-start;
+      padding:10px 12px;
+      background:#111;
+      color:#fff;
+      font-weight:1100;
+      pointer-events:none;
+      min-width:var(--cv-day-col);
+      box-sizing:border-box;
+    }
+
+    /* Day header circle */
+    .cv-day-circle{
+      width:68px;
+      height:68px;
+      border-radius:999px;
+      background:#e6e6e6;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:2px;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06);
+    }
+    .cv-day-circle .wd{
+      font-weight:1100;
+      font-size:.78rem;
+      letter-spacing:.2px;
+      color:#333;
+      text-transform:uppercase;
+    }
+    .cv-day-circle .dn{
+      font-weight:1200;
+      font-size:1.2rem;
+      color:#111;
+      line-height:1;
+    }
+
+    /* Slots shading — now per hour row */
+    .cv-cell.slot{
+      height:var(--cv-slot-h);
+      cursor:crosshair;
+    }
+    .cv-cell.slot:hover{ background: rgba(0,0,0,0.03); }
+
+    .cv-cell.slot.offhour,
+    .cv-cell.slot.weekend{
+      background: var(--shade-off);
+    }
+    .cv-cell.slot.lunch{
+      background: var(--shade-lunch);
+    }
+
+    /* Separators */
+    .cv-sep-week{ border-left: var(--sep-week) solid rgba(0,0,0,0.08) !important; }
+    .cv-sep-month{ border-left: var(--sep-month) solid rgba(0,0,0,0.18) !important; }
+    .cv-sep-year{ border-left: var(--sep-year) double rgba(0,0,0,0.35) !important; }
+
+    /* Blocks */
+    .cv-block{
+      pointer-events:auto;
+      z-index:120;
+      margin:2px 6px;
+      border-radius:12px;
+      padding:6px 8px;
+      font-size:.78rem;
+      line-height:1.15;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      border:1px solid rgba(0,0,0,0.10);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+      cursor:default;
+      align-self:stretch;
+      justify-self:stretch;
+    }
+    .cv-block.queue{
+      background: rgba(30,136,229,0.16);
+      border-color: rgba(30,136,229,0.35);
+      color:#0b2a4a;
+    }
+    .cv-block.calendar{
+      background: rgba(67,160,71,0.16);
+      border-color: rgba(67,160,71,0.35);
+      color:#0c2a12;
+    }
+    .cv-block.lock{
+      background: rgba(97,97,97,0.16);
+      border-color: rgba(97,97,97,0.35);
+      color:#222;
+      cursor:pointer;
+    }
+    .cv-block .time-label{
+      font-weight:1200;
+      font-size:.78rem;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.85);
+      color:#111;
+      align-self:flex-start;
+      white-space:nowrap;
+    }
+    .cv-block .meta{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-weight:1000;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .cv-block .tag{
+      font-weight:1200;
+      font-size:.70rem;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.75);
+      color:#111;
+      flex:0 0 auto;
+    }
+
+    .cv-helper{
+      font-size:.82rem;
+      color:#666;
+      line-height:1.35;
+      flex:0 0 auto;
+    }
+    .cv-helper code{
+      padding:1px 6px;
+      border-radius:999px;
+      background:#f1f3f4;
+      border:1px solid #e0e0e0;
+      font-size:.78rem;
+    }
+
+    /* Bottom band hover invert */
+    .fab-band.bottom .fab-btn, .bottom-band .fab-btn{
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+    .fab-band.bottom .fab-btn:hover, .bottom-band .fab-btn:hover{
+      background:#fff;
+      color:#000;
+      border-color:#000;
+    }
+
+    @media (max-width: 640px){
+      .queue-body-row{ flex-direction:column; align-items:flex-start; }
+      :root{
+        --cv-time-col: 84px;
+        --cv-day-col: 148px;
+        --cv-slot-h: 50px;
+        --cv-day-h: 104px;
+      }
+      .cv-day-circle{ width:62px; height:62px; }
+      .cv-day-circle .dn{ font-size:1.12rem; }
+      .cv-cell.header.month{ font-size:.84rem; padding:10px 10px; }
+    }
+  </style>
+</head>
+
+<body class="has-top-band has-bottom-band">
+
+<header class="site">
+  <div class="title">Host — Manage my Virtual Queues</div>
+  <div class="subtitle">Activate, pause, delete or inspect your existing virtual queues.</div>
+</header>
+
+<main class="container">
+  <section class="queue-toolbar">
+    <div class="toolbar-section">
+      <label for="searchInput">Search</label>
+      <div class="toolbar-search-wrapper">
+        <input id="searchInput" type="search" class="toolbar-search-input"
+               placeholder="Search by queue name or location…">
+      </div>
+    </div>
+
+    <div class="toolbar-section">
+      <label for="statusFilterSelect">Status</label>
+      <select id="statusFilterSelect" class="toolbar-select">
+        <option value="all">All</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+    </div>
+
+    <div class="toolbar-section">
+      <label for="modeFilterSelect">Mode</label>
+      <select id="modeFilterSelect" class="toolbar-select">
+        <option value="all">All</option>
+        <option value="live">Live-flow</option>
+        <option value="advance">In advance</option>
+        <option value="mixed">Mixed</option>
+      </select>
+    </div>
+
+    <div class="toolbar-section toolbar-section-right">
+      <button class="toolbar-refresh-btn" type="button" id="refreshBtn" title="Refresh queues">↻</button>
+    </div>
+  </section>
+
+  <section class="queue-list-wrapper">
+    <div class="queue-list-meta">
+      <span id="queueCountLabel">Loading queues…</span>
+      <span id="queueLastRefresh"></span>
+    </div>
+
+    <div class="queue-list-frame" id="queueListFrame">
+      <div id="queueList" class="queue-cards"></div>
+
+      <div id="queueEmptyState" class="empty-state" style="display:none;">
+        <strong>No virtual queues found.</strong>
+        Create your first queue or adjust the filters above.
+      </div>
+    </div>
+  </section>
+
+  <section class="queue-new-wrapper">
+    <button class="queue-new-btn" type="button" id="newQueueBtn">
+      <img src="/icons/ion-png-black/ios-add-circle-outline.png" alt="Add new queue" class="queue-new-icon">
+    </button>
+  </section>
+</main>
+
+<footer class="site">
+  © <span id="y"></span> Tourism App MVP • Virtual Queues — Manage
+</footer>
+
+<!-- Hidden inputs required by /modules/In-Time/manage/calendar-sync.js -->
+<input type="hidden" id="calGoogleConnected" value="0">
+<input type="hidden" id="calMsConnected" value="0">
+<input type="hidden" id="calOtherConnected" value="0">
+
+<!-- Delete confirmation modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal-dialog">
+    <h3>Delete this queue?</h3>
+    <p id="deleteModalText">
+      Are you sure you want to permanently delete this virtual queue?
+      This action cannot be undone.
+    </p>
+    <div id="deleteModalError" class="modal-error" style="display:none;"></div>
+    <div class="modal-footer">
+      <button type="button" class="modal-btn-secondary" id="deleteCancelBtn">Cancel</button>
+      <button type="button" class="modal-btn-danger" id="deleteConfirmBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- QR preview modal -->
+<div class="modal-overlay" id="qrModal">
+  <div class="modal-dialog qr-modal-dialog">
+    <h3>Queue QR code</h3>
+    <img id="qrImage" src="" alt="Virtual queue QR code">
+    <div class="qr-hint">Scan this code with a phone to open the visitor page for this queue.</div>
+    <div class="modal-footer">
+      <button type="button" class="modal-btn-secondary" id="qrCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Allowed visitors list modal -->
+<div class="modal-overlay" id="allowlistModal">
+  <div class="modal-dialog allowlist-dialog">
+    <h3>Allowed visitors list</h3>
+    <p>
+      Manage who can book this queue when it is set to <strong>“Only from my list”</strong>.
+    </p>
+
+    <div class="allowlist-top-row">
+      <input type="text" id="allowlistInput" placeholder="Type one or more emails (space, comma or ; separated)…">
+      <button type="button" id="allowlistSearchBtn">Search</button>
+      <button type="button" id="allowlistAddBtn">Add</button>
+      <button type="button" id="allowlistRemoveBtn">Remove</button>
+    </div>
+
+    <div class="allowlist-bulk">
+      Paste a full list below (space, comma or ; separated).
+      <br>We’ll merge them when you click “Add”.
+      <textarea id="allowlistBulkTextarea"
+                placeholder="example1@example.com; example2@example.com, example3@example.com"></textarea>
+    </div>
+
+    <div class="allowlist-list" id="allowlistList"></div>
+    <div class="allowlist-meta" id="allowlistMeta"></div>
+    <div id="allowlistError" class="modal-error" style="display:none;"></div>
+
+    <div class="modal-footer">
+      <button type="button" class="modal-btn-secondary" id="allowlistCancelBtn">Cancel</button>
+      <button type="button" class="modal-btn-primary" id="allowlistSaveBtn">Save list</button>
+    </div>
+  </div>
+</div>
+
+<!-- Calendar Sync (wide shell) — keep as is -->
+<div class="modal-overlay" id="calendarSyncModal">
+  <div class="wide-dialog">
+    <div class="wide-header">
+      <h2>Synchronize with my calendar</h2>
+      <p class="sub">
+        Choose a provider. If connected, click <strong>Review</strong> to preview the imported busy blocks (D+90 grid),
+        then approve to enable it for this queue.
+      </p>
+      <div id="calendarSyncError" class="modal-error" style="display:none;"></div>
+    </div>
+
+    <div class="wide-body">
+      <div class="wide-body-inner">
+        <div id="calendarSyncRoot">
+          <button type="button" class="calendar-chip" data-provider="google">
+            <span>📅 Google Calendar</span>
+            <span class="inline-badge">Connect</span>
+          </button>
+
+          <button type="button" class="calendar-chip" data-provider="microsoft">
+            <span>📅 Outlook / Microsoft 365</span>
+            <span class="inline-badge">Connect</span>
+          </button>
+
+          <button type="button" class="calendar-chip" data-provider="other">
+            <span>📅 Other (CalDAV / iCal)</span>
+            <span class="inline-badge">Connect</span>
+          </button>
+        </div>
+
+        <div style="margin-top:10px; font-size:0.84rem; color:#666;">
+          Tip: “Connect” starts OAuth (Google/Microsoft). “Review” opens the availability preview. “Enabled” means it’s active for this queue.
+        </div>
+      </div>
+    </div>
+
+    <div class="wide-footer">
+      <div class="left">
+        <button type="button" class="modal-btn-secondary" id="calendarSyncCancelBtn">Close</button>
+      </div>
+      <div class="right">
+        <button type="button" class="modal-btn-primary" id="calendarSyncSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Calendar View (wide shell) -->
+<div class="modal-overlay" id="calendarViewModal">
+  <div class="wide-dialog">
+    <div class="wide-header">
+      <h2 id="cvTitle">Queue calendar</h2>
+      <p class="sub" id="cvSub"></p>
+      <div id="calendarViewError" class="modal-error" style="display:none;"></div>
+    </div>
+
+    <div class="wide-body">
+      <div class="wide-body-inner">
+
+        <!-- Legend ABOVE the table -->
+        <div class="cv-legend" aria-label="Calendar legend">
+          <span class="cv-legend-item"><span class="cv-swatch calendar"></span> Calendar sync busy</span>
+          <span class="cv-legend-item"><span class="cv-swatch queue"></span> Virtual Queue booking</span>
+          <span class="cv-legend-item"><span class="cv-swatch lock"></span> Locked slot</span>
+        </div>
+
+        <!-- Scrollable calendar table -->
+        <div class="cv-grid-scroll" id="cvGridScroll">
+          <div class="cv-grid-stack" id="cvGridStack">
+            <div class="cv-grid-cells" id="cvGridCells"></div>
+            <div class="cv-grid-blocks" id="cvGridBlocks"></div>
+          </div>
+        </div>
+
+        <div class="cv-helper">
+          <strong>Locking slots:</strong> click-and-drag vertically inside a day column to create a lock (gray).
+          Click an existing lock block to remove it. Then press <code>Approve</code>.
+          <br><strong>Resolution:</strong> 1 cell = 1 hour.
+        </div>
+      </div>
+    </div>
+
+    <div class="wide-footer">
+      <div class="left">
+        <button type="button" class="modal-btn-secondary" id="calendarViewCancelBtn">Cancel</button>
+      </div>
+      <div class="right">
+        <button type="button" class="modal-btn-primary" id="cvApproveBtn">Approve</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('y').textContent = new Date().getFullYear();
+</script>
+
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+
+<script type="module">
+  /* -------------------------------------------------------------------------- */
+  /* SAFETY: never let calendar-sync.js break this page                          */
+  /* -------------------------------------------------------------------------- */
+
+  let CalendarSync = null;
+  async function ensureCalendarSyncModule() {
+    if (CalendarSync) return CalendarSync;
+    CalendarSync = await import('/modules/In-Time/manage/calendar-sync.js');
+    return CalendarSync;
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /* GLOBAL STATE                                                               */
+  /* -------------------------------------------------------------------------- */
+
+  let allQueues = [];
+  const filters = { search:'', status:'all', mode:'all' };
+
+  let deleteTargetId = null;
+  let deleteTargetName = null;
+
+  let currentAllowlistQueueId = null;
+  let currentAllowlistEmails = [];
+
+  let currentCalendarSyncQueueId = null;
+
+  let currentCalendarViewQueueId = null;
+  let currentCalendarViewQueue = null;
+
+  let cvEvents = [];
+  let cvLocks = [];
+  let cvPendingLocks = [];
+  let cvPendingDeletes = [];
+  let cvDrag = { active:false, dayIndex:null, startRow:null, endRow:null };
+
+  const cvUI = {
+    startDate: null,
+    days: 91,
+    slotMinutes: 60,   /* 1 hour cells */
+    hoursFrom: 0,
+    hoursTo: 24
+  };
+
+  /* -------------------------------------------------------------------------- */
+  /* HARD ERROR BANNER                                                          */
+  /* -------------------------------------------------------------------------- */
+
+  window.addEventListener('error', (e) => {
+    console.error('[page2] runtime error:', e.error || e.message);
+    const el = document.getElementById('queueCountLabel');
+    if (el) el.textContent = 'JavaScript error (see Console).';
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    console.error('[page2] unhandled promise rejection:', e.reason);
+    const el = document.getElementById('queueCountLabel');
+    if (el) el.textContent = 'Promise error (see Console).';
+  });
+
+  /* -------------------------------------------------------------------------- */
+  /* UTIL                                                                       */
+  /* -------------------------------------------------------------------------- */
+
+  async function fetchJsonOptional(url, options = {}, errorLabel = 'Request') {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 15000);
+
+    let res;
+    try {
+      res = await fetch(url, { ...options, signal: ctrl.signal });
+    } catch (e) {
+      clearTimeout(t);
+      throw new Error(`${errorLabel} failed: ${e.name === 'AbortError' ? 'timeout' : e.message}`);
+    }
+    clearTimeout(t);
+
+    const contentType = res.headers.get('content-type') || '';
+    const isJson = contentType.includes('application/json');
+
+    if (!isJson) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`${errorLabel} expected JSON but got "${contentType || 'unknown'}" (HTTP ${res.status}). Preview: ${text.slice(0, 120)}`);
+    }
+
+    let data = null;
+    try { data = await res.json(); } catch (e) { data = null; }
+
+    if (!res.ok) {
+      const msg = (data && data.error) || `${errorLabel} failed (HTTP ${res.status})`;
+      throw new Error(msg);
+    }
+    if (data && data.ok === false) throw new Error(data.error || `${errorLabel} failed`);
+    return data ?? { ok:true };
+  }
+
+  function formatDateTime(dtString) {
+    if (!dtString) return '';
+    const d = new Date(dtString);
+    if (isNaN(d.getTime())) return dtString;
+    return d.toLocaleString();
+  }
+
+  function addDays(d, n) {
+    const x = new Date(d);
+    x.setDate(x.getDate() + n);
+    return x;
+  }
+
+  function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+
+  function updateLastRefreshLabel() {
+    const el = document.getElementById('queueLastRefresh');
+    el.textContent = 'Last refresh: ' + new Date().toLocaleTimeString();
+  }
+
+  function modeLabel(mode) {
+    if (mode === 'advance') return 'In advance only';
+    if (mode === 'mixed') return 'Mixed';
+    return 'Live-flow only';
+  }
+
+  function accessLabel(q) {
+    if (q.requires_whitelist) return 'Only from my list';
+    if (q.anon_booking_allowed) return 'Anonymous';
+    return 'Only registered';
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /* RENDER QUEUES                                                              */
+  /* -------------------------------------------------------------------------- */
+
+  function renderQueues() {
+    const listEl = document.getElementById('queueList');
+    const emptyEl = document.getElementById('queueEmptyState');
+    const countLabel = document.getElementById('queueCountLabel');
+
+    listEl.innerHTML = '';
+
+    let filtered = allQueues.slice();
+
+    if (filters.search) {
+      const term = filters.search.toLowerCase();
+      filtered = filtered.filter(q => {
+        const name = (q.name || '').toLowerCase();
+        const loc  = (q.location || '').toLowerCase();
+        return name.includes(term) || loc.includes(term);
+      });
+    }
+
+    if (filters.status === 'active') filtered = filtered.filter(q => !!q.is_active);
+    else if (filters.status === 'inactive') filtered = filtered.filter(q => !q.is_active);
+
+    if (filters.mode !== 'all') filtered = filtered.filter(q => (q.queue_mode || 'live') === filters.mode);
+
+    if (!allQueues.length) countLabel.textContent = 'No virtual queues yet.';
+    else countLabel.textContent = `${filtered.length} of ${allQueues.length} queue(s) shown.`;
+
+    if (!filtered.length) { emptyEl.style.display = 'block'; return; }
+    emptyEl.style.display = 'none';
+
+    filtered.forEach(q => {
+      const card = document.createElement('article');
+      card.className = 'queue-card';
+      card.dataset.queueId = q.id;
+
+      const isActive = !!q.is_active;
+      const mode = q.queue_mode || 'live';
+
+      const calendarFlags = [];
+      if (q.calendar_sync_google) calendarFlags.push('Google');
+      if (q.calendar_sync_ms) calendarFlags.push('Microsoft 365');
+      if (q.calendar_sync_other) calendarFlags.push('Other');
+
+      const createdAt = formatDateTime(q.created_at);
+
+      card.innerHTML = `
+        <div class="queue-card-header">
+          <div>
+            <h2 class="queue-title">${q.name || 'Unnamed queue'}</h2>
+            <p class="queue-subtitle">${q.location ? q.location : '<em>No location set</em>'}</p>
+          </div>
+          <div>
+            <div class="status-pill ${isActive ? 'active' : 'inactive'}">
+              <span>${isActive ? 'Active' : 'Inactive'}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="queue-tags">
+          <span class="queue-tag mode-${mode}">${modeLabel(mode)}</span>
+          <span class="queue-tag">${accessLabel(q)}</span>
+          ${q.show_estimate ? '<span class="queue-tag">Estimate ON</span>' : '<span class="queue-tag">Estimate OFF</span>'}
+          ${q.requires_whitelist ? '<span class="queue-tag">Whitelist</span>' : ''}
+          ${calendarFlags.length ? `<span class="queue-tag">Calendar: ${calendarFlags.join(' / ')}</span>` : ''}
+          ${mode === 'advance' && q.wave_capacity ? `<span class="queue-tag">${q.wave_capacity} / slot</span>` : ''}
+          ${q.time_per_slot_minutes ? `<span class="queue-tag">${q.time_per_slot_minutes} min</span>` : ''}
+        </div>
+
+        <div class="queue-body">
+          <div class="queue-body-row">
+            <span class="label">ID</span>
+            <span>${q.id}</span>
+          </div>
+          ${createdAt ? `
+          <div class="queue-body-row">
+            <span class="label">Created</span>
+            <span>${createdAt}</span>
+          </div>` : ''}
+        </div>
+
+        <div class="queue-actions">
+          <div class="queue-actions-main">
+            <button type="button" class="btn-view-qr" data-id="${q.id}">📱 View QR</button>
+            <button type="button" class="btn-edit-allowlist" data-id="${q.id}">👥 Allowed list</button>
+            <button type="button" class="btn-sync-calendar" data-id="${q.id}">🔄 Sync calendar</button>
+            <button type="button" class="btn-view-calendar" data-id="${q.id}">📅 View calendar</button>
+          </div>
+          <div class="queue-actions-secondary">
+            <label class="toggle-switch">
+              <input type="checkbox" class="queue-toggle" data-id="${q.id}" ${isActive ? 'checked' : ''}>
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label">${isActive ? 'Active' : 'Inactive'}</span>
+            <button type="button" class="danger btn-delete-queue" data-id="${q.id}">🗑 Delete</button>
+          </div>
+        </div>
+      `;
+
+      listEl.appendChild(card);
+    });
+  }
+
+  function updateQueueListFrameHeight() {
+    const frame = document.getElementById('queueListFrame');
+    if (!frame) return;
+
+    const viewportHeight = window.innerHeight;
+    const bandH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--band-h')) || 68;
+
+    const rect = frame.getBoundingClientRect();
+    const available = viewportHeight - bandH - rect.top;
+
+    frame.style.height = (available > 0 ? available : 0) + 'px';
+    frame.style.maxHeight = 'none';
+  }
+
+  async function loadQueues() {
+    const countLabel = document.getElementById('queueCountLabel');
+    countLabel.textContent = 'Loading queues…';
+
+    const data = await fetchJsonOptional('/api/intime/queues', { method:'GET', headers:{ 'Accept':'application/json' } }, 'Load queues');
+
+    if (data && Array.isArray(data.queues)) allQueues = data.queues;
+    else if (Array.isArray(data)) allQueues = data;
+    else throw new Error('Unexpected queues response from server.');
+
+    renderQueues();
+    updateLastRefreshLabel();
+    updateQueueListFrameHeight();
+  }
+
+  /* Filters */
+  document.getElementById('searchInput').addEventListener('input', (e) => {
+    filters.search = e.target.value.trim();
+    renderQueues();
+  });
+  document.getElementById('statusFilterSelect').addEventListener('change', (e) => {
+    filters.status = e.target.value;
+    renderQueues();
+  });
+  document.getElementById('modeFilterSelect').addEventListener('change', (e) => {
+    filters.mode = e.target.value;
+    renderQueues();
+  });
+
+  /* New queue / refresh */
+  document.getElementById('newQueueBtn').addEventListener('click', () => {
+    window.location.href = '/modules/In-Time/manage/page 1.html';
+  });
+  document.getElementById('refreshBtn').addEventListener('click', () => bootLoadQueues());
+
+  /* -------------------------------------------------------------------------- */
+  /* DELETE MODAL                                                               */
+  /* -------------------------------------------------------------------------- */
+
+  const deleteModal = document.getElementById('deleteModal');
+  const deleteText = document.getElementById('deleteModalText');
+  const deleteError = document.getElementById('deleteModalError');
+
+  function openDeleteModal(id, name) {
+    deleteTargetId = id;
+    deleteTargetName = name || '';
+    deleteError.style.display = 'none';
+    deleteError.textContent = '';
+    deleteText.innerHTML = `
+      Are you sure you want to permanently delete
+      <strong>${deleteTargetName || 'this virtual queue'}</strong>?<br>
+      This action cannot be undone.
+    `;
+    deleteModal.style.display = 'flex';
+  }
+  function closeDeleteModal() {
+    deleteModal.style.display = 'none';
+    deleteTargetId = null;
+    deleteTargetName = null;
+  }
+  document.getElementById('deleteCancelBtn').addEventListener('click', closeDeleteModal);
+  document.getElementById('deleteConfirmBtn').addEventListener('click', async () => {
+    if (!deleteTargetId) return closeDeleteModal();
+    deleteError.style.display = 'none';
+    deleteError.textContent = '';
+
+    try {
+      await fetchJsonOptional(`/api/intime/queues/${encodeURIComponent(deleteTargetId)}`, {
+        method:'DELETE', headers:{ 'Accept':'application/json' }
+      }, 'Delete queue');
+
+      allQueues = allQueues.filter(q => String(q.id) !== String(deleteTargetId));
+      renderQueues();
+      closeDeleteModal();
+    } catch (err) {
+      console.error(err);
+      deleteError.textContent = err.message || 'Error deleting queue.';
+      deleteError.style.display = 'block';
+    }
+  });
+  deleteModal.addEventListener('click', (e) => { if (e.target === deleteModal) closeDeleteModal(); });
+
+  /* -------------------------------------------------------------------------- */
+  /* QR MODAL                                                                   */
+  /* -------------------------------------------------------------------------- */
+
+  const qrModal = document.getElementById('qrModal');
+  const qrImage = document.getElementById('qrImage');
+
+  function openQrModal(queueId) {
+    qrImage.src = `/api/intime/queues/${encodeURIComponent(queueId)}/qr?ts=${Date.now()}`;
+    qrModal.style.display = 'flex';
+  }
+  function closeQrModal() {
+    qrModal.style.display = 'none';
+    qrImage.src = '';
+  }
+  document.getElementById('qrCloseBtn').addEventListener('click', closeQrModal);
+  qrModal.addEventListener('click', (e) => { if (e.target === qrModal) closeQrModal(); });
+
+  /* -------------------------------------------------------------------------- */
+  /* ALLOWLIST MODAL                                                            */
+  /* -------------------------------------------------------------------------- */
+
+  const allowlistModal = document.getElementById('allowlistModal');
+  const allowlistInput = document.getElementById('allowlistInput');
+  const allowlistBulkTextarea = document.getElementById('allowlistBulkTextarea');
+  const allowlistList = document.getElementById('allowlistList');
+  const allowlistMeta = document.getElementById('allowlistMeta');
+  const allowlistError = document.getElementById('allowlistError');
+
+  function openAllowlistModal(queueId) {
+    currentAllowlistQueueId = queueId;
+    allowlistError.style.display = 'none';
+    allowlistError.textContent = '';
+    allowlistInput.value = '';
+    allowlistBulkTextarea.value = '';
+
+    const q = allQueues.find(q => String(q.id) === String(queueId));
+    currentAllowlistEmails = (q && Array.isArray(q.allowed_visitors_emails)) ? [...q.allowed_visitors_emails] : [];
+
+    renderAllowlistList();
+    allowlistModal.style.display = 'flex';
+  }
+  function closeAllowlistModal() {
+    allowlistModal.style.display = 'none';
+    currentAllowlistQueueId = null;
+    currentAllowlistEmails = [];
+  }
+  function renderAllowlistList(highlightTerm = '') {
+    allowlistList.innerHTML = '';
+    const term = (highlightTerm || '').trim().toLowerCase();
+
+    currentAllowlistEmails.forEach(email => {
+      const item = document.createElement('div');
+      item.className = 'allowlist-list-item';
+
+      let display = email;
+      if (term && email.toLowerCase().includes(term)) {
+        const idx = email.toLowerCase().indexOf(term);
+        display = `${email.slice(0, idx)}<strong>${email.slice(idx, idx + term.length)}</strong>${email.slice(idx + term.length)}`;
+      }
+
+      item.innerHTML = `
+        <span class="allowlist-email">${display}</span>
+        <button type="button" class="allowlist-remove-one" data-email="${email}">✕</button>
+      `;
+      allowlistList.appendChild(item);
+    });
+
+    allowlistMeta.textContent = currentAllowlistEmails.length
+      ? `${currentAllowlistEmails.length} email(s) in the list.`
+      : 'No email in the list yet.';
+  }
+  function parseEmailsFromInputs() {
+    const combined = [allowlistInput.value, allowlistBulkTextarea.value].join(' ').trim();
+    if (!combined) return { emails: [], invalids: [] };
+
+    const parts = combined.split(/[,\s;]+/);
+    const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+    const emails = [];
+    const invalids = [];
+
+    parts.forEach(raw => {
+      const e = raw.trim();
+      if (!e) return;
+      if (!emailRegex.test(e)) invalids.push(e);
+      else emails.push(e.toLowerCase());
+    });
+    return { emails, invalids };
+  }
+
+  document.getElementById('allowlistSearchBtn').addEventListener('click', () => {
+    renderAllowlistList(allowlistInput.value.trim());
+  });
+  document.getElementById('allowlistAddBtn').addEventListener('click', () => {
+    allowlistError.style.display = 'none';
+    allowlistError.textContent = '';
+
+    const { emails, invalids } = parseEmailsFromInputs();
+    if (invalids.length) {
+      allowlistError.textContent =
+        'Some entries are not valid email addresses: ' +
+        invalids.slice(0,3).join(', ') +
+        (invalids.length > 3 ? '…' : '');
+      allowlistError.style.display = 'block';
+    }
+    emails.forEach(e => { if (!currentAllowlistEmails.includes(e)) currentAllowlistEmails.push(e); });
+    renderAllowlistList();
+  });
+  document.getElementById('allowlistRemoveBtn').addEventListener('click', () => {
+    const { emails } = parseEmailsFromInputs();
+    if (!emails.length) return;
+    currentAllowlistEmails = currentAllowlistEmails.filter(e => !emails.includes(e.toLowerCase()));
+    renderAllowlistList();
+  });
+  allowlistList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.allowlist-remove-one');
+    if (!btn) return;
+    currentAllowlistEmails = currentAllowlistEmails.filter(x => x !== btn.dataset.email);
+    renderAllowlistList();
+  });
+  document.getElementById('allowlistCancelBtn').addEventListener('click', closeAllowlistModal);
+  document.getElementById('allowlistSaveBtn').addEventListener('click', async () => {
+    if (!currentAllowlistQueueId) return closeAllowlistModal();
+
+    allowlistError.style.display = 'none';
+    allowlistError.textContent = '';
+
+    try {
+      await fetchJsonOptional(`/api/intime/queues/${encodeURIComponent(currentAllowlistQueueId)}/allowlist`, {
+        method:'PATCH',
+        headers:{ 'Content-Type':'application/json', 'Accept':'application/json' },
+        body: JSON.stringify({ emails: currentAllowlistEmails })
+      }, 'Update allow-list');
+
+      const q = allQueues.find(q => String(q.id) === String(currentAllowlistQueueId));
+      if (q) q.allowed_visitors_emails = [...currentAllowlistEmails];
+      renderQueues();
+      closeAllowlistModal();
+    } catch (err) {
+      console.error(err);
+      allowlistError.textContent = err.message || 'Failed to update allow-list.';
+      allowlistError.style.display = 'block';
+    }
+  });
+  allowlistModal.addEventListener('click', (e) => { if (e.target === allowlistModal) closeAllowlistModal(); });
+
+  /* -------------------------------------------------------------------------- */
+  /* CALENDAR SYNC                                                              */
+  /* -------------------------------------------------------------------------- */
+
+  const calendarSyncModal = document.getElementById('calendarSyncModal');
+  const calendarSyncError = document.getElementById('calendarSyncError');
+  let calendarSyncRoot = document.getElementById('calendarSyncRoot');
+
+  async function openCalendarSyncModal(queueId) {
+    currentCalendarSyncQueueId = queueId;
+    calendarSyncError.style.display = 'none';
+    calendarSyncError.textContent = '';
+
+    const q = allQueues.find(q => String(q.id) === String(queueId));
+    document.getElementById('calGoogleConnected').value = (q && q.calendar_sync_google) ? '1' : '0';
+    document.getElementById('calMsConnected').value     = (q && q.calendar_sync_ms) ? '1' : '0';
+    document.getElementById('calOtherConnected').value  = (q && q.calendar_sync_other) ? '1' : '0';
+
+    calendarSyncModal.style.display = 'flex';
+
+    // Reset listeners by swapping root
+    const freshRoot = calendarSyncRoot.cloneNode(true);
+    calendarSyncRoot.parentNode.replaceChild(freshRoot, calendarSyncRoot);
+    calendarSyncRoot = document.getElementById('calendarSyncRoot');
+
+    try {
+      const mod = await ensureCalendarSyncModule();
+      mod.setupCalendarSync(calendarSyncRoot, {
+        google: !!(q && q.calendar_sync_google),
+        microsoft: !!(q && q.calendar_sync_ms),
+        other: !!(q && q.calendar_sync_other),
+      });
+    } catch (err) {
+      console.error(err);
+      calendarSyncError.textContent =
+        err.message ||
+        'Calendar sync module failed to load. Check /modules/In-Time/manage/calendar-sync.js';
+      calendarSyncError.style.display = 'block';
+    }
+  }
+
+  function closeCalendarSyncModal() {
+    calendarSyncModal.style.display = 'none';
+    currentCalendarSyncQueueId = null;
+  }
+
+  document.getElementById('calendarSyncCancelBtn').addEventListener('click', closeCalendarSyncModal);
+
+  document.getElementById('calendarSyncSaveBtn').addEventListener('click', async () => {
+    if (!currentCalendarSyncQueueId) return closeCalendarSyncModal();
+
+    calendarSyncError.style.display = 'none';
+    calendarSyncError.textContent = '';
+
+    let state = { google:false, microsoft:false, other:false };
+    try {
+      const mod = await ensureCalendarSyncModule();
+      state = mod.getCalendarSyncState();
+    } catch (err) {
+      console.error(err);
+      calendarSyncError.textContent =
+        err.message ||
+        'Calendar sync module failed to load. Check /modules/In-Time/manage/calendar-sync.js';
+      calendarSyncError.style.display = 'block';
+      return;
+    }
+
+    try {
+      await fetchJsonOptional(`/api/intime/queues/${encodeURIComponent(currentCalendarSyncQueueId)}/calendar-sync`, {
+        method:'PATCH',
+        headers:{ 'Content-Type':'application/json', 'Accept':'application/json' },
+        body: JSON.stringify({
+          calendar_sync_google: !!state.google,
+          calendar_sync_ms: !!state.microsoft,
+          calendar_sync_other: !!state.other
+        })
+      }, 'Update calendar sync');
+
+      const q = allQueues.find(q => String(q.id) === String(currentCalendarSyncQueueId));
+      if (q) {
+        q.calendar_sync_google = !!state.google;
+        q.calendar_sync_ms = !!state.microsoft;
+        q.calendar_sync_other = !!state.other;
+      }
+      renderQueues();
+      closeCalendarSyncModal();
+    } catch (err) {
+      console.error(err);
+      calendarSyncError.textContent = err.message || 'Failed to update calendar sync.';
+      calendarSyncError.style.display = 'block';
+    }
+  });
+
+  calendarSyncModal.addEventListener('click', (e) => { if (e.target === calendarSyncModal) closeCalendarSyncModal(); });
+
+  /* -------------------------------------------------------------------------- */
+  /* VIEW CALENDAR — 1 hour cells + default focus 08-18                          */
+  /* -------------------------------------------------------------------------- */
+
+  const calendarViewModal = document.getElementById('calendarViewModal');
+  const calendarViewError = document.getElementById('calendarViewError');
+
+  const cvGridScroll = document.getElementById('cvGridScroll');
+  const cvGridCells  = document.getElementById('cvGridCells');
+  const cvGridBlocks = document.getElementById('cvGridBlocks');
+
+  function dayIndexForDate(dt){
+    const d0 = new Date(cvUI.startDate); d0.setHours(0,0,0,0);
+    const d1 = new Date(dt); d1.setHours(0,0,0,0);
+    const diff = Math.round((d1 - d0) / (24*3600*1000));
+    if (diff < 0 || diff >= cvUI.days) return null;
+    return diff;
+  }
+
+  function isWeekend(day){
+    const w = day.getDay();
+    return (w === 0 || w === 6);
+  }
+
+  function daySeparatorKind(day){
+    if (day.getDate() === 1 && day.getMonth() === 0) return 'year';
+    if (day.getDate() === 1) return 'month';
+    if (day.getDay() === 1) return 'week';
+    return null;
+  }
+
+  function applySeparatorStyle(el, kind){
+    if (!kind) return;
+    if (kind === 'week') el.classList.add('cv-sep-week');
+    if (kind === 'month') el.classList.add('cv-sep-month');
+    if (kind === 'year') el.classList.add('cv-sep-year');
+  }
+
+  function normalizeEvent(ev){
+    const start = ev.start ? new Date(ev.start) : null;
+    const end   = ev.end ? new Date(ev.end) : null;
+    if (!start || !end || isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+    if (end <= start) return null;
+
+    const source =
+      (ev.source === 'calendar') ? 'calendar' :
+      (ev.source === 'lock') ? 'lock' : 'queue';
+
+    return {
+      title: ev.title || (source === 'lock' ? 'Locked' : ''),
+      start, end, source,
+      id: ev.id || ev.lock_id || ev.lockId || null
+    };
+  }
+
+  function getSlotCount(){
+    return 24; /* 24 hours with 60-min slots = 24 rows */
+  }
+
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function fmtHM(d){ return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+
+  function splitEventByDay(ev){
+    const out = [];
+    let s = new Date(ev.start);
+    const e = new Date(ev.end);
+
+    while (s < e){
+      const endOfDay = new Date(s);
+      endOfDay.setHours(24,0,0,0);
+
+      const segEnd = (e < endOfDay) ? e : endOfDay;
+      out.push({ start: new Date(s), end: new Date(segEnd) });
+
+      s = new Date(segEnd);
+    }
+    return out;
+  }
+
+  /* With 1h rows: row = hour */
+  function rowForTime(dt){
+    const h = dt.getHours();
+    return clamp(h, 0, 23);
+  }
+  function rowEndForTime(dt){
+    const h = dt.getHours();
+    const m = dt.getMinutes();
+    const end = (m > 0) ? (h + 1) : h;
+    return clamp(end, 1, 24);
+  }
+
+  function buildCalendarGridSkeleton(){
+    const slotCount = getSlotCount();
+    const dayCount  = cvUI.days;
+
+    cvGridCells.innerHTML = '';
+    cvGridBlocks.innerHTML = '';
+
+    const cols = `var(--cv-time-col) repeat(${dayCount}, var(--cv-day-col))`;
+    const rows = `var(--cv-month-h) var(--cv-day-h) repeat(${slotCount}, var(--cv-slot-h))`;
+
+    cvGridCells.style.gridTemplateColumns = cols;
+    cvGridCells.style.gridTemplateRows = rows;
+
+    cvGridBlocks.style.gridTemplateColumns = cols;
+    cvGridBlocks.style.gridTemplateRows = rows;
+
+    /* CORNER month */
+    const cornerMonth = document.createElement('div');
+    cornerMonth.className = 'cv-cell corner month';
+    cornerMonth.textContent = '';
+    cvGridCells.appendChild(cornerMonth);
+
+    /* Sticky current month label */
+    const stickyCurrent = document.createElement('div');
+    stickyCurrent.className = 'cv-current-month';
+    stickyCurrent.id = 'cvCurrentMonthLabel';
+    stickyCurrent.style.gridRow = '1';
+    stickyCurrent.style.gridColumn = '2';
+    stickyCurrent.textContent = '';
+    cvGridCells.appendChild(stickyCurrent);
+
+    /* Month row cells */
+    for (let d=0; d<dayCount; d++){
+      const day = addDays(cvUI.startDate, d);
+      const kind = daySeparatorKind(day);
+
+      const monthCell = document.createElement('div');
+      monthCell.className = 'cv-cell header month';
+      monthCell.dataset.dayIndex = String(d);
+
+      if (day.getDate() === 1 || d === 0){
+        monthCell.textContent = day.toLocaleDateString(undefined, { month:'short', year:'numeric' });
+      } else {
+        monthCell.textContent = '';
+      }
+
+      applySeparatorStyle(monthCell, kind);
+      monthCell.style.gridRow = '1';
+      monthCell.style.gridColumn = String(2 + d);
+
+      cvGridCells.appendChild(monthCell);
+    }
+
+    /* CORNER day */
+    const cornerDay = document.createElement('div');
+    cornerDay.className = 'cv-cell corner day';
+    cornerDay.textContent = 'Time';
+    cvGridCells.appendChild(cornerDay);
+
+    /* Day row headers */
+    for (let d=0; d<dayCount; d++){
+      const day = addDays(cvUI.startDate, d);
+      const kind = daySeparatorKind(day);
+      const weekend = isWeekend(day);
+
+      const dayCell = document.createElement('div');
+      dayCell.className = 'cv-cell header day' + (weekend ? ' weekend' : '');
+      dayCell.dataset.dayIndex = String(d);
+
+      const wd = day.toLocaleDateString(undefined, { weekday:'short' });
+      const dn = String(day.getDate());
+
+      dayCell.innerHTML = `
+        <div class="cv-day-circle">
+          <div class="wd">${wd}</div>
+          <div class="dn">${dn}</div>
+        </div>
+      `;
+
+      applySeparatorStyle(dayCell, kind);
+      dayCell.style.gridRow = '2';
+      dayCell.style.gridColumn = String(2 + d);
+
+      cvGridCells.appendChild(dayCell);
+    }
+
+    /* TIME COLUMN — one cell per hour row */
+    for (let hour=0; hour<24; hour++){
+      const timeCell = document.createElement('div');
+      timeCell.className = 'cv-cell time';
+      timeCell.textContent = `${pad2(hour)}:00`;
+      timeCell.style.gridColumn = '1';
+      timeCell.style.gridRow = String(3 + hour);
+      cvGridCells.appendChild(timeCell);
+    }
+
+    /* Slot rows + day cells: one row per hour */
+    for (let hour=0; hour<24; hour++){
+      const isOffHour = (hour < 8) || (hour >= 18);
+      const isLunch = (hour === 12);
+
+      for (let d=0; d<dayCount; d++){
+        const day = addDays(cvUI.startDate, d);
+        const weekend = isWeekend(day);
+        const kind = daySeparatorKind(day);
+
+        const cell = document.createElement('div');
+        cell.className = 'cv-cell slot';
+        cell.dataset.dayIndex = String(d);
+        cell.dataset.rowIndex = String(hour);
+
+        if (weekend) cell.classList.add('weekend');
+        else {
+          if (isOffHour) cell.classList.add('offhour');
+          if (isLunch) cell.classList.add('lunch');
+        }
+
+        applySeparatorStyle(cell, kind);
+
+        cell.style.gridRow = String(3 + hour);
+        cell.style.gridColumn = String(2 + d);
+
+        cvGridCells.appendChild(cell);
+      }
+    }
+  }
+
+  function updateStickyCurrentMonthLabel(){
+    const labelEl = document.getElementById('cvCurrentMonthLabel');
+    if (!labelEl || !cvUI.startDate) return;
+
+    const dayColW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cv-day-col')) || 170;
+    const left = cvGridScroll.scrollLeft || 0;
+
+    const idx = clamp(Math.floor(left / dayColW), 0, cvUI.days - 1);
+    const day = addDays(cvUI.startDate, idx);
+
+    const txt = day.toLocaleDateString(undefined, { month:'long', year:'numeric' });
+    labelEl.textContent = txt;
+  }
+
+  function mergeSegmentsForDay(segments){
+    segments.sort((a,b) => a.start - b.start);
+    const merged = [];
+    for (const seg of segments){
+      const last = merged[merged.length - 1];
+      if (!last) { merged.push(seg); continue; }
+      if (seg.start <= last.end){
+        if (seg.end > last.end) last.end = seg.end;
+      } else {
+        merged.push(seg);
+      }
+    }
+    return merged;
+  }
+
+  function renderBlocks(){
+    cvGridBlocks.innerHTML = '';
+
+    const composed = [];
+
+    (cvEvents || []).forEach(ev => {
+      const n = normalizeEvent(ev);
+      if (n) composed.push(n);
+    });
+
+    (cvLocks || []).forEach(lock => {
+      const n = normalizeEvent({
+        ...lock,
+        source:'lock',
+        title: lock.title || 'Locked',
+        id: lock.id || lock.lock_id || lock.lockId
+      });
+      if (n) composed.push(n);
+    });
+
+    (cvPendingLocks || []).forEach(lock => {
+      const n = normalizeEvent({
+        ...lock,
+        source:'lock',
+        title: lock.title || 'Locked (pending)',
+        id: lock.id || null
+      });
+      if (n) composed.push(n);
+    });
+
+    const byDay = new Map();
+
+    composed.forEach(ev => {
+      const segments = splitEventByDay(ev);
+      segments.forEach(seg => {
+        const di = dayIndexForDate(seg.start);
+        if (di === null) return;
+        const key = `${di}|${ev.source}|${ev.id || ''}`;
+        if (!byDay.has(key)) byDay.set(key, []);
+        byDay.get(key).push({ ...seg, source: ev.source, title: ev.title, id: ev.id });
+      });
+    });
+
+    for (const [key, segs] of byDay.entries()){
+      const parts = key.split('|');
+      const di = parseInt(parts[0], 10);
+      const source = parts[1];
+      const id = parts.slice(2).join('|') || '';
+
+      const mergedSegs = mergeSegmentsForDay(segs);
+
+      mergedSegs.forEach(seg => {
+        const startRow = rowForTime(seg.start);
+        const endRow   = rowEndForTime(seg.end);
+
+        const gridRowStart = 3 + startRow;
+        const gridRowEnd   = 3 + Math.max(endRow, startRow + 1);
+        const gridCol      = 2 + di;
+
+        const block = document.createElement('div');
+        block.className = `cv-block ${source}`;
+        block.dataset.source = source;
+
+        if (source === 'lock') {
+          block.dataset.lockId = id ? String(id) : '';
+          block.title = 'Click to remove this lock';
+        } else {
+          block.title = seg.title || '';
+        }
+
+        const tag = (source === 'queue') ? 'Booking'
+                  : (source === 'calendar') ? 'Calendar'
+                  : 'Lock';
+
+        const label = `${fmtHM(seg.start)} - ${fmtHM(seg.end)}`;
+
+        block.innerHTML = `
+          <div class="time-label">${label}</div>
+          <div class="meta">
+            <span class="tag">${tag}</span>
+            <span style="overflow:hidden;text-overflow:ellipsis;">${source === 'lock' ? 'Locked' : ''}</span>
+          </div>
+        `;
+
+        block.style.gridColumn = String(gridCol);
+        block.style.gridRow = `${gridRowStart} / ${gridRowEnd}`;
+
+        cvGridBlocks.appendChild(block);
+      });
+    }
+  }
+
+  function autoFocusOnBusinessHours(){
+    const pxPerRow = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cv-slot-h')) || 54;
+    const rowAt08 = 8;
+    const rowAt18 = 18;
+
+    const topPx = rowAt08 * pxPerRow;
+    const botPx = rowAt18 * pxPerRow;
+
+    const mid = (topPx + botPx) / 2;
+    const target = Math.max(0, mid - (cvGridScroll.clientHeight / 2));
+
+    cvGridScroll.scrollTop = target;
+  }
+
+  function rebuildCalendarViewUI(){
+    buildCalendarGridSkeleton();
+    renderBlocks();
+
+    cvGridScroll.scrollLeft = 0;
+    requestAnimationFrame(() => {
+      autoFocusOnBusinessHours();
+      updateStickyCurrentMonthLabel();
+    });
+  }
+
+  async function loadCalendarViewData(queueId){
+    const data = await fetchJsonOptional(`/api/intime/queues/${encodeURIComponent(queueId)}/calendar-view`, {
+      method:'GET',
+      headers:{ 'Accept':'application/json' }
+    }, 'Load queue calendar');
+
+    const combined = [];
+
+    if (Array.isArray(data?.events)) combined.push(...data.events);
+
+    if (!combined.length && Array.isArray(data?.queue_events))
+      combined.push(...data.queue_events.map(x => ({ ...x, source:'queue' })));
+
+    if (Array.isArray(data?.calendar_events))
+      combined.push(...data.calendar_events.map(x => ({ ...x, source:'calendar' })));
+
+    if (Array.isArray(data?.external_events) && !Array.isArray(data?.calendar_events))
+      combined.push(...data.external_events.map(x => ({ ...x, source:'calendar' })));
+
+    cvEvents = combined;
+
+    cvLocks = Array.isArray(data?.locks) ? data.locks : [];
+    if (!cvLocks.length && Array.isArray(data?.locked_slots)) cvLocks = data.locked_slots;
+
+    const lockKey = (x) => `${new Date(x.start).getTime()}-${new Date(x.end).getTime()}`;
+    const serverLockKeys = new Set(cvLocks.map(lockKey));
+    cvPendingLocks = cvPendingLocks.filter(p => !serverLockKeys.has(lockKey(p)));
+
+    rebuildCalendarViewUI();
+  }
+
+  function openCalendarViewModal(queueId){
+    currentCalendarViewQueueId = queueId;
+    currentCalendarViewQueue = allQueues.find(q => String(q.id) === String(queueId)) || null;
+
+    calendarViewError.style.display = 'none';
+    calendarViewError.textContent = '';
+
+    cvPendingLocks = [];
+    cvPendingDeletes = [];
+    cvDrag.active = false;
+
+    const today = new Date();
+    cvUI.startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0,0,0,0);
+
+    const name = currentCalendarViewQueue?.name || `Queue ${queueId}`;
+    document.getElementById('cvTitle').textContent = `Queue calendar — ${name}`;
+    document.getElementById('cvSub').textContent =
+      `Combined busy blocks + bookings + locks. Range: Today → D+90. Grid: 00:00 → 24:00. Step: 60 min. Default focus: 08:00–18:00.`;
+
+    calendarViewModal.style.display = 'flex';
+
+    try { rebuildCalendarViewUI(); }
+    catch (err) {
+      console.error(err);
+      calendarViewError.textContent = err.message || 'Failed to build calendar grid.';
+      calendarViewError.style.display = 'block';
+    }
+
+    loadCalendarViewData(queueId).catch(err => {
+      console.error(err);
+      calendarViewError.textContent = err.message || 'Failed to load queue calendar.';
+      calendarViewError.style.display = 'block';
+    });
+  }
+
+  function closeCalendarViewModal(){
+    calendarViewModal.style.display = 'none';
+    currentCalendarViewQueueId = null;
+    currentCalendarViewQueue = null;
+    cvEvents = [];
+    cvLocks = [];
+    cvPendingLocks = [];
+    cvPendingDeletes = [];
+    cvDrag.active = false;
+  }
+
+  document.getElementById('calendarViewCancelBtn').addEventListener('click', closeCalendarViewModal);
+  calendarViewModal.addEventListener('click', (e) => { if (e.target === calendarViewModal) closeCalendarViewModal(); });
+
+  cvGridScroll.addEventListener('scroll', () => {
+    updateStickyCurrentMonthLabel();
+  }, { passive:true });
+
+  /* Drag-to-lock on CELLS layer (hour-based) */
+  cvGridCells.addEventListener('mousedown', (e) => {
+    const cell = e.target.closest('.cv-cell.slot');
+    if (!cell) return;
+
+    cvDrag.active = true;
+    cvDrag.dayIndex = parseInt(cell.dataset.dayIndex, 10);
+    cvDrag.startRow = parseInt(cell.dataset.rowIndex, 10);
+    cvDrag.endRow = cvDrag.startRow;
+
+    e.preventDefault();
+  });
+
+  cvGridCells.addEventListener('mouseover', (e) => {
+    if (!cvDrag.active) return;
+    const cell = e.target.closest('.cv-cell.slot');
+    if (!cell) return;
+
+    const di = parseInt(cell.dataset.dayIndex, 10);
+    if (di !== cvDrag.dayIndex) return;
+
+    cvDrag.endRow = parseInt(cell.dataset.rowIndex, 10);
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (!cvDrag.active) return;
+
+    const di = cvDrag.dayIndex;
+    const a = Math.min(cvDrag.startRow, cvDrag.endRow);
+    const b = Math.max(cvDrag.startRow, cvDrag.endRow);
+
+    const day = addDays(cvUI.startDate, di);
+
+    const start = new Date(day);
+    start.setHours(a,0,0,0);
+
+    const end = new Date(day);
+    end.setHours(b+1,0,0,0);
+
+    cvPendingLocks.push({
+      id: `pending-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      title: 'Locked (pending)',
+      start: start.toISOString(),
+      end: end.toISOString(),
+      source: 'lock'
+    });
+
+    cvDrag.active = false;
+    renderBlocks();
+  });
+
+  /* Click lock block to remove */
+  cvGridBlocks.addEventListener('click', (e) => {
+    const block = e.target.closest('.cv-block.lock');
+    if (!block) return;
+
+    const lockId = block.dataset.lockId || '';
+    if (lockId.startsWith('pending-')) {
+      cvPendingLocks = cvPendingLocks.filter(l => String(l.id) !== lockId);
+      renderBlocks();
+      return;
+    }
+
+    if (lockId) {
+      const idx = cvLocks.findIndex(l => String(l.id || l.lock_id || l.lockId) === String(lockId));
+      if (idx >= 0) {
+        const removed = cvLocks[idx];
+        cvLocks.splice(idx, 1);
+        cvPendingDeletes.push({ lock_id: lockId, start: removed.start, end: removed.end });
+        renderBlocks();
+      }
+    }
+  });
+
+  document.getElementById('cvApproveBtn').addEventListener('click', async () => {
+    if (!currentCalendarViewQueueId) return;
+
+    calendarViewError.style.display = 'none';
+    calendarViewError.textContent = '';
+
+    const creates = cvPendingLocks.map(x => ({ start: x.start, end: x.end, title: 'Locked' }));
+    const deletes = cvPendingDeletes.map(x => ({ lock_id: x.lock_id }));
+
+    try {
+      await fetchJsonOptional(`/api/intime/queues/${encodeURIComponent(currentCalendarViewQueueId)}/locks`, {
+        method:'PATCH',
+        headers:{ 'Content-Type':'application/json', 'Accept':'application/json' },
+        body: JSON.stringify({ create: creates, delete: deletes })
+      }, 'Save locks');
+
+      closeCalendarViewModal();
+    } catch (err) {
+      console.error(err);
+      calendarViewError.textContent =
+        (err.message || 'Failed to save locks.') +
+        ' (If this is 404, you need a backend /locks endpoint.)';
+      calendarViewError.style.display = 'block';
+    }
+  });
+
+  /* -------------------------------------------------------------------------- */
+  /* CARD ACTIONS                                                               */
+  /* -------------------------------------------------------------------------- */
+
+  document.getElementById('queueList').addEventListener('click', (e) => {
+    const qrBtn = e.target.closest('.btn-view-qr');
+    if (qrBtn) return openQrModal(qrBtn.dataset.id);
+
+    const delBtn = e.target.closest('.btn-delete-queue');
+    if (delBtn) {
+      const id = delBtn.dataset.id;
+      const card = delBtn.closest('.queue-card');
+      const name = card?.querySelector('.queue-title')?.textContent?.trim() || '';
+      return openDeleteModal(id, name);
+    }
+
+    const allowBtn = e.target.closest('.btn-edit-allowlist');
+    if (allowBtn) return openAllowlistModal(allowBtn.dataset.id);
+
+    const syncCalBtn = e.target.closest('.btn-sync-calendar');
+    if (syncCalBtn) return openCalendarSyncModal(syncCalBtn.dataset.id);
+
+    const viewCalBtn = e.target.closest('.btn-view-calendar');
+    if (viewCalBtn) return openCalendarViewModal(viewCalBtn.dataset.id);
+  });
+
+  document.getElementById('queueList').addEventListener('change', (e) => {
+    const toggle = e.target.closest('.queue-toggle');
+    if (!toggle) return;
+
+    const queueId = toggle.dataset.id;
+    const newActive = toggle.checked;
+
+    const card = toggle.closest('.queue-card');
+    const pill = card.querySelector('.status-pill');
+    const label = card.querySelector('.toggle-label');
+
+    if (pill) {
+      pill.classList.toggle('active', newActive);
+      pill.classList.toggle('inactive', !newActive);
+      pill.querySelector('span').textContent = newActive ? 'Active' : 'Inactive';
+    }
+    if (label) label.textContent = newActive ? 'Active' : 'Inactive';
+
+    fetchJsonOptional(`/api/intime/queues/${encodeURIComponent(queueId)}/status`, {
+      method:'PATCH',
+      headers:{ 'Content-Type':'application/json', 'Accept':'application/json' },
+      body: JSON.stringify({ is_active: !!newActive })
+    }, 'Update status')
+      .then(() => {
+        const q = allQueues.find(q => String(q.id) === String(queueId));
+        if (q) q.is_active = !!newActive;
+      })
+      .catch(err => {
+        console.error(err);
+        toggle.checked = !newActive;
+        if (pill) {
+          pill.classList.toggle('active', !newActive);
+          pill.classList.toggle('inactive', newActive);
+          pill.querySelector('span').textContent = !newActive ? 'Active' : 'Inactive';
+        }
+        if (label) label.textContent = !newActive ? 'Active' : 'Inactive';
+        alert(err.message || 'Error updating queue status.');
+      });
+  });
+
+  /* -------------------------------------------------------------------------- */
+  /* BOOT (fixes endless "Loading queues..." by ensuring init always runs)       */
+  /* -------------------------------------------------------------------------- */
+
+  async function bootLoadQueues() {
+    const countLabel = document.getElementById('queueCountLabel');
+    countLabel.textContent = 'Loading queues…';
+
+    try {
+      await loadQueues();
+    } catch (err) {
+      console.error(err);
+      countLabel.textContent = 'Error loading queues.';
+      // show the real reason inline (timeout, HTML, 401, etc.)
+      const last = document.getElementById('queueLastRefresh');
+      if (last) last.textContent = err.message || 'Unknown error';
+    }
+  }
+
+  function boot(){
+    const countLabel = document.getElementById('queueCountLabel');
+    countLabel.textContent = 'Booting…';
+    bootLoadQueues();
+    setTimeout(updateQueueListFrameHeight, 0);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+
+  window.addEventListener('resize', updateQueueListFrameHeight);
+</script>
+
+<script>
+  Drawer.mount({ mode: 'host' });
+
+  FAB.mount({
+    useTopBand: true,
+    useBottomBand: true,
+
+    home: { title: 'Home & Services', label: '🏠', onClick: () => Drawer.open() },
+    config: { title: 'Settings', label: '⚙️', href: '/pages/visitor/settings.html#host' },
+
+    onBack: () => {
+      if (history.length > 1) history.back();
+      else location.href = '/pages/host/dashboard.html';
+    },
+
+    br: { title: 'New Virtual Queue', label: '＋', href: '/modules/In-Time/manage/page 1.html' }
+  });
+
+  function hideBottomRightFabButton() {
+    const bandH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--band-h')) || 68;
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+
+    const candidates = Array.from(document.querySelectorAll('.fab-band.bottom .fab-btn, .bottom-band .fab-btn'))
+      .filter(el => {
+        const rect = el.getBoundingClientRect();
+        if (!rect.width || !rect.height) return false;
+
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+
+        const nearBottom = cy > vh - bandH - 80 && cy < vh;
+        const rightSide  = cx > vw * 0.6;
+        return nearBottom && rightSide;
+      });
+
+    candidates.forEach(el => {
+      el.style.display = 'none';
+      el.style.visibility = 'hidden';
+      el.style.pointerEvents = 'none';
+    });
+  }
+
+  hideBottomRightFabButton();
+  const fabObserver = new MutationObserver(() => hideBottomRightFabButton());
+  fabObserver.observe(document.body, { childList: true, subtree: true });
+  window.addEventListener('resize', hideBottomRightFabButton);
+</script>
+
+</body>
+</html>

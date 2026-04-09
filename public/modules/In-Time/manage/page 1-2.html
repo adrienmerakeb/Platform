@@ -1,0 +1,1736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Edit Queue — In-Time</title>
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --v:#7c3aed;--v-s:#ede9fc;--v-d:#6d28d9;--white:rgb(255,255,255);
+  --blue:#2563eb;--blue-s:#eff6ff;
+  --green:#16a34a;--green-s:#f0fdf4;
+  --amber:#d97706;--amber-s:#fffbeb;
+  --red:#dc2626;--red-s:#fef2f2;
+  --txt:#1a1825;--muted:#6b6880;--hint:#9b98aa;
+  --surf:#fff;--bg:#f4f3f8;--bord:#e2e0ea;--bord-f:#7c3aed;
+  --gray:#f0eff5;--gray-m:#d4d2de;
+  --r:14px;--ri:9px;
+  --sh:0 2px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --ring:0 0 0 3px rgba(124,58,237,.18);
+  --font:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55}
+
+/* ─── TOPBAR ─────────────────────────────────────────────── */
+.topbar{
+  background:var(--v);color:#fff;padding:10px 20px;
+  display:flex;align-items:center;gap:12px;
+  box-shadow:0 2px 12px rgba(124,58,237,.3);
+  flex-shrink:0;
+  position:sticky;top:0;z-index:200;
+}
+.topbar-title{font-size:15px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topbar-sub{font-size:11.5px;opacity:.7;white-space:nowrap}
+.topbar a{color:#fff;text-decoration:none;font-weight:700;font-size:12px;padding:5px 12px;border:1.5px solid rgba(255,255,255,.4);border-radius:999px;white-space:nowrap;transition:background .15s}
+.topbar a:hover{background:rgba(255,255,255,.15)}
+
+/* ─── TAB BAND (segment selector — always visible) ────── */
+.tab-band{
+  position:sticky;
+  top:7%;
+  background:var(--surf);border-bottom:1px solid var(--bord);
+  padding:8px 14px;
+  display:flex;gap:5px;overflow-x:auto;flex-shrink:0;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  justify-content:space-around;
+  z-index:150;
+}
+.tab-band::-webkit-scrollbar{display:none}
+.tab{
+  flex-shrink:0;display:inline-flex;align-items:center;gap:4px;
+  padding:6px 12px;border-radius:999px;border:1.5px solid var(--bord);
+  font-size:11px;font-weight:600;color:var(--muted);
+  cursor:pointer;transition:all .15s;white-space:nowrap;background:var(--surf);
+  text-decoration:none;user-select:none;
+}
+.tab:hover{border-color:var(--v);color:var(--v);background:var(--v-s)}
+.tab.active{border-color:var(--v);color:#fff;background:var(--v);font-weight:700}
+.tab.locked{
+  cursor:default;
+  border-style:dashed;border-color:var(--amber);color:var(--amber);background:var(--amber-s);
+  opacity:.7;
+}
+.tab.locked.active{opacity:1;border-style:solid;background:var(--amber);color:#fff}
+.tab .t-icon{font-size:12px}
+.tab .t-lock{font-size:7px;margin-left:-1px}
+
+/* ─── MAIN PANEL ─────────────────────────────────────── */
+.main-panel{
+  position:sticky;
+  max-width:680px;width:100%;margin:0 auto;
+  padding: 8px 16px 140px;
+}
+.seg-card{
+  width:100%;margin:16px 0;
+  background:var(--surf);border:1px solid var(--bord);
+  border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;
+}
+.seg-hd{
+  padding:14px 18px 12px;border-bottom:1px solid var(--bord);
+  display:flex;align-items:center;gap:10px;
+}
+.seg-icon{font-size:17px;flex-shrink:0}
+.seg-hd-body{flex:1;min-width:0}
+.seg-title{font-size:14px;font-weight:700;color:var(--txt)}
+.seg-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.seg-badge{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.seg-badge.locked{background:var(--amber-s);color:var(--amber);border:1.5px solid #fcd34d}
+.seg-badge.opt{background:var(--blue-s);color:var(--blue);border:1.5px solid #93c5fd}
+.seg-bd{padding:16px 18px}
+
+/* locked overlay for immutable sections */
+.seg-card.locked .seg-bd{position:relative;pointer-events:none;user-select:none}
+.seg-card.locked .seg-bd::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,.5);z-index:2}
+.lock-notice{display:flex;align-items:center;gap:8px;background:var(--amber-s);border:1.5px solid #fcd34d;border-radius:var(--ri);padding:8px 12px;font-size:12px;color:var(--amber);font-weight:600;margin-bottom:10px}
+
+/* ─── MANAGE LINKS (contextual feature links at bottom of segment) */
+.manage-links{
+  border-top:1px solid var(--bord);padding:12px 18px;
+  display:flex;flex-wrap:wrap;gap:8px;
+  background:linear-gradient(180deg,var(--gray) 0%,var(--surf) 100%);
+}
+.manage-link{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:8px 14px;border-radius:var(--ri);border:1.5px solid var(--v);
+  background:var(--v-s);color:var(--v);
+  font-family:var(--font);font-size:12px;font-weight:700;
+  cursor:pointer;transition:all .18s;text-decoration:none;white-space:nowrap;
+}
+.manage-link:hover{background:var(--v);color:#fff;transform:translateY(-1px);box-shadow:0 2px 8px rgba(124,58,237,.2)}
+.manage-link .ml-icon{font-size:14px}
+
+/* ─── STICKY SAVE BAR (always visible above FAB) ──────── */
+.save-bar{
+  position:fixed;
+  bottom:8%;
+  left:0;
+  right:0;
+  z-index:100;
+  background:transparent;
+  border-top:none;
+  padding:10px 20px;
+  display:flex;
+  align-items:center;
+  justify-content:space-around;
+  gap:10px;
+  box-shadow:none;
+}
+
+.btn{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  font-family:var(--font);
+  font-size:13px;
+  font-weight:600;
+  padding:9px 18px;
+  border-radius:var(--ri);
+  cursor:pointer;
+  transition:all .18s;
+  border:1.5px solid;
+  text-decoration:none;
+}
+
+.btn-back{
+  background:var(--white);
+  color:var(--txt);
+  border-color:var(--bord);
+}
+.btn-back:hover{background:var(--bord)}
+
+.btn-save{
+  background:var(--green);
+  color:#fff;
+  border-color:var(--green);
+  box-shadow:0 2px 8px rgba(22,163,74,.25);
+}
+.btn-save:hover{background:#15803d}
+.btn-save.saving{opacity:.7;pointer-events:none}
+
+.save-status{font-size:12px;color:var(--muted)}
+.save-status.ok{color:var(--green)}
+.save-status.err{color:var(--red)}/* ─── FORM ELEMENTS ──────────────────────────────────── */
+.f{margin-bottom:14px}
+.lbl{display:block;font-size:12.5px;font-weight:600;color:var(--txt);margin-bottom:4px}
+.req{color:var(--red)}
+input[type=text],input[type=email],input[type=number],input[type=time],textarea,select{
+  width:100%;padding:8px 10px;border:1.5px solid var(--bord);border-radius:var(--ri);
+  font-family:var(--font);font-size:13.5px;color:var(--txt);background:var(--surf);
+  outline:none;transition:border-color .18s,box-shadow .18s;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--bord-f);box-shadow:var(--ring)}
+.hint{font-size:11.5px;color:var(--hint);margin-top:3px}
+.sep{border:none;border-top:1px solid var(--bord);margin:14px 0}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row .f{flex:1;min-width:140px}
+.co{padding:10px 14px;border-radius:var(--ri);font-size:12.5px;margin-top:10px}
+.co-lock{background:var(--amber-s);border:1.5px solid #fcd34d;color:var(--amber)}
+.co-note{background:var(--blue-s);border:1.5px solid #93c5fd;color:var(--blue)}
+.co-info{background:var(--green-s);border:1.5px solid #86efac;color:var(--green)}
+.errbar{background:var(--red-s);border:1.5px solid #fca5a5;border-radius:8px;padding:8px 12px;font-size:12.5px;color:var(--red);font-weight:500;margin-top:8px;display:none}
+.errbar.on{display:block}
+
+/* choice cards */
+.cgrid{display:grid;gap:8px}
+.c2{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.copt{display:flex;flex-direction:column;align-items:flex-start;gap:3px;border:1.5px solid var(--bord);border-radius:var(--r);padding:12px;cursor:pointer;position:relative;transition:border-color .18s,background .18s}
+.copt input[type=radio],.copt input[type=checkbox]{position:absolute;opacity:0;pointer-events:none}
+.copt:has(input:checked){border-color:var(--v);background:var(--v-s)}
+.cchk{position:absolute;top:8px;right:8px;width:14px;height:14px;border-radius:50%;border:2px solid var(--bord-f);background:var(--surf)}
+.copt:has(input:checked) .cchk{background:var(--v);border-color:var(--v)}
+.copt:has(input:checked) .cchk::after{content:'✓';color:#fff;font-size:9px;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+.cicon{font-size:18px}.ctitle{font-size:12.5px;font-weight:700;color:var(--txt)}.cdesc{font-size:11.5px;color:var(--muted);line-height:1.4}
+
+/* toggle */
+.togrow{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bord)}
+.togrow:last-child{border-bottom:none}
+.togi{flex:1;min-width:0;margin-right:12px}
+.tog-title{font-size:13px;font-weight:600;color:var(--txt)}
+.tog-desc{font-size:11.5px;color:var(--muted);margin-top:1px}
+.togsw{position:relative;display:inline-block;width:38px;height:20px;flex-shrink:0}
+.togsw input{opacity:0;width:0;height:0}
+.togtr{position:absolute;inset:0;background:var(--gray-m);border-radius:10px;transition:.25s;cursor:pointer}
+.togtr::before{content:'';position:absolute;width:14px;height:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.25s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+input:checked+.togtr{background:var(--v)}
+input:checked+.togtr::before{transform:translateX(18px)}
+
+/* locked values */
+.locked-val{display:inline-flex;align-items:center;gap:5px;background:var(--gray);border:1.5px solid var(--bord);border-radius:var(--ri);padding:5px 10px;font-size:12.5px;color:var(--muted);font-weight:500;margin:3px 3px 3px 0}
+
+/* map */
+#map{height:180px;border-radius:var(--ri);margin-bottom:8px;border:1.5px solid var(--bord);overflow:hidden}
+.coords-preview{font-size:11px;color:var(--hint);margin-bottom:6px}
+#advancedCoords{display:none;gap:10px;margin-bottom:10px}
+#advancedCoords.show{display:flex}
+.dchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.dchip{background:var(--gray);border:1px solid var(--bord);border-radius:var(--ri);padding:5px 10px;min-width:100px}
+.dchip-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--hint);margin-bottom:2px}
+.dchip-val{font-size:12.5px;color:var(--txt);font-weight:500}
+.dchip-val.empty{color:var(--hint)}
+.dchip-val select{background:none;border:none;padding:0;font-size:12.5px;color:var(--txt);width:100%;cursor:pointer;outline:none}
+.imm{font-size:8px;font-weight:700;text-transform:uppercase;color:var(--amber);letter-spacing:.04em;margin-left:3px;background:var(--amber-s);border-radius:3px;padding:1px 4px}
+
+/* schedule */
+.shortcuts{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.sc{display:flex;flex-direction:column;align-items:center;gap:2px;border:1.5px solid var(--bord);border-radius:var(--ri);padding:6px 10px;cursor:pointer;font-size:11px;font-weight:600;text-align:center;transition:all .15s;min-width:72px}
+.sc input{display:none}.sc.on{border-color:var(--v);background:var(--v-s);color:var(--v)}
+.daychips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.dc{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--bord);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;background:var(--surf);color:var(--muted)}
+.dc.on{background:var(--v);border-color:var(--v);color:#fff}
+
+/* slots */
+.slot-card{border:1.5px solid var(--bord);border-radius:var(--ri);padding:10px 12px;margin-bottom:8px;position:relative}
+.slot-rm{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--hint);cursor:pointer;font-size:14px}
+.slot-rm:hover{color:var(--red)}
+.btn-add{background:none;border:1.5px dashed var(--bord-f);color:var(--v);border-radius:var(--ri);padding:6px 12px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;margin-top:4px}
+.btn-add:hover{background:var(--v-s)}
+
+/* collapsible */
+.collbtn{background:none;border:none;font-family:var(--font);font-size:12px;color:var(--v);font-weight:600;cursor:pointer;padding:3px 0;display:flex;align-items:center;gap:3px}
+.collarr{display:inline-block;transition:transform .2s;font-size:9px;color:var(--hint)}
+.collbtn.open .collarr{transform:rotate(90deg)}
+.collbody{display:none;padding-top:4px}.collbody.on{display:block}
+
+@media(max-width:600px){
+  .tab-band{padding:6px 10px;gap:4px}
+  .tab{padding:5px 9px;font-size:10px}
+  .main-panel{padding:0 10px 130px}
+  .seg-card{margin:10px 0}
+  .seg-bd{padding:12px 14px}
+  .save-bar{padding:8px 12px;gap:6px}
+  .btn{font-size:12px;padding:8px 14px}
+}
+
+/* ─── CHANNEL SECTIONS (notifications) ────────────────── */
+.chsec{border:1.5px solid var(--bord);border-radius:12px;overflow:hidden;margin-bottom:10px}
+.chhdr{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;user-select:none;transition:background .15s}
+.chhdr.on{background:var(--v-s)}
+.chlbl{display:flex;align-items:center;gap:8px}
+.chicon{font-size:20px}
+.chname{font-size:14px;font-weight:600;color:var(--txt)}
+.chbody{padding:14px 16px;border-top:1px solid var(--bord);background:var(--surf);display:none}
+.chbody.on{display:block}
+
+/* ─── EF ROW (verification extra fields) ──────────────── */
+.efrow{background:var(--gray);border:1.5px solid var(--bord);border-radius:10px;padding:13px 15px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.efrow .f{margin-bottom:0;flex:1;min-width:120px}
+
+/* ─── SLOT CARD (capacity) ─────────────────────────────── */
+.slotcard{background:var(--gray);border:1.5px solid var(--bord);border-radius:12px;padding:15px 17px;margin-bottom:10px}
+.slothdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.slotnum{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--hint)}
+
+/* ─── VISITOR PREVIEW (look & feel) ────────────────────── */
+.prev-shell{background:linear-gradient(160deg,#1e1b2e 0%,#2d1f5e 100%);border-radius:14px;padding:20px;margin-top:16px;transition:background .25s ease,box-shadow .25s ease}
+.prev-phone{background:rgba(255,255,255,.06);border-radius:12px;padding:18px;border:1px solid rgba(255,255,255,.12);min-height:220px;background-size:cover;background-position:center;background-repeat:no-repeat;transition:background .25s ease,color .25s ease,border-color .25s ease}
+.prev-qname{font-size:16px;font-weight:700;color:#fff;margin-bottom:4px;transition:color .25s ease}
+.prev-venue{font-size:12px;color:rgba(255,255,255,.6);margin-bottom:14px;transition:color .25s ease}
+.prev-status{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#4ade80;background:rgba(74,222,128,.1);padding:4px 10px;border-radius:20px;margin-bottom:14px;transition:background .25s ease,color .25s ease}
+.prev-btn{background:var(--v);color:#fff;width:100%;padding:12px;border-radius:10px;text-align:center;font-weight:700;font-size:14px;transition:background .25s ease,color .25s ease}
+</style>
+</head>
+<body>
+
+<div class="topbar" id="topbar">
+  <div style="flex:1;min-width:0">
+    <div class="topbar-title" id="tb-title">Edit Queue</div>
+    <div class="topbar-sub" id="tb-sub">Loading…</div>
+  </div>
+  <a href="../manage/page 2.html" id="backLink">← My Queues</a>
+</div>
+
+<div class="tab-band" id="tabBand"><!-- filled by JS --></div>
+
+<div class="main-panel" id="mainPanel">
+  <!-- single segment card rendered here -->
+</div>
+
+<!-- STICKY SAVE BAR — always visible -->
+<div class="save-bar">
+  <a class="btn btn-back" href="../manage/page 2.html" id="footerBack">← Return to My Queues</a>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span class="save-status" id="saveStatus"></span>
+    <button type="button" class="btn btn-save" id="btnSave">💾 Save changes</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════ */
+const S={
+  queue_name:'',internal_label:'',venue_name:'',
+  address:'',lat:null,lng:null,
+  timezone:'',home_region:'',language:'en',currency:'EUR',
+  sched_pat:'wd9_5',
+  schedule:{sameHours:true,globalOpen:'09:00',globalClose:'17:00',
+    days:[{n:'Mon',on:true,open:'09:00',close:'17:00',breaks:[]},{n:'Tue',on:true,open:'09:00',close:'17:00',breaks:[]},{n:'Wed',on:true,open:'09:00',close:'17:00',breaks:[]},{n:'Thu',on:true,open:'09:00',close:'17:00',breaks:[]},{n:'Fri',on:true,open:'09:00',close:'17:00',breaks:[]},{n:'Sat',on:false,open:'09:00',close:'17:00',breaks:[]},{n:'Sun',on:false,open:'09:00',close:'17:00',breaks:[]}],
+    cutoff:30,breaks:[],holidays:[],specials:[]},
+  arch:null,formula:null,
+  slots:[],wave_duration:15,wave_capacity:20,
+  wave_cap_mode:'constant',wave_var_scope:'all',wave_schedule:[],
+  flow_capacity:30,flow_cap_mode:'constant',
+  release_mode:'manual',release_count:10,release_interval:15,release_time_span:60,
+  fixed_release_scope:'all',release_schedule:[],flow_schedule:[],
+  publics:['anonymous','registered'],
+  access_req:false,bulk_invite:true,
+  adm:'scan',scan_fallback:false,noscan_win:10,
+  calling:{live:'single_next',adv_lead:10},
+  show_eet:true,show_ete:false,early:{enabled:false,interval:30,max:3,window:30},
+  channels:['email','inapp'],sender_email:'',show_desk_id:false,show_operator_name:true,
+  extra_fields:[],payment_gate:false,payment_mode:'best_attempt',resellers:[],
+  cal_sync:false,cal_provider:null,sync_horizon:90,
+  manual_refresh:true,conf_review:true,bulk_res:true,notify_imp:true,
+  use_host_wall:true,theme:'default',wallpaper_data:null,
+  operators:[],identity_policy:null,
+};
+const ARCH={A:{label:'Distinct Resources',icon:'🪑'},B:{label:'Individual Practice',icon:'👤'},C:{label:'Wave-Based Venue',icon:'🏟️'},D:{label:'Continuous Flow',icon:'🌊'}};
+const FORMULA_LABEL={LIVE_ONLY:'Live-flow',ADVANCE_ONLY:'In advance',MIXED:'Mixed'};
+
+/* ═══════════════════════════════════════════════════════════
+   SEGMENT DEFINITIONS
+═══════════════════════════════════════════════════════════ */
+const SEGS=[
+  {id:'s0',  icon:'📋',title:'Basic info',       sub:'Name, venue, location, schedule',  locked:false,show:()=>true},
+  {id:'s1',  icon:'🏗', title:'Queue type',        sub:'Archetype — locked after creation',locked:true, show:()=>true},
+  {id:'s2a', icon:'📆',title:'Booking mode',      sub:'Live, advance, or both',           locked:true, show:()=>true},
+  {id:'s2b', icon:'⚙️',title:'Capacity',          sub:'Slots, waves, or flow limits',     locked:false,show:()=>true},
+  {id:'s3',  icon:'👥',title:'Access',            sub:'Who can join this queue',           locked:false,show:()=>true},
+  {id:'s4',  icon:'🎫',title:'Admission',         sub:'Scan, calling, fallback',           locked:false,show:()=>true},
+  {id:'s5',  icon:'⏱', title:'Time transparency', sub:'Wait estimates, early alerts',      locked:false,show:()=>true, opt:true},
+  {id:'s6',  icon:'🔔',title:'Notifications',     sub:'Channels and sender',               locked:false,show:()=>true, opt:true},
+  {id:'s7',  icon:'✅',title:'Verification',      sub:'Extra fields, payment',             locked:false,show:()=>true, opt:true},
+  {id:'s8',  icon:'📅',title:'Calendar',          sub:'External calendar sync',            locked:false,show:()=>S.arch==='B',opt:true},
+  {id:'sop', icon:'👤',title:'Operators',         sub:'Team & permissions',                locked:false,show:()=>true, opt:true},
+  {id:'s9',  icon:'🎨',title:'Look & feel',       sub:'Theme and branding',                locked:false,show:()=>true, opt:true},
+];
+
+let _qid=new URLSearchParams(location.search).get('edit');
+let _dirty=false, _map=null, _marker=null, _activeSeg=null;
+
+function esc(s){const d=document.createElement('div');d.textContent=String(s??'');return d.innerHTML;}
+function markDirty(){_dirty=true;setSaveStatus('');}
+function setSaveStatus(msg,type=''){const el=document.getElementById('saveStatus');if(el){el.textContent=msg;el.className='save-status'+(type?' '+type:'');}}
+function coll(bodyId,btn){const b=document.getElementById(bodyId);if(!b)return;const o=b.classList.toggle('on');btn.classList.toggle('open',o);}
+
+/* ═══════════════════════════════════════════════════════════
+   TAB BAND + NAVIGATION
+═══════════════════════════════════════════════════════════ */
+function buildTabs(){
+  const band=document.getElementById('tabBand');
+  band.innerHTML='';
+  SEGS.filter(s=>s.show()).forEach(s=>{
+    const t=document.createElement('div');
+    t.className='tab'+(s.locked?' locked':'')+(s.id===_activeSeg?' active':'');
+    t.dataset.seg=s.id;
+    t.innerHTML=`<span class="t-icon">${s.icon}</span>${s.title}${s.locked?'<span class="t-lock">🔒</span>':''}`;
+    t.addEventListener('click',()=>switchSeg(s.id));
+    band.appendChild(t);
+  });
+}
+
+function switchSeg(id){
+  /* Collect current segment before switching */
+  if(_activeSeg && !SEGS.find(s=>s.id===_activeSeg)?.locked){
+    collectSegment(_activeSeg);
+  }
+  _activeSeg=id;
+  /* Update tab highlights */
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.seg===id));
+  /* Scroll active tab into view */
+  const activeTab=document.querySelector(`.tab[data-seg="${id}"]`);
+  activeTab?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  /* Render segment */
+  renderSegment(id);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RENDER SEGMENT — shows one card at a time
+═══════════════════════════════════════════════════════════ */
+function renderSegment(id){
+  const panel=document.getElementById('mainPanel');
+  const seg=SEGS.find(s=>s.id===id);
+  if(!seg){panel.innerHTML='';return;}
+
+  const renderer=RENDERERS[id];
+  /* Build body HTML via renderer */
+  let bodyHTML='';
+  if(renderer) bodyHTML=renderer();
+
+  /* Build manage links */
+  const links=getManageLinks(id);
+  const linksHTML=links.length?`<div class="manage-links">${links.map(l=>`<a class="manage-link" href="${l.href}" title="${l.title}"><span class="ml-icon">${l.icon}</span>${l.label}</a>`).join('')}</div>`:'';
+
+  panel.innerHTML=`
+    <div class="seg-card${seg.locked?' locked':''}">
+      <div class="seg-hd">
+        <span class="seg-icon">${seg.icon}</span>
+        <div class="seg-hd-body"><div class="seg-title">${seg.title}</div><div class="seg-sub">${seg.sub}</div></div>
+        ${seg.locked?'<span class="seg-badge locked">🔒 Immutable</span>':''}
+        ${seg.opt&&!seg.locked?'<span class="seg-badge opt">Optional</span>':''}
+      </div>
+      <div class="seg-bd" id="seg-bd">${bodyHTML}</div>
+      ${linksHTML}
+    </div>`;
+
+  /* Post-render wiring */
+  if(WIRE[id]) WIRE[id]();
+
+  /* Wire dirty tracking on all new inputs */
+  panel.querySelectorAll('input,select,textarea').forEach(el=>{
+    el.addEventListener('change',markDirty,{passive:true});
+    el.addEventListener('input',markDirty,{passive:true});
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MANAGE LINKS — contextual per segment
+═══════════════════════════════════════════════════════════ */
+function getManageLinks(id){
+  const links=[];
+  if(id==='s6'){
+    if(S.channels.includes('email'))
+      links.push({icon:'📨',label:'Configure notifications',href:`../manage/functionalities/notifications.html?queue=${encodeURIComponent(_qid)}`,title:'Notification channel setup'});
+  }
+  if(id==='s3'){
+    if(S.publics.includes('listed')) links.push({icon:'📋',label:'Manage listed visitors',href:`../manage/functionalities/list visitors.html?queue=${encodeURIComponent(_qid)}`,title:'Add/remove allowed visitors'});
+  }
+  if(id==='s7'){
+    if(S.payment_gate) links.push({icon:'💳',label:'Setup payment gate',href:`../manage/functionalities/payment gates.html?queue=${encodeURIComponent(_qid)}`,title:'Connect payment provider'});
+  }
+  if(id==='s8'){
+    if(S.cal_sync){
+      links.push({icon:'📅',label:'View calendar',href:`../manage/functionalities/calendar.html?queue=${encodeURIComponent(_qid)}`,title:'Queue calendar view'});
+      links.push({icon:'⚙️',label:'Sync settings',href:`../manage/functionalities/calendar sync.html?queue=${encodeURIComponent(_qid)}`,title:'Calendar sync configuration'});
+    }
+  }
+  return links;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RENDERERS — return HTML string for each segment body
+═══════════════════════════════════════════════════════════ */
+const RENDERERS={};
+const WIRE={}; /* post-render wiring functions */
+
+RENDERERS.s0=()=>`
+  <div class="f"><label class="lbl">Queue name <span class="req">*</span></label><input type="text" id="f-qname" value="${esc(S.queue_name)}" placeholder="e.g. Dr. Martin's Practice" maxlength="80"></div>
+  <div class="f"><label class="lbl">Venue <span class="req">*</span></label><input type="text" id="f-venue" value="${esc(S.venue_name)}" placeholder="e.g. Dr. Martin's Practice"></div>
+  <div style="margin-bottom:14px"><button type="button" class="collbtn" id="coll-int"><span class="collarr">›</span> Internal label</button>
+    <div class="collbody${S.internal_label?' on':''}" id="int-lbl"><div class="f" style="margin-top:8px"><input type="text" id="f-internal" value="${esc(S.internal_label)}" placeholder="Dashboard only"><p class="hint">Only you see this.</p></div></div></div>
+  <hr class="sep">
+  <div class="f"><label class="lbl">Location <span class="req">*</span></label><input type="text" id="f-addr" value="${esc(S.address)}" placeholder="Start typing…" autocomplete="off"></div>
+  <div id="map"></div>
+  <p class="coords-preview">Selected: <span id="coordsPreview">${S.lat?Number(S.lat).toFixed(5)+', '+Number(S.lng).toFixed(5):'None'}</span></p>
+  <div id="advancedCoords"><label class="lbl" style="flex:1">Lat<input type="number" step="0.000001" id="f-lat" value="${S.lat||''}"></label><label class="lbl" style="flex:1">Lng<input type="number" step="0.000001" id="f-lng" value="${S.lng||''}"></label></div>
+  <div class="dchips">
+    <div class="dchip"><div class="dchip-lbl">Timezone <span class="imm">🔒</span></div><div class="dchip-val${S.timezone?'':' empty'}" id="chip-tz">${S.timezone||'Detected'}</div></div>
+    <div class="dchip"><div class="dchip-lbl">Region <span class="imm">🔒</span></div><div class="dchip-val${S.home_region?'':' empty'}" id="chip-region">${S.home_region||'Detected'}</div></div>
+    <div class="dchip"><div class="dchip-lbl">Currency</div><div class="dchip-val"><select id="f-currency">${['EUR','USD','GBP','CAD','AUD','JPY','CHF','BRL','INR'].map(c=>`<option value="${c}"${S.currency===c?' selected':''}>${c}</option>`).join('')}</select></div></div>
+  </div>
+  <hr class="sep">
+  <div class="f"><label class="lbl">Language</label><select id="f-lang">${[['en','English'],['fr','Français'],['es','Español'],['de','Deutsch'],['pt','Português'],['it','Italiano']].map(([v,l])=>`<option value="${v}"${S.language===v?' selected':''}>${l}</option>`).join('')}</select></div>
+  <hr class="sep">
+  <div class="lbl" style="margin-bottom:8px">Operating hours</div>
+  <div class="shortcuts" id="shortcuts"></div>
+  <div id="sched-same"><div class="row" style="margin-bottom:10px">
+    <div class="f" style="max-width:120px"><label class="lbl">Opens</label><input type="time" id="f-open" value="${S.schedule.globalOpen}"></div>
+    <div class="f" style="max-width:120px"><label class="lbl">Closes</label><input type="time" id="f-close" value="${S.schedule.globalClose}"></div>
+    <div class="f" style="max-width:150px"><label class="lbl">Cutoff</label><div style="display:flex;align-items:center;gap:6px"><input type="number" id="f-cutoff" min="0" max="240" value="${S.schedule.cutoff}" style="width:60px"><span style="font-size:11px;color:var(--muted)">min</span></div></div>
+  </div><div class="daychips" id="day-chips"></div></div>
+  <div style="margin-top:14px"><button type="button" class="collbtn" id="coll-breaks"><span class="collarr">›</span> Breaks (lunch, etc.)</button>
+    <div class="collbody${S.schedule.breaks&&S.schedule.breaks.length?' on':''}" id="break-sec">
+      <div id="break-list"></div>
+      <button type="button" class="btn-add" id="btn-add-break">+ Add break</button>
+    </div>
+  </div>
+  <div style="margin-top:14px"><button type="button" class="collbtn" id="coll-holidays"><span class="collarr">›</span> Holidays &amp; exceptions</button>
+    <div class="collbody${(S.schedule.holidays&&S.schedule.holidays.length)||(S.schedule.specials&&S.schedule.specials.length)?' on':''}" id="exc-sec">
+      <div class="lbl" style="margin-bottom:8px">Holiday closures</div>
+      <div id="holiday-list"></div>
+      <button type="button" class="btn-add" id="btn-add-holiday">+ Add holiday</button>
+      <hr class="sep">
+      <div class="lbl" style="margin-bottom:8px">Special hours</div>
+      <div id="special-list"></div>
+      <button type="button" class="btn-add" id="btn-add-special">+ Add special day</button>
+    </div>
+  </div>
+  <div class="errbar" id="err-s0"></div>`;
+
+WIRE.s0=()=>{
+  initMap(); wireLocation(); initSched();
+  if(S.lat&&S.lng){try{setPin(S.lat,S.lng);}catch(_){}}
+  document.getElementById('coll-int')?.addEventListener('click',function(){coll('int-lbl',this);});
+  document.getElementById('coll-breaks')?.addEventListener('click',function(){coll('break-sec',this);});
+  document.getElementById('coll-holidays')?.addEventListener('click',function(){coll('exc-sec',this);});
+  /* Breaks */
+  renderBreaks();
+  document.getElementById('btn-add-break')?.addEventListener('click',()=>{
+    if(!S.schedule.breaks)S.schedule.breaks=[];
+    S.schedule.breaks.push({from:'12:00',to:'13:00',label:'Lunch'});
+    renderBreaks();markDirty();
+  });
+  /* Holidays */
+  renderHolidays();
+  document.getElementById('btn-add-holiday')?.addEventListener('click',()=>{
+    if(!S.schedule.holidays)S.schedule.holidays=[];
+    S.schedule.holidays.push({date:'',label:''});
+    renderHolidays();markDirty();
+  });
+  /* Special hours */
+  renderSpecials();
+  document.getElementById('btn-add-special')?.addEventListener('click',()=>{
+    if(!S.schedule.specials)S.schedule.specials=[];
+    S.schedule.specials.push({date:'',open:'09:00',close:'17:00',label:''});
+    renderSpecials();markDirty();
+  });
+};
+
+RENDERERS.s1=()=>{
+  const a=ARCH[S.arch];
+  return a?`<div class="lock-notice">🔒 Cannot be changed after creation.</div><div class="locked-val">${a.icon} <strong>${S.arch}</strong> — ${a.label}</div>`
+    :'<span style="color:var(--hint)">Not set.</span>';
+};
+
+RENDERERS.s2a=()=>{
+  const fl=FORMULA_LABEL[S.formula]||S.formula||'—';
+  return `<div class="lock-notice">🔒 Booking mode is set at creation.</div><div class="locked-val">📆 ${fl}</div>
+    ${S.arch==='D'?'<div class="co co-note" style="margin-top:10px">Continuous-flow queues are always live.</div>':''}`;
+};
+
+RENDERERS.s2b=()=>{
+  const a=S.arch;
+  if(a==='A'||a==='B') return `<div class="lbl" style="margin-bottom:8px">Slot configuration</div><div id="slot-list"></div><button type="button" class="btn-add" id="btn-add-slot">+ Add slot</button>`;
+  if(a==='C') return `
+    <div class="f" style="margin-bottom:14px"><label class="lbl">Capacity mode</label>
+      <div class="cgrid c2" id="wcm-cards">
+        <label class="copt${S.wave_cap_mode==='constant'?' on':''}"><input type="radio" name="wcm" value="constant"${S.wave_cap_mode==='constant'?' checked':''}><div class="cchk"></div><div class="ctitle">Constant all day</div><div class="cdesc">Same capacity for every wave.</div></label>
+        <label class="copt${S.wave_cap_mode==='variable'?' on':''}"><input type="radio" name="wcm" value="variable"${S.wave_cap_mode==='variable'?' checked':''}><div class="cchk"></div><div class="ctitle">Varies by time</div><div class="cdesc">Adjust capacity by time-slot for each operating day.</div></label>
+      </div>
+    </div>
+    <div id="wave-var-scope-section" style="${S.wave_cap_mode==='variable'?'':'display:none'};margin-bottom:14px">
+      <div class="f"><label class="lbl">Variability model</label>
+        <div class="cgrid c2" id="wvs-cards" style="margin-top:6px">
+          <label class="copt${S.wave_var_scope==='all'?' on':''}"><input type="radio" name="wvs" value="all"${S.wave_var_scope==='all'?' checked':''}><div class="cchk"></div><div class="ctitle">One model for all days</div><div class="cdesc">Same capacity pattern applies to every operating day.</div></label>
+          <label class="copt${S.wave_var_scope==='per_day'?' on':''}"><input type="radio" name="wvs" value="per_day"${S.wave_var_scope==='per_day'?' checked':''}><div class="cchk"></div><div class="ctitle">One model per day</div><div class="cdesc">Define a different capacity pattern for each day of the week.</div></label>
+        </div>
+      </div>
+    </div>
+    <div class="row" style="margin-bottom:14px">
+      <div class="f" style="max-width:200px"><label class="lbl">Wave duration <span class="req">*</span></label>
+        <div style="display:flex;align-items:center;gap:8px"><input type="number" id="f-wave-dur" min="5" max="240" value="${S.wave_duration}" style="width:78px"><span style="font-size:13px;color:var(--muted)">min</span></div>
+        <p class="hint">Sets the time-axis spacing between points on the chart.</p>
+      </div>
+      <div class="f" style="max-width:200px"><label class="lbl">Default capacity per wave <span class="req">*</span></label>
+        <div style="display:flex;align-items:center;gap:8px"><input type="number" id="f-wave-cap" min="1" max="500" value="${S.wave_capacity}" style="width:78px"><span style="font-size:13px;color:var(--muted)">visitors</span></div>
+      </div>
+    </div>
+    <div id="wave-charts-section" style="${S.wave_cap_mode==='variable'?'':'display:none'}">
+      <div class="co co-info" style="margin-bottom:10px">
+        <strong>Daily capacity schedule</strong> — drag the points on each chart to set the capacity per wave. Each point represents one wave slot of <strong id="wdur-callout">${S.wave_duration} min</strong>. Break periods are shown as shaded zones.
+      </div>
+      <div id="wave-day-charts"></div>
+    </div>
+    <div class="co co-note">Capacity applies per wave slot. Break times from your schedule are respected.</div>`;
+  if(a==='D') return `
+    <div class="row" style="margin-bottom:14px">
+      <div class="f" style="max-width:160px"><label class="lbl">Flow capacity</label><input type="number" id="f-flow-cap" min="1" max="500" value="${S.flow_capacity}"></div>
+    </div>
+    <div class="sep"></div>
+    <div class="lbl" style="margin-bottom:6px">Release mode</div>
+    <div class="cgrid" id="release-cards">
+      <label class="copt${S.release_mode==='manual'?' on':''}"><input type="radio" name="release" value="manual" ${S.release_mode==='manual'?'checked':''}><div class="cchk"></div><span class="cicon">🖐</span><div class="ctitle">Manual release</div><div class="cdesc">Release visitors from your dashboard.</div></label>
+      <label class="copt${S.release_mode==='incremental'?' on':''}"><input type="radio" name="release" value="incremental" ${S.release_mode==='incremental'?'checked':''}><div class="cchk"></div><span class="cicon">⏱</span><div class="ctitle">Scheduled incremental</div><div class="cdesc">Release a fixed count every X minutes.</div></label>
+      <label class="copt${S.release_mode==='fixed'?' on':''}"><input type="radio" name="release" value="fixed" ${S.release_mode==='fixed'?'checked':''}><div class="cchk"></div><span class="cicon">📅</span><div class="ctitle">Planned capacity releases</div><div class="cdesc">Define a planned release count per time slot.</div></label>
+    </div>
+    <div id="rel-incremental" style="margin-top:10px;${S.release_mode==='incremental'?'':'display:none'}">
+      <div class="row">
+        <div class="f" style="max-width:160px"><label class="lbl">Count per release</label><div style="display:flex;align-items:center;gap:8px"><input type="number" id="f-rel-count" min="1" max="100" value="${S.release_count}" style="width:78px"><span style="font-size:13px;color:var(--muted)">visitors</span></div></div>
+        <div class="f" style="max-width:160px"><label class="lbl">Every</label><div style="display:flex;align-items:center;gap:8px"><input type="number" id="f-rel-int" min="5" max="120" value="${S.release_interval}" style="width:78px"><span style="font-size:13px;color:var(--muted)">min</span></div></div>
+      </div>
+    </div>
+    <div id="planned-releases-panel" style="margin-top:14px;${S.release_mode==='fixed'?'':'display:none'}">
+      <div class="f" style="margin-bottom:10px"><label class="lbl">Release schedule model</label>
+        <div class="cgrid c2" id="frs-cards" style="margin-top:6px">
+          <label class="copt${S.fixed_release_scope==='all'?' on':''}"><input type="radio" name="frs" value="all"${S.fixed_release_scope==='all'?' checked':''}><div class="cchk"></div><div class="ctitle">One template for all days</div><div class="cdesc">Same release pattern for every operating day.</div></label>
+          <label class="copt${S.fixed_release_scope==='per_day'?' on':''}"><input type="radio" name="frs" value="per_day"${S.fixed_release_scope==='per_day'?' checked':''}><div class="cchk"></div><div class="ctitle">One template per day</div><div class="cdesc">Define a different release pattern per day of the week.</div></label>
+        </div>
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        <div class="f" style="max-width:220px">
+          <label class="lbl">Count per release</label>
+          <div style="display:flex;align-items:center;gap:8px"><input type="number" id="f-rc-planned" min="1" max="500" value="${S.release_count}" style="width:78px"><span style="font-size:13px;color:var(--muted)">visitors</span></div>
+          <p class="hint" style="margin-top:4px">Sets the Y-axis ceiling on the charts below.</p>
+        </div>
+        <div class="f" style="max-width:220px">
+          <label class="lbl">Time span per slot <span class="req">*</span></label>
+          <div style="display:flex;align-items:center;gap:8px"><input type="number" id="f-rspan" min="5" max="480" value="${S.release_time_span||60}" style="width:78px"><span style="font-size:13px;color:var(--muted)">min</span></div>
+          <p class="hint" style="margin-top:4px">Width of each release window — sets the time-axis spacing between points.</p>
+        </div>
+      </div>
+      <div class="co co-info" style="margin-bottom:10px">
+        <strong>Planned releases schedule</strong> — drag the points on each chart to set the number of visitors to release per slot. Each point represents one release window of <strong id="rspan-callout">${S.release_time_span||60} min</strong>. Break periods are shown as shaded zones.
+      </div>
+      <div id="release-day-charts"></div>
+    </div>`;
+  return '<div class="co co-note">Select a queue type first.</div>';
+};
+WIRE.s2b=()=>{
+  if(S.arch==='A'||S.arch==='B'){renderSlots();document.getElementById('btn-add-slot')?.addEventListener('click',()=>{S.slots.push(newSlot());renderSlots();markDirty();});}
+  if(S.arch==='C'){
+    wireCards(document.getElementById('wcm-cards'));
+    document.querySelectorAll('input[name=wcm]').forEach(r=>r.addEventListener('change',()=>{
+      S.wave_cap_mode=r.value;
+      const isVar=r.value==='variable';
+      document.getElementById('wave-var-scope-section').style.display=isVar?'':'none';
+      document.getElementById('wave-charts-section').style.display=isVar?'':'none';
+      if(isVar){wireCards(document.getElementById('wvs-cards'));renderWaveCharts();}
+      markDirty();
+    }));
+    wireCards(document.getElementById('wvs-cards'));
+    document.querySelectorAll('input[name=wvs]').forEach(r=>r.addEventListener('change',()=>{
+      S.wave_var_scope=r.value;
+      S.wave_schedule=[];
+      renderWaveCharts();
+      markDirty();
+    }));
+    document.getElementById('f-wave-dur')?.addEventListener('input',e=>{
+      S.wave_duration=parseInt(e.target.value)||15;
+      S.wave_schedule=[];
+      const callout=document.getElementById('wdur-callout');
+      if(callout)callout.textContent=S.wave_duration+' min';
+      if(S.wave_cap_mode==='variable')renderWaveCharts();
+      markDirty();
+    });
+    document.getElementById('f-wave-cap')?.addEventListener('input',e=>{
+      S.wave_capacity=parseInt(e.target.value)||20;
+      if(S.wave_cap_mode==='variable')renderWaveCharts();
+      markDirty();
+    });
+    if(S.wave_cap_mode==='variable')renderWaveCharts();
+  }
+  if(S.arch==='D'){
+    wireCards(document.getElementById('release-cards'));
+    document.querySelectorAll('input[name=release]').forEach(r=>r.addEventListener('change',()=>{
+      S.release_mode=r.value;
+      document.getElementById('rel-incremental').style.display=r.value==='incremental'?'':'none';
+      document.getElementById('planned-releases-panel').style.display=r.value==='fixed'?'':'none';
+      if(r.value==='fixed'){wireCards(document.getElementById('frs-cards'));renderReleaseCharts();}
+      markDirty();
+    }));
+    wireCards(document.getElementById('frs-cards'));
+    document.querySelectorAll('input[name=frs]').forEach(r=>r.addEventListener('change',()=>{
+      S.fixed_release_scope=r.value;
+      S.release_schedule=[];
+      renderReleaseCharts();
+      markDirty();
+    }));
+    document.getElementById('f-rc-planned')?.addEventListener('input',e=>{
+      S.release_count=parseInt(e.target.value)||10;
+      S.release_schedule.forEach(rs=>drawReleaseChart(rs.day));
+      markDirty();
+    });
+    document.getElementById('f-rspan')?.addEventListener('input',e=>{
+      S.release_time_span=parseInt(e.target.value)||60;
+      S.release_schedule=[];
+      const callout=document.getElementById('rspan-callout');
+      if(callout)callout.textContent=S.release_time_span+' min';
+      renderReleaseCharts();
+      markDirty();
+    });
+    if(S.release_mode==='fixed')renderReleaseCharts();
+  }
+};
+
+RENDERERS.s3=()=>{
+  const P=[{k:'anonymous',icon:'🌍',t:'Anonymous',d:'No login required'},{k:'registered',icon:'👤',t:'Registered',d:'Must have an account'},{k:'listed',icon:'📋',t:'Listed only',d:'Pre-approved visitors'}];
+  let h=`<div class="lbl" style="margin-bottom:8px">Who can join?</div>`+P.map(p=>`<div class="togrow"><div class="togi"><div class="tog-title">${p.icon} ${p.t}</div><div class="tog-desc">${p.d}</div></div><label class="togsw"><input type="checkbox" data-pub="${p.k}" ${S.publics.includes(p.k)?'checked':''}><span class="togtr"></span></label></div>`).join('');
+  /* Listed visitor extras — only visible when listed is selected */
+  h+=`<div id="listed-extras" style="${S.publics.includes('listed')?'':'display:none'}">
+    <hr class="sep">
+    <div class="lbl" style="margin-bottom:8px">📋 Listed visitor settings</div>
+    <div class="togrow"><div class="togi"><div class="tog-title">Enable access request workflow</div><div class="tog-desc">Visitors not on the list can request access. You approve or deny.</div></div><label class="togsw"><input type="checkbox" id="tog-access-req" ${S.access_req?'checked':''}><span class="togtr"></span></label></div>
+
+  </div>`;
+  return h;
+};
+WIRE.s3=()=>{
+  document.querySelectorAll('[data-pub]').forEach(el=>el.addEventListener('change',()=>{
+    const k=el.dataset.pub;
+    if(el.checked&&!S.publics.includes(k))S.publics.push(k); else S.publics=S.publics.filter(x=>x!==k);
+    document.getElementById('listed-extras').style.display=S.publics.includes('listed')?'':'none';
+    markDirty(); renderSegment('s3');
+  }));
+  document.getElementById('tog-access-req')?.addEventListener('change',function(){S.access_req=this.checked;markDirty();});
+};
+
+RENDERERS.s4=()=>{
+  const hasAdv=['ADVANCE_ONLY','MIXED'].includes(S.formula);
+  const hasLive=['LIVE_ONLY','MIXED'].includes(S.formula);
+  let h=`<div class="lbl" style="margin-bottom:10px">Admission mode</div>
+  <div class="cgrid c2" id="adm-cards">
+    <label class="copt${S.adm==='scan'?' on':''}"><input type="radio" name="adm" value="scan" ${S.adm==='scan'?'checked':''}><div class="cchk"></div><div class="ctitle">📷 Scan at entry</div><div class="cdesc">Visitor scans QR on arrival to confirm presence.</div></label>
+    <label class="copt${S.adm==='no_scan'?' on':''}"><input type="radio" name="adm" value="no_scan" ${S.adm==='no_scan'?'checked':''}><div class="cchk"></div><div class="ctitle">⏱ No-scan (auto-complete)</div><div class="cdesc">Bookings auto-complete after the window. No scan needed.</div></label>
+  </div>`;
+  /* Scan fallback — only when scan is selected */
+  h+=`<div id="scan-fb-section" style="${S.adm==='scan'?'':'display:none'}">
+    <div class="togrow" style="margin-top:8px"><div class="togi"><div class="tog-title">Add scan fallback</div><div class="tog-desc">If scan is missed, auto-complete after a window instead of no-show.</div></div><label class="togsw"><input type="checkbox" id="tog-fallback" ${S.scan_fallback?'checked':''}><span class="togtr"></span></label></div>
+  </div>`;
+  /* No-scan window */
+  h+=`<div id="noscan-cfg" style="${S.adm==='no_scan'?'':'display:none'}">
+    <div class="f" style="max-width:200px;margin-top:10px"><label class="lbl">Last-call window</label><div style="display:flex;align-items:center;gap:6px"><input type="number" id="f-noscan-win" min="1" max="120" value="${S.noscan_win}" style="width:70px"><span style="font-size:11px;color:var(--muted)">minutes</span></div></div>
+  </div>`;
+  /* Calling logic */
+  h+=`<hr class="sep"><div class="lbl" style="margin-bottom:8px">Calling logic</div>`;
+  if(S.arch==='B'||S.arch==='A'){
+    if(hasLive) h+=`<div class="co co-note" style="margin-bottom:8px"><span style="font-size:10px;font-weight:700;color:var(--green);background:var(--green-s);padding:2px 6px;border-radius:10px;border:1px solid #86efac">Live</span> <strong>Single next call</strong> — next visitor called when you're ready.</div>`;
+    if(hasAdv) h+=`<div class="co co-note" style="margin-bottom:8px"><span style="font-size:10px;font-weight:700;color:var(--blue);background:var(--blue-s);padding:2px 6px;border-radius:10px;border:1px solid #93c5fd">Advance</span> <strong>Scheduled call lead</strong>
+      <div style="margin-top:8px;display:flex;align-items:center;gap:6px"><label style="font-size:12px;color:var(--muted)">Lead time:</label><input type="number" id="f-adv-lead" min="0" max="60" value="${S.calling.adv_lead}" style="width:60px"><span style="font-size:12px;color:var(--muted)">min before slot</span></div></div>`;
+  }
+  if(S.arch==='C') h+=`<div class="co co-note"><strong>Scheduled call lead</strong> — All visitors notified before their wave.<div style="margin-top:8px;display:flex;align-items:center;gap:6px"><label style="font-size:12px;color:var(--muted)">Lead time:</label><input type="number" id="f-adv-lead" min="0" max="60" value="${S.calling.adv_lead}" style="width:60px"><span style="font-size:12px;color:var(--muted)">min before wave</span></div></div>`;
+  if(S.arch==='D') h+=`<div class="co co-note"><strong>Single next call</strong> — Visitors notified in queue order when released.</div>`;
+  return h;
+};
+WIRE.s4=()=>{
+  wireCards(document.getElementById('adm-cards'));
+  document.querySelectorAll('input[name=adm]').forEach(r=>r.addEventListener('change',()=>{
+    S.adm=r.value;
+    document.getElementById('scan-fb-section').style.display=r.value==='scan'?'':'none';
+    document.getElementById('noscan-cfg').style.display=r.value==='no_scan'?'':'none';
+    markDirty();
+  }));
+};
+
+RENDERERS.s5=()=>{
+  const f=S.formula,hasAdv=['ADVANCE_ONLY','MIXED'].includes(f),hasLive=['LIVE_ONLY','MIXED'].includes(f);
+  let h='';
+  if(f==='ADVANCE_ONLY') h+=`<div class="co co-info"><strong>ℹ️ EET (Expected Entry Time)</strong> is always displayed for advance-only queues.</div>`;
+  else if(hasAdv) h+=`<div class="co co-info" style="margin-bottom:10px"><strong>ℹ️ EET</strong> always shown for advance bookings.</div>`;
+  if(hasLive||S.arch==='D') h+=`<div class="togrow"><div class="togi"><div class="tog-title">Show ETE <span style="font-size:10px;font-weight:700;color:var(--green);background:var(--green-s);padding:2px 6px;border-radius:10px;border:1px solid #86efac;margin-left:4px">Live flow only</span></div><div class="tog-desc">Estimated Time of Entry — live wait estimate for visitors in the live queue.</div></div><label class="togsw"><input type="checkbox" id="tog-ete" ${S.show_ete?'checked':''}><span class="togtr"></span></label></div>`;
+  if(S.arch==='C') h+=`<div class="co co-note">EET is default for waves. No ETE applies to wave-based queues.</div>`;
+  h+=`<div class="sep"></div><div class="togrow"><div class="togi"><div class="tog-title">Offer earlier spot</div><div class="tog-desc">Proactively offer earlier openings when a slot frees up.</div></div><label class="togsw"><input type="checkbox" id="tog-early" ${S.early.enabled?'checked':''}><span class="togtr"></span></label></div>`;
+  return h;
+};
+
+RENDERERS.s6=()=>{
+  const emailOn=S.channels.includes('email');
+  return `
+    <div class="chsec">
+      <div class="chhdr on">
+        <div class="chlbl"><span class="chicon">🔔</span><span class="chname">In-app notifications</span></div>
+        <span style="font-size:11px;font-weight:700;color:var(--green);background:var(--green-s);border:1px solid #86efac;padding:2px 8px;border-radius:20px">Always on</span>
+      </div>
+    </div>
+    <div class="chsec">
+      <div class="chhdr${emailOn?' on':''}" id="ch-email-hdr">
+        <div class="chlbl"><span class="chicon">📧</span><span class="chname">Email notifications</span></div>
+        <label class="togsw"><input type="checkbox" id="ch-email" ${emailOn?'checked':''}><span class="togtr"></span></label>
+      </div>
+      <div class="chbody${emailOn?' on':''}" id="ch-email-body">
+        <div style="padding:2px 0 4px">
+          <a href="../manage/functionalities/notifications Email.html?queue=${encodeURIComponent(_qid||'')}" style="font-size:12.5px;font-weight:600;color:var(--v);text-decoration:none;display:inline-flex;align-items:center;gap:4px" target="_blank">⚙️ Configure Email notifications →</a>
+        </div>
+      </div>
+    </div>`;
+};
+WIRE.s6=()=>{
+  document.getElementById('ch-email')?.addEventListener('change',function(){
+    if(this.checked){if(!S.channels.includes('email'))S.channels.push('email');}
+    else{S.channels=S.channels.filter(k=>k!=='email');}
+    document.getElementById('ch-email-hdr')?.classList.toggle('on',this.checked);
+    document.getElementById('ch-email-body')?.classList.toggle('on',this.checked);
+    markDirty();
+  });
+};
+
+let _efId=0;
+const EF_TYPES=['Text','Number','Email','Phone','Date','Dropdown'];
+let _resId=0;
+
+RENDERERS.s7=()=>{
+  const a=S.arch;
+  if(a==='B'){
+    return `<div class="co co-note" style="margin-bottom:12px">Request up to 5 extra fields from visitors before confirming their booking.</div>
+      <div id="ef-list"></div>
+      <button type="button" class="btn-add" id="btn-add-ef"${S.extra_fields.length>=5?' disabled style="opacity:.4;cursor:not-allowed"':''}>
+        ${S.extra_fields.length>=5?'Maximum 5 fields reached':'+ Add field'}
+      </button>`;
+  }
+  if(a==='D'){
+    return `<div class="co co-note" style="margin-bottom:12px">Show visitors links to your official ticket seller before they book.</div>
+      <div id="res-list"></div>
+      <button type="button" class="btn-add" id="btn-add-res"${S.resellers&&S.resellers.length>=5?' disabled style="opacity:.4;cursor:not-allowed"':''}>+ Add reseller link</button>`;
+  }
+  return `<div class="togrow" style="padding-top:0"><div class="togi"><div class="tog-title">💳 Payment gate</div><div class="tog-desc">Require payment before confirming.</div></div><label class="togsw"><input type="checkbox" id="tog-pay" ${S.payment_gate?'checked':''}><span class="togtr"></span></label></div>
+    <div id="pay-cfg" style="margin-top:10px;${S.payment_gate?'':'display:none'}">
+      <div class="cgrid c2" id="pm-cards"><label class="copt${S.payment_mode==='best_attempt'?' on':''}"><input type="radio" name="pm" value="best_attempt"${S.payment_mode==='best_attempt'?' checked':''}><div class="cchk"></div><div class="ctitle">Best attempt</div><div class="cdesc">Booking confirmed even if payment pending.</div></label><label class="copt${S.payment_mode==='mandatory'?' on':''}"><input type="radio" name="pm" value="mandatory"${S.payment_mode==='mandatory'?' checked':''}><div class="cchk"></div><div class="ctitle">Mandatory</div><div class="cdesc">Booking held until payment confirmed.</div></label></div>
+    </div>`;
+};
+WIRE.s7=()=>{
+  if(S.arch==='B'){
+    renderExtraFields();
+    document.getElementById('btn-add-ef')?.addEventListener('click',()=>{if(S.extra_fields.length>=5)return;S.extra_fields.push({id:++_efId,type:EF_TYPES[0],label:'',required:true,applies:'both'});renderExtraFields();markDirty();});
+  }
+  if(S.arch==='D'){
+    renderResellers();
+    document.getElementById('btn-add-res')?.addEventListener('click',()=>{if(!S.resellers)S.resellers=[];if(S.resellers.length>=5)return;S.resellers.push({id:++_resId,name:'',url:''});renderResellers();markDirty();});
+  }
+  document.getElementById('tog-pay')?.addEventListener('change',function(){
+    S.payment_gate=this.checked;
+    document.getElementById('pay-cfg').style.display=this.checked?'':'none';
+    markDirty();renderSegment('s7');
+  });
+  wireCards(document.getElementById('pm-cards'));
+  document.querySelectorAll('input[name=pm]').forEach(r=>r.addEventListener('change',()=>{S.payment_mode=r.value;markDirty();}));
+};
+
+function renderExtraFields(){
+  const list=document.getElementById('ef-list');if(!list)return;
+  if(!S.extra_fields.length){list.innerHTML='<div style="text-align:center;padding:12px;color:var(--hint);font-size:12px;background:var(--gray);border-radius:8px;border:1.5px dashed var(--bord);margin-bottom:6px">No fields yet.</div>';return;}
+  const isMixed=S.formula==='MIXED';
+  list.innerHTML=S.extra_fields.map((f,i)=>`
+    <div class="efrow">
+      <div class="f"><label class="lbl">Field type</label>
+        <select data-ef="${i}" data-effield="type">${EF_TYPES.map(t=>`<option${f.type===t?' selected':''}>${t}</option>`).join('')}</select>
+      </div>
+      <div class="f"><label class="lbl">Display label</label>
+        <input type="text" data-ef="${i}" data-effield="label" value="${esc(f.label||f.type)}" placeholder="Shown to visitor">
+      </div>
+      ${isMixed?`<div class="f" style="max-width:130px"><label class="lbl">Applies to</label><select data-ef="${i}" data-effield="applies"><option value="both"${f.applies==='both'?' selected':''}>Both</option><option value="advance"${f.applies==='advance'?' selected':''}>Advance</option><option value="live"${f.applies==='live'?' selected':''}>Live</option></select></div>`:''}
+      <div style="display:flex;align-items:center;gap:6px;padding-top:22px;flex-shrink:0">
+        <label class="togsw"><input type="checkbox" data-ef="${i}" data-effield="required" ${f.required?'checked':''}><span class="togtr"></span></label>
+        <span style="font-size:12px;color:var(--muted)">Required</span>
+        <button class="btn-rm" data-rm-ef="${f.id}" style="margin-left:4px">✕</button>
+      </div>
+    </div>`).join('');
+  list.querySelectorAll('[data-effield="type"]').forEach(el=>el.addEventListener('change',()=>{const i=+el.dataset.ef;if(!S.extra_fields[i]._customLabel)S.extra_fields[i].label=el.value;S.extra_fields[i].type=el.value;renderExtraFields();markDirty();}));
+  list.querySelectorAll('[data-effield="label"]').forEach(el=>el.addEventListener('input',()=>{const i=+el.dataset.ef;S.extra_fields[i].label=el.value;S.extra_fields[i]._customLabel=true;markDirty();}));
+  list.querySelectorAll('[data-effield]:not([data-effield="type"]):not([data-effield="label"])').forEach(el=>el.addEventListener('change',()=>{const i=+el.dataset.ef;const field=el.dataset.effield;if(field==='required')S.extra_fields[i].required=el.checked;else S.extra_fields[i][field]=el.value;markDirty();}));
+  list.querySelectorAll('[data-rm-ef]').forEach(btn=>btn.addEventListener('click',()=>{S.extra_fields=S.extra_fields.filter(f=>f.id!==+btn.dataset.rmEf);renderExtraFields();markDirty();}));
+}
+
+function renderResellers(){
+  const list=document.getElementById('res-list');if(!list)return;
+  if(!S.resellers||!S.resellers.length){list.innerHTML='<div style="text-align:center;padding:12px;color:var(--hint);font-size:12px;background:var(--gray);border-radius:8px;border:1.5px dashed var(--bord);margin-bottom:6px">No reseller links yet.</div>';return;}
+  list.innerHTML=S.resellers.map((r,i)=>`<div class="slot-card"><button type="button" class="slot-rm" data-rm-res="${r.id}">✕</button>
+    <div class="row"><div class="f"><label class="lbl">Platform</label><input type="text" data-res="${i}" data-resfield="name" value="${esc(r.name)}" placeholder="e.g. Ticketmaster"></div>
+    <div class="f"><label class="lbl">URL</label><input type="url" data-res="${i}" data-resfield="url" value="${esc(r.url)}" placeholder="https://…"></div></div></div>`).join('');
+  list.querySelectorAll('[data-resfield]').forEach(el=>el.addEventListener('change',()=>{const i=+el.dataset.res;S.resellers[i][el.dataset.resfield]=el.value;markDirty();}));
+  list.querySelectorAll('[data-rm-res]').forEach(btn=>btn.addEventListener('click',()=>{S.resellers=S.resellers.filter(r=>r.id!==+btn.dataset.rmRes);renderResellers();markDirty();}));
+}
+
+RENDERERS.s8=()=>`
+  <div class="togrow" style="padding-top:0"><div class="togi"><div class="tog-title">Enable calendar sync</div><div class="tog-desc">Connect Google Calendar, Outlook, or iCal.</div></div><label class="togsw"><input type="checkbox" id="tog-cal" ${S.cal_sync?'checked':''}><span class="togtr"></span></label></div>
+  <div id="cal-extra" style="margin-top:10px;${S.cal_sync?'':'display:none'}">
+    <div class="f"><label class="lbl">Provider</label><select id="f-calprov"><option value="">— Select —</option><option value="google"${S.cal_provider==='google'?' selected':''}>Google Calendar</option><option value="outlook"${S.cal_provider==='outlook'?' selected':''}>Outlook</option><option value="ical"${S.cal_provider==='ical'?' selected':''}>iCal</option></select></div>
+    <div class="f" style="max-width:200px"><label class="lbl">Sync horizon (days)</label><input type="number" id="f-horizon" min="7" max="365" value="${S.sync_horizon}"></div>
+  </div>`;
+WIRE.s8=()=>{
+  document.getElementById('tog-cal')?.addEventListener('change',function(){S.cal_sync=this.checked;document.getElementById('cal-extra').style.display=this.checked?'':'none';markDirty();renderSegment('s8');});
+  document.getElementById('f-calprov')?.addEventListener('change',function(){S.cal_provider=this.value||null;markDirty();});
+};
+
+let _opId=0;
+function defaultPerms(){return{can_call_next:true,can_scan_validate:true,can_mark_noshow:true,can_view_bookings:true,can_send_messages:true,can_release_batch:true};}
+const PERM_LABELS={can_call_next:'Call next',can_scan_validate:'Scan & validate',can_mark_noshow:'Mark no-show',can_view_bookings:'View bookings',can_send_messages:'Send messages',can_release_batch:'Release batches'};
+
+RENDERERS.sop=()=>{
+  return `<div class="togrow" style="padding-top:0"><div class="togi"><div class="tog-title">Show desk ID</div><div class="tog-desc">Display counter number to visitors.</div></div><label class="togsw"><input type="checkbox" id="tog-deskid" ${S.show_desk_id?'checked':''}><span class="togtr"></span></label></div>
+  <div class="sep"></div>
+  <div class="lbl" style="margin-bottom:8px">Operators</div>
+  <div id="op-list"></div>
+  <button type="button" class="btn-add" id="btn-add-op">+ Add operator</button>`;
+};
+WIRE.sop=()=>{
+  renderOperatorList();
+  document.getElementById('btn-add-op')?.addEventListener('click',()=>{
+    S.operators.push({_id:++_opId,display_name:'',email:'',password:'',queue_scope:'all',permissions:defaultPerms()});
+    renderOperatorList();markDirty();
+  });
+};
+
+function renderOperatorList(){
+  const list=document.getElementById('op-list');if(!list)return;
+  if(!S.operators.length){list.innerHTML='<div style="text-align:center;padding:12px;color:var(--hint);font-size:12px;background:var(--gray);border-radius:8px;border:1.5px dashed var(--bord);margin-bottom:6px">No operators yet.</div>';return;}
+  list.innerHTML=S.operators.map((op,i)=>`<div class="slot-card" style="margin-bottom:10px">
+    <button type="button" class="slot-rm" data-rm-op="${op._id}">✕</button>
+    <div style="font-size:12px;font-weight:700;color:var(--v);margin-bottom:6px">Operator ${i+1}${op.display_name?' — '+esc(op.display_name):''}</div>
+    <div class="row"><div class="f"><label class="lbl">Display name *</label><input type="text" data-op="${op._id}" data-opf="display_name" value="${esc(op.display_name)}" placeholder="e.g. Front desk"></div>
+    <div class="f"><label class="lbl">Email *</label><input type="email" data-op="${op._id}" data-opf="email" value="${esc(op.email)}" placeholder="op@company.com"></div></div>
+    <div class="f" style="max-width:280px"><label class="lbl">Password *</label><div style="display:flex;gap:5px"><input type="password" id="op-pwd-${op._id}" data-op="${op._id}" data-opf="password" value="${esc(op.password)}" placeholder="Secure password" style="flex:1"><button type="button" class="btn-add" style="margin:0;padding:4px 8px;font-size:11px" data-toggle-pwd="${op._id}">👁</button></div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${Object.entries(PERM_LABELS).map(([k,lbl])=>`<label style="display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" data-op="${op._id}" data-perm="${k}" ${op.permissions[k]?'checked':''} style="accent-color:var(--v)">${lbl}</label>`).join('')}</div>
+  </div>`).join('');
+  /* Wire inputs */
+  list.querySelectorAll('[data-opf]').forEach(el=>el.addEventListener('input',()=>{const op=S.operators.find(o=>o._id===+el.dataset.op);if(op)op[el.dataset.opf]=el.value;markDirty();}));
+  list.querySelectorAll('[data-perm]').forEach(el=>el.addEventListener('change',()=>{const op=S.operators.find(o=>o._id===+el.dataset.op);if(op)op.permissions[el.dataset.perm]=el.checked;markDirty();}));
+  list.querySelectorAll('[data-rm-op]').forEach(btn=>btn.addEventListener('click',()=>{S.operators=S.operators.filter(o=>o._id!==+btn.dataset.rmOp);renderOperatorList();markDirty();}));
+  list.querySelectorAll('[data-toggle-pwd]').forEach(btn=>btn.addEventListener('click',()=>{const inp=document.getElementById('op-pwd-'+btn.dataset.togglePwd);if(inp)inp.type=inp.type==='password'?'text':'password';}));
+}
+
+RENDERERS.s9=()=>`
+  <div class="lbl" style="margin-bottom:8px">Theme</div>
+  <div class="cgrid c2" style="margin-bottom:14px" id="theme-cards">
+    <label class="copt${S.theme==='default'?' on':''}"><input type="radio" name="theme" value="default" ${S.theme==='default'?'checked':''}><div class="cchk"></div><div class="ctitle">🌙 Dusk Glass</div><div class="cdesc">Purple-tinted dark theme.</div></label>
+    <label class="copt${S.theme==='light'?' on':''}"><input type="radio" name="theme" value="light" ${S.theme==='light'?'checked':''}><div class="cchk"></div><div class="ctitle">☀️ Bright Clean</div><div class="cdesc">Light, high contrast.</div></label>
+    <label class="copt${S.theme==='nature'?' on':''}"><input type="radio" name="theme" value="nature" ${S.theme==='nature'?'checked':''}><div class="cchk"></div><div class="ctitle">🌿 Nature</div><div class="cdesc">Green forest tones.</div></label>
+    <label class="copt${S.theme==='bold'?' on':''}"><input type="radio" name="theme" value="bold" ${S.theme==='bold'?'checked':''}><div class="cchk"></div><div class="ctitle">⚡ Bold</div><div class="cdesc">Warm orange accents.</div></label>
+  </div>
+  <hr class="sep">
+  <div class="togrow"><div class="togi"><div class="tog-title">I want to use my own wallpaper</div><div class="tog-desc">Upload a custom background image for this queue's visitor page.</div></div><label class="togsw"><input type="checkbox" id="tog-host-wall" ${!S.use_host_wall?'checked':''}><span class="togtr"></span></label></div>
+  <div id="wall-upload" style="${!S.use_host_wall?'':'display:none'};margin-top:10px">
+    <div class="f"><label class="lbl">Queue wallpaper image</label><input type="file" id="f-wall" accept="image/*" style="padding:8px">
+    <p class="hint">Recommended: min 1200 × 800 px. Used as the background of the visitor booking card.</p>
+    <div id="wall-err" style="display:none;font-size:12px;color:var(--red);margin-top:4px"></div></div>
+    ${S.wallpaper_data?'<div style="margin-top:6px;font-size:11px;color:var(--green);font-weight:600">✓ Wallpaper saved</div>':''}
+  </div>
+  <div class="sep"></div>
+  <div style="background:var(--v-s);border:1.5px solid var(--v);border-radius:10px;padding:10px 14px;margin-bottom:4px;display:flex;align-items:center;gap:8px">
+    <span style="font-size:18px">👁️</span>
+    <div>
+      <div style="font-weight:700;font-size:13px;color:var(--v)">Queue Preview — What visitors will see</div>
+      <div style="font-size:12px;color:var(--muted)">Live preview of your visitor-facing queue page.</div>
+    </div>
+  </div>
+  <div class="prev-shell">
+    <div class="prev-phone">
+      <div class="prev-qname" id="prev-qname">${esc(S.queue_name)||'Your Queue Name'}</div>
+      <div class="prev-venue" id="prev-venue">${esc(S.venue_name)||'Your Venue'}</div>
+      <div class="prev-status">● Open now</div>
+      <div class="prev-btn">Book my spot →</div>
+    </div>
+  </div>`;
+WIRE.s9=()=>{
+  wireCards(document.getElementById('theme-cards'));
+  document.querySelectorAll('input[name=theme]').forEach(r=>r.addEventListener('change',()=>{if(r.checked){S.theme=r.value;updatePreview();markDirty();}}));
+  document.getElementById('tog-host-wall')?.addEventListener('change',function(){
+    S.use_host_wall=!this.checked;
+    document.getElementById('wall-upload').style.display=this.checked?'':'none';
+    updatePreview();markDirty();
+  });
+  document.getElementById('f-wall')?.addEventListener('change',function(){
+    const file=this.files&&this.files[0];
+    const errEl=document.getElementById('wall-err');
+    if(errEl)errEl.style.display='none';
+    if(!file){S.wallpaper_data=null;updatePreview();markDirty();return;}
+    if(file.size>3*1024*1024){
+      if(errEl){errEl.textContent='Image too large (max 3 MB). Please resize before uploading.';errEl.style.display='block';}
+      this.value='';return;
+    }
+    /* 1. Show a local preview immediately (base64) */
+    const reader=new FileReader();
+    reader.onload=e=>{
+      S._wallpaper_preview=e.target?.result||null;
+      updatePreview();
+    };
+    reader.readAsDataURL(file);
+    /* 2. Upload to server — store the returned URL as wallpaper_data */
+    if(errEl){errEl.textContent='Uploading…';errEl.style.display='block';errEl.style.color='var(--muted)';}
+    const fd=new FormData();
+    fd.append('wallpaper',file);
+    fetch('/api/intime/host/wallpaper',{method:'POST',credentials:'same-origin',body:fd})
+      .then(r=>r.json())
+      .then(data=>{
+        if(data.ok){
+          S.wallpaper_data=data.url;
+          markDirty();
+          if(errEl){errEl.textContent='✓ Uploaded';errEl.style.color='var(--green)';}
+          setTimeout(()=>{if(errEl)errEl.style.display='none';},2000);
+        } else {
+          if(errEl){errEl.textContent='Upload failed — try saving again.';errEl.style.color='var(--red)';errEl.style.display='block';}
+        }
+      })
+      .catch(()=>{
+        if(errEl){errEl.textContent='Upload failed — try saving again.';errEl.style.color='var(--red)';errEl.style.display='block';}
+      });
+  });
+  updatePreview();
+};
+
+function updatePreview(){
+  const qn=document.getElementById('prev-qname');
+  const ve=document.getElementById('prev-venue');
+  const shell=document.querySelector('.prev-shell');
+  const phone=document.querySelector('.prev-phone');
+  const status=document.querySelector('.prev-status');
+  const btn=document.querySelector('.prev-btn');
+  if(!shell||!phone||!status||!btn) return;
+  if(qn) qn.textContent=S.queue_name||'Your Queue Name';
+  if(ve) ve.textContent=(S.venue_name||'Your Venue')+(S.address?' · '+S.address.split(',').slice(0,2).join(','):'');
+  shell.style.background='linear-gradient(160deg,#1e1b2e 0%,#2d1f5e 100%)';
+  shell.style.boxShadow='none';
+  phone.style.background='rgba(255,255,255,.06)';
+  phone.style.borderColor='rgba(255,255,255,.12)';
+  qn.style.color='#fff'; ve.style.color='rgba(255,255,255,.6)';
+  status.style.color='#4ade80'; status.style.background='rgba(74,222,128,.1)';
+  btn.style.background='var(--v)'; btn.style.color='#fff';
+  const _wpSrc = S._wallpaper_preview || S.wallpaper_data;
+  if(!S.use_host_wall && _wpSrc){
+    phone.style.backgroundImage=`linear-gradient(rgba(0,0,0,.28),rgba(0,0,0,.28)),url("${_wpSrc}")`;
+    phone.style.backgroundSize='cover';phone.style.backgroundPosition='center';
+  } else {
+    phone.style.backgroundImage='none';
+  }
+  switch(S.theme){
+    case 'light':
+      shell.style.background='linear-gradient(160deg,#f8fafc 0%,#e2e8f0 100%)';
+      phone.style.background='rgba(255,255,255,.82)'; phone.style.borderColor='rgba(148,163,184,.35)';
+      qn.style.color='#1f2937'; ve.style.color='#6b7280';
+      status.style.color='#15803d'; status.style.background='rgba(34,197,94,.12)';
+      btn.style.background='#2563eb'; btn.style.color='#fff'; break;
+    case 'nature':
+      shell.style.background='linear-gradient(160deg,#1f3b2d 0%,#355c43 100%)';
+      phone.style.background='rgba(255,255,255,.08)'; phone.style.borderColor='rgba(134,239,172,.22)';
+      qn.style.color='#f0fdf4'; ve.style.color='rgba(240,253,244,.72)';
+      status.style.color='#86efac'; status.style.background='rgba(134,239,172,.12)';
+      btn.style.background='#16a34a'; btn.style.color='#fff'; break;
+    case 'bold':
+      shell.style.background='linear-gradient(160deg,#2a0f44 0%,#7c2d12 100%)';
+      phone.style.background='rgba(255,255,255,.07)'; phone.style.borderColor='rgba(251,191,36,.25)';
+      qn.style.color='#fff7ed'; ve.style.color='rgba(255,247,237,.7)';
+      status.style.color='#fbbf24'; status.style.background='rgba(251,191,36,.12)';
+      btn.style.background='#f97316'; btn.style.color='#fff'; break;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SUB-RENDERERS
+═══════════════════════════════════════════════════════════ */
+let _slotId=0;
+let _durId=1000;
+function newSlot(){_slotId++;return{id:_slotId,name:S.arch==='B'?'Consultation':'Table',duration:S.arch==='B'?30:60,durations:S.arch==='A'?[{id:_slotId*100+1,minutes:60}]:[],capacity:S.arch==='A'?4:1,occurrences:1};}
+function addDur(slotId){const sl=S.slots.find(x=>x.id===slotId);if(!sl)return;if(!sl.durations)sl.durations=[];sl.durations.push({id:++_durId,minutes:60});renderSlots();markDirty();}
+function removeDur(slotId,durId){const sl=S.slots.find(x=>x.id===slotId);if(!sl||!sl.durations||sl.durations.length<=1)return;sl.durations=sl.durations.filter(d=>d.id!==durId);renderSlots();markDirty();}
+function renderSlots(){
+  const list=document.getElementById('slot-list');if(!list)return;
+  if(!S.slots.length)S.slots.push(newSlot());
+  if(S.arch==='A'){
+    list.innerHTML=S.slots.map((sl,idx)=>{
+      if(!sl.durations||!sl.durations.length)sl.durations=[{id:sl.id*100+1,minutes:sl.duration||60}];
+      if(!sl.occurrences)sl.occurrences=1;
+      const durRows=sl.durations.map((d,di)=>`<div style="display:flex;align-items:center;gap:5px;margin-right:4px"><input type="number" class="slot-adur" data-slotid="${sl.id}" data-durid="${d.id}" min="5" max="480" value="${d.minutes}" style="width:62px"><span style="font-size:12px;color:var(--muted)">min</span>${di>0?`<button type="button" class="btn-rm" data-rm-dur="${sl.id}_${d.id}" style="font-size:12px;padding:1px 3px">✕</button>`:''}</div>`).join('');
+      return `<div class="slotcard" id="slot-${sl.id}">
+        <div class="slothdr">
+          <span class="slotnum">Resource type ${idx+1}</span>
+          ${idx>0?`<button type="button" class="btn-rm" data-rm="${sl.id}">✕</button>`:''}
+        </div>
+        <div class="row" style="flex-wrap:nowrap;align-items:flex-start;margin-bottom:8px">
+          <div class="f"><label class="lbl">Name <span class="req">*</span></label><input type="text" data-slot="${sl.id}" data-field="name" value="${esc(sl.name)}" placeholder="e.g. Bowling lane, Table for 4"></div>
+          <div class="f" style="flex:0 0 115px;min-width:0"><label class="lbl" style="font-size:12px">Indiv. per unit</label><input type="number" data-slot="${sl.id}" data-field="capacity" min="1" value="${sl.capacity||1}" style="width:62px"></div>
+          <div class="f" style="flex:0 0 105px;min-width:0"><label class="lbl" style="font-size:12px">No. of units</label><input type="number" data-slot="${sl.id}" data-field="occurrences" min="1" value="${sl.occurrences||1}" style="width:62px"></div>
+        </div>
+        <div class="f" style="margin-bottom:0">
+          <label class="lbl" style="font-size:12px">Duration(s) <span style="font-size:11px;font-weight:400;color:var(--muted)">— add multiple if this resource has different booking spans</span></label>
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-top:6px">${durRows}<button type="button" class="btn-link" style="font-size:11px;padding:2px 6px" onclick="addDur(${sl.id})">+ Add</button></div>
+        </div>
+      </div>`;
+    }).join('');
+    list.querySelectorAll('.slot-adur').forEach(el=>el.addEventListener('input',()=>{const sl=S.slots.find(x=>x.id==el.dataset.slotid);if(sl&&sl.durations){const d=sl.durations.find(d=>d.id==el.dataset.durid);if(d){d.minutes=parseInt(el.value)||60;markDirty();}}}));
+  } else {
+    list.innerHTML=S.slots.map((sl,idx)=>`
+      <div class="slotcard" id="slot-${sl.id}">
+        <div class="slothdr">
+          <span class="slotnum">${S.arch==='B'?'Appointment':'Resource'} type ${idx+1}</span>
+          ${idx>0?`<button class="btn-rm" data-rm="${sl.id}">✕</button>`:''}
+        </div>
+        <div class="row" style="flex-wrap:nowrap;align-items:flex-end">
+          <div class="f">
+            <label class="lbl">Name <span class="req">*</span></label>
+            <input type="text" data-slot="${sl.id}" data-field="name" value="${esc(sl.name)}" placeholder="${S.arch==='B'?'e.g. Consultation':'e.g. Table for 4'}">
+          </div>
+          <div class="f" style="flex:0 0 170px;min-width:0">
+            <label class="lbl">Duration <span class="req">*</span></label>
+            <div style="display:flex;align-items:center;gap:8px"><input type="number" data-slot="${sl.id}" data-field="duration" min="5" max="480" value="${sl.duration}" style="width:78px"><span style="font-size:13px;color:var(--muted)">min</span></div>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+  list.querySelectorAll('[data-slot]').forEach(inp=>inp.addEventListener('input',()=>{const sl=S.slots.find(s=>s.id===+inp.dataset.slot);if(sl){sl[inp.dataset.field]=inp.type==='number'?+inp.value:inp.value;markDirty();}}));
+  list.querySelectorAll('[data-rm]').forEach(btn=>btn.addEventListener('click',()=>{S.slots=S.slots.filter(s=>s.id!==+btn.dataset.rm);renderSlots();markDirty();}));
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BREAKS / HOLIDAYS / SPECIALS
+═══════════════════════════════════════════════════════════ */
+function renderBreaks(){
+  const list=document.getElementById('break-list');if(!list)return;
+  if(!S.schedule.breaks)S.schedule.breaks=[];
+  if(!S.schedule.breaks.length){list.innerHTML='<div style="text-align:center;padding:10px;color:var(--hint);font-size:12px;background:var(--gray);border-radius:8px;border:1.5px dashed var(--bord);margin-bottom:6px">No breaks defined.</div>';return;}
+  list.innerHTML=S.schedule.breaks.map((b,i)=>`<div class="slot-card" style="margin-bottom:6px"><button type="button" class="slot-rm" data-rm-brk="${i}">✕</button>
+    <div class="row"><div class="f" style="max-width:120px"><label class="lbl">From</label><input type="time" data-brk="${i}" data-bf="from" value="${b.from||'12:00'}"></div>
+    <div class="f" style="max-width:120px"><label class="lbl">To</label><input type="time" data-brk="${i}" data-bf="to" value="${b.to||'13:00'}"></div>
+    <div class="f"><label class="lbl">Label</label><input type="text" data-brk="${i}" data-bf="label" value="${esc(b.label||'')}" placeholder="e.g. Lunch"></div></div></div>`).join('');
+  list.querySelectorAll('[data-bf]').forEach(el=>el.addEventListener('change',()=>{S.schedule.breaks[+el.dataset.brk][el.dataset.bf]=el.value;markDirty();}));
+  list.querySelectorAll('[data-rm-brk]').forEach(btn=>btn.addEventListener('click',()=>{S.schedule.breaks.splice(+btn.dataset.rmBrk,1);renderBreaks();markDirty();}));
+}
+
+function renderHolidays(){
+  const list=document.getElementById('holiday-list');if(!list)return;
+  if(!S.schedule.holidays)S.schedule.holidays=[];
+  if(!S.schedule.holidays.length){list.innerHTML='<div style="text-align:center;padding:10px;color:var(--hint);font-size:12px;background:var(--gray);border-radius:8px;border:1.5px dashed var(--bord);margin-bottom:6px">No holidays.</div>';return;}
+  list.innerHTML=S.schedule.holidays.map((h,i)=>`<div class="slot-card" style="margin-bottom:6px"><button type="button" class="slot-rm" data-rm-hol="${i}">✕</button>
+    <div class="row"><div class="f" style="max-width:160px"><label class="lbl">Date</label><input type="date" data-hol="${i}" data-hf="date" value="${h.date||''}"></div>
+    <div class="f"><label class="lbl">Label</label><input type="text" data-hol="${i}" data-hf="label" value="${esc(h.label||'')}" placeholder="e.g. Christmas Day"></div></div></div>`).join('');
+  list.querySelectorAll('[data-hf]').forEach(el=>el.addEventListener('change',()=>{S.schedule.holidays[+el.dataset.hol][el.dataset.hf]=el.value;markDirty();}));
+  list.querySelectorAll('[data-rm-hol]').forEach(btn=>btn.addEventListener('click',()=>{S.schedule.holidays.splice(+btn.dataset.rmHol,1);renderHolidays();markDirty();}));
+}
+
+function renderSpecials(){
+  const list=document.getElementById('special-list');if(!list)return;
+  if(!S.schedule.specials)S.schedule.specials=[];
+  if(!S.schedule.specials.length){list.innerHTML='<div style="text-align:center;padding:10px;color:var(--hint);font-size:12px;background:var(--gray);border-radius:8px;border:1.5px dashed var(--bord);margin-bottom:6px">No special hours.</div>';return;}
+  list.innerHTML=S.schedule.specials.map((sp,i)=>`<div class="slot-card" style="margin-bottom:6px"><button type="button" class="slot-rm" data-rm-spc="${i}">✕</button>
+    <div class="row"><div class="f" style="max-width:140px"><label class="lbl">Date</label><input type="date" data-spc="${i}" data-sf="date" value="${sp.date||''}"></div>
+    <div class="f" style="max-width:100px"><label class="lbl">Opens</label><input type="time" data-spc="${i}" data-sf="open" value="${sp.open||'09:00'}"></div>
+    <div class="f" style="max-width:100px"><label class="lbl">Closes</label><input type="time" data-spc="${i}" data-sf="close" value="${sp.close||'17:00'}"></div>
+    <div class="f"><label class="lbl">Label</label><input type="text" data-spc="${i}" data-sf="label" value="${esc(sp.label||'')}" placeholder="e.g. New Year's Eve"></div></div></div>`).join('');
+  list.querySelectorAll('[data-sf]').forEach(el=>el.addEventListener('change',()=>{S.schedule.specials[+el.dataset.spc][el.dataset.sf]=el.value;markDirty();}));
+  list.querySelectorAll('[data-rm-spc]').forEach(btn=>btn.addEventListener('click',()=>{S.schedule.specials.splice(+btn.dataset.rmSpc,1);renderSpecials();markDirty();}));
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MAP / GEO
+═══════════════════════════════════════════════════════════ */
+const GEO={FR:{tz:'Europe/Paris',region:'Europe — West',cur:'EUR'},GB:{tz:'Europe/London',region:'Europe — UK',cur:'GBP'},US:{tz:'America/New_York',region:'Americas — NA',cur:'USD'},DE:{tz:'Europe/Berlin',region:'Europe — Central',cur:'EUR'},ES:{tz:'Europe/Madrid',region:'Europe — South',cur:'EUR'},IT:{tz:'Europe/Rome',region:'Europe — South',cur:'EUR'},CA:{tz:'America/Toronto',region:'Americas — NA',cur:'CAD'},AU:{tz:'Australia/Sydney',region:'Asia-Pacific',cur:'AUD'},JP:{tz:'Asia/Tokyo',region:'Asia-Pacific',cur:'JPY'},BR:{tz:'America/Sao_Paulo',region:'Americas — SA',cur:'BRL'}};
+function guessCc(lat,lng){if(lat>41&&lat<51&&lng>-5&&lng<9)return'FR';if(lat>50&&lat<59&&lng>-8&&lng<2)return'GB';if(lat>48&&lat<55&&lng>6&&lng<15)return'DE';if(lat>36&&lat<44&&lng>-9&&lng<3)return'ES';if(lat>37&&lat<47&&lng>7&&lng<19)return'IT';if(lat>25&&lat<70&&lng>-130&&lng<-60)return'US';if(lat>43&&lat<70&&lng>-85&&lng<-52)return'CA';if(lat>-44&&lat<-10&&lng>113&&lng<154)return'AU';if(lat>30&&lat<46&&lng>129&&lng<146)return'JP';if(lat>-34&&lat<5&&lng>-73&&lng<-34)return'BR';return'US';}
+function setPin(lat,lng,cc){
+  S.lat=lat;S.lng=lng;
+  if(!_map)return;
+  if(_marker)_marker.setLatLng([lat,lng]);else _marker=L.marker([lat,lng]).addTo(_map);
+  _map.setView([lat,lng],14);
+  const info=GEO[cc||guessCc(lat,lng)]||{tz:'UTC',region:'Global',cur:'USD'};
+  if(!S.timezone){S.timezone=info.tz;S.home_region=info.region;}
+  const tzEl=document.getElementById('chip-tz'),rgEl=document.getElementById('chip-region');
+  if(tzEl){tzEl.textContent=S.timezone;tzEl.classList.remove('empty');}
+  if(rgEl){rgEl.textContent=S.home_region;rgEl.classList.remove('empty');}
+  const prevEl=document.getElementById('coordsPreview');
+  if(prevEl)prevEl.textContent=`${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`;
+}
+function initMap(){
+  const el=document.getElementById('map');if(!el)return;
+  if(_map){_map.remove();_map=null;_marker=null;}
+  _map=L.map('map').setView([S.lat||48.8566,S.lng||2.3522],S.lat?14:4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(_map);
+  _map.on('click',e=>{setPin(e.latlng.lat,e.latlng.lng);reverseGeocode(e.latlng.lat,e.latlng.lng);markDirty();});
+  if(S.lat&&S.lng)setPin(S.lat,S.lng);
+}
+let _acTimer;
+function wireLocation(){
+  const inp=document.getElementById('f-addr');
+  inp?.addEventListener('input',()=>{clearTimeout(_acTimer);_acTimer=setTimeout(()=>doGeocode(inp.value),600);});
+  const latEl=document.getElementById('f-lat'),lngEl=document.getElementById('f-lng');
+  const mu=()=>{const la=parseFloat(latEl?.value),ln=parseFloat(lngEl?.value);if(Number.isFinite(la)&&Number.isFinite(ln)){setPin(la,ln);reverseGeocode(la,ln);markDirty();}};
+  latEl?.addEventListener('input',mu);lngEl?.addEventListener('input',mu);
+}
+async function doGeocode(q){if(q.length<4)return;try{const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`);const d=await r.json();if(d[0]){S.address=d[0].display_name;setPin(parseFloat(d[0].lat),parseFloat(d[0].lon),(d[0].address?.country_code||'').toUpperCase());const a=document.getElementById('f-addr');if(a)a.value=d[0].display_name;markDirty();}}catch(_){}}
+async function reverseGeocode(lat,lng){try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`);const d=await r.json();if(d?.display_name){S.address=d.display_name;const a=document.getElementById('f-addr');if(a)a.value=d.display_name;}}catch(_){}}
+
+/* ═══════════════════════════════════════════════════════════
+   SCHEDULE
+═══════════════════════════════════════════════════════════ */
+function initSched(){
+  const sc=document.getElementById('shortcuts');if(!sc)return;
+  const pats=[{v:'wd9_5',l:'Weekdays 9–17',i:'📅'},{v:'wd9_6',l:'Weekdays 9–18',i:'📅'},{v:'wd_sat',l:'Wkdays + Sat',i:'📆'},{v:'custom',l:'Custom',i:'✏️'}];
+  sc.innerHTML=pats.map(p=>`<label class="sc${S.sched_pat===p.v?' on':''}" data-pat="${p.v}"><input type="radio" name="sched_pat" value="${p.v}" ${S.sched_pat===p.v?'checked':''}><span class="sc-icon">${p.i}</span><span>${p.l}</span></label>`).join('');
+  sc.querySelectorAll('input[name=sched_pat]').forEach(r=>r.addEventListener('change',function(){
+    sc.querySelectorAll('.sc').forEach(s=>s.classList.toggle('on',s.querySelector('input').checked));
+    applyPat(this.value);
+  }));
+  renderDayChips();
+}
+function applyPat(p){S.sched_pat=p;const d=S.schedule.days;if(p==='wd9_5'||p==='wd9_6'){d.forEach((x,i)=>{x.on=i<5;x.open='09:00';x.close=p==='wd9_5'?'17:00':'18:00';});}if(p==='wd_sat'){d.forEach((x,i)=>{x.on=i<6;x.open='09:00';x.close='17:00';});}renderDayChips();markDirty();}
+function renderDayChips(){const el=document.getElementById('day-chips');if(!el)return;el.innerHTML=S.schedule.days.map((d,i)=>`<span class="dc${d.on?' on':''}" data-day="${i}">${d.n}</span>`).join('');el.querySelectorAll('[data-day]').forEach(c=>c.addEventListener('click',()=>{const i=+c.dataset.day;S.schedule.days[i].on=!S.schedule.days[i].on;renderDayChips();markDirty();}));}
+
+/* ═══════════════════════════════════════════════════════════
+   CARD WIRING
+═══════════════════════════════════════════════════════════ */
+function wireCards(el){if(!el)return;el.querySelectorAll('.copt').forEach(card=>{const r=card.querySelector('input[type=radio]');if(!r)return;r.addEventListener('change',function(){document.querySelectorAll(`input[name="${this.name}"]`).forEach(rb=>rb.closest('.copt').classList.toggle('on',rb.checked));onCardChange(this.name,this.value);});if(r.checked)card.classList.add('on');});}
+function onCardChange(name,val){
+  if(name==='adm'){S.adm=val;markDirty();renderSegment('s4');}
+  if(name==='release'){S.release_mode=val;markDirty();const extra=document.getElementById('release-extra');if(extra)extra.innerHTML=val==='auto'?`<div class="row"><div class="f" style="max-width:140px"><label class="lbl">Batch size</label><input type="number" id="f-rel-count" min="1" max="100" value="${S.release_count}"></div><div class="f" style="max-width:140px"><label class="lbl">Interval (min)</label><input type="number" id="f-rel-int" min="1" max="120" value="${S.release_interval}"></div></div>`:'';}
+}
+
+/* ═══════════════════════════════════════════════════════════
+   COLLECT (per-segment) + SAVE
+═══════════════════════════════════════════════════════════ */
+function collectSegment(id){
+  if(id==='s0'){S.queue_name=(document.getElementById('f-qname')?.value||'').trim();S.venue_name=(document.getElementById('f-venue')?.value||'').trim();S.internal_label=(document.getElementById('f-internal')?.value||'').trim();S.language=document.getElementById('f-lang')?.value||'en';S.currency=document.getElementById('f-currency')?.value||'EUR';const a=document.getElementById('f-addr');if(a)S.address=a.value.trim();const o=document.getElementById('f-open'),c=document.getElementById('f-close'),cu=document.getElementById('f-cutoff');if(o)S.schedule.globalOpen=o.value;if(c)S.schedule.globalClose=c.value;if(cu)S.schedule.cutoff=parseInt(cu.value)||30;/* breaks/holidays/specials are already synced in real-time via their event handlers */}
+  if(id==='s2b'){
+    if(S.arch==='C'){
+      S.wave_duration=parseInt(document.getElementById('f-wave-dur')?.value)||15;
+      S.wave_capacity=parseInt(document.getElementById('f-wave-cap')?.value)||20;
+      const wcm=document.querySelector('input[name=wcm]:checked');if(wcm)S.wave_cap_mode=wcm.value;
+      const wvs=document.querySelector('input[name=wvs]:checked');if(wvs)S.wave_var_scope=wvs.value;
+    }
+    if(S.arch==='D'){
+      S.flow_capacity=parseInt(document.getElementById('f-flow-cap')?.value)||30;
+      const r=document.querySelector('input[name=release]:checked');if(r)S.release_mode=r.value;
+      S.release_count=parseInt(document.getElementById('f-rel-count')?.value||document.getElementById('f-rc-planned')?.value)||10;
+      S.release_interval=parseInt(document.getElementById('f-rel-int')?.value)||15;
+      S.release_time_span=parseInt(document.getElementById('f-rspan')?.value)||60;
+      const frs=document.querySelector('input[name=frs]:checked');if(frs)S.fixed_release_scope=frs.value;
+    }
+  }
+  if(id==='s3'){/* publics are synced in real-time; collect extras */S.access_req=document.getElementById('tog-access-req')?.checked||false;}
+  if(id==='s4'){const a=document.querySelector('input[name=adm]:checked');if(a)S.adm=a.value;S.calling.adv_lead=parseInt(document.getElementById('f-adv-lead')?.value)||10;S.noscan_win=parseInt(document.getElementById('f-noscan-win')?.value)||10;S.scan_fallback=document.getElementById('tog-fallback')?.checked||false;}
+  if(id==='s5'){S.show_ete=document.getElementById('tog-ete')?.checked??false;S.early.enabled=document.getElementById('tog-early')?.checked??false;}
+  if(id==='s6'){S.channels=['inapp'];if(document.getElementById('ch-email')?.checked)S.channels.push('email');}
+  if(id==='s7'){S.payment_gate=document.getElementById('tog-pay')?.checked||false;const pm=document.querySelector('input[name=pm]:checked');if(pm)S.payment_mode=pm.value;}
+  if(id==='s8'){S.cal_sync=document.getElementById('tog-cal')?.checked||false;S.cal_provider=document.getElementById('f-calprov')?.value||null;S.sync_horizon=parseInt(document.getElementById('f-horizon')?.value)||90;}
+  if(id==='sop'){S.show_desk_id=document.getElementById('tog-deskid')?.checked??false;}
+  if(id==='s9'){S.use_host_wall=!(document.getElementById('tog-host-wall')?.checked);const th=document.querySelector('input[name=theme]:checked');if(th)S.theme=th.value;/* wallpaper_data already set by file input handler */}
+}
+
+function buildPayload(){
+  /* All fields accepted by PATCH /api/intime/queues/:id */
+  const p = {
+    name:            S.queue_name,
+    venue_name:      S.venue_name,
+    internal_label:  S.internal_label || null,
+    language:        S.language,
+    currency:        S.currency,
+    theme:           S.theme,
+    admission_mode:  S.adm,
+
+    cal_sync:        S.cal_sync,
+    cal_provider:    S.cal_provider,
+    sync_horizon:    S.sync_horizon,
+    show_eet:        S.show_eet,
+    show_ete:        S.show_ete,
+    show_desk_id:    S.show_desk_id,
+    show_operator_name: S.show_operator_name,
+    payment_gate:    S.payment_gate,
+    payment_mode:    S.payment_mode || null,
+    access_publics:  S.publics,
+    channels:        S.channels,
+    extra_fields:    S.extra_fields,
+    /* schedule */
+    schedule:        S.schedule,
+    /* capacity */
+    slots:           S.slots,
+    wave_duration:   S.wave_duration,
+    wave_capacity:   S.wave_capacity,
+    wave_cap_mode:   S.wave_cap_mode,
+    wave_var_scope:  S.wave_var_scope,
+    wave_schedule:   S.wave_schedule,
+    flow_capacity:   S.flow_capacity,
+    flow_cap_mode:   S.flow_cap_mode,
+    release_mode:    S.release_mode,
+    release_count:   S.release_count,
+    release_interval:S.release_interval,
+    release_time_span:S.release_time_span,
+    fixed_release_scope: S.fixed_release_scope,
+    release_schedule:S.release_schedule,
+    flow_schedule:   S.flow_schedule,
+    /* calling + early */
+    calling:         S.calling,
+    early:           S.early,
+    /* admission extras */
+    noscan_win:      S.noscan_win,
+    scan_fallback:   S.scan_fallback,
+    /* access extras */
+    access_req:      S.access_req,
+    bulk_invite:     S.bulk_invite,
+    /* look & feel */
+    use_host_wall:   S.use_host_wall,
+    wallpaper_data:  S.wallpaper_data || null,
+    /* calendar extras */
+    manual_refresh:  S.manual_refresh,
+    conf_review:     S.conf_review,
+    bulk_res:        S.bulk_res,
+    notify_imp:      S.notify_imp,
+    /* operators + resellers */
+    operators:       S.operators,
+    resellers:       S.resellers,
+  };
+  /* Location — only if coordinates are set */
+  if(S.lat != null && S.lng != null){
+    p.lat = S.lat;
+    p.lng = S.lng;
+    p.address = S.address;
+  }
+  return p;
+}
+
+async function saveAll(){
+  if(!_qid){alert('No queue ID.');return;}
+  collectSegment(_activeSeg);
+  if(!S.queue_name){setSaveStatus('Queue name required','err');return;}
+  const btn=document.getElementById('btnSave');
+  btn.disabled=true;btn.textContent='Saving…';btn.classList.add('saving');
+  setSaveStatus('Saving…');
+  try{
+    const res=await fetch(`/api/intime/queues/${encodeURIComponent(_qid)}`,{method:'PATCH',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(buildPayload())});
+    const data=await res.json().catch(()=>null);
+    if(!res.ok)throw new Error((data&&data.error)||`HTTP ${res.status}`);
+    _dirty=false;btn.textContent='✓ Saved!';btn.classList.remove('saving');setSaveStatus('Saved ✓','ok');
+    setTimeout(()=>{btn.disabled=false;btn.textContent='💾 Save changes';setSaveStatus('');},2200);
+  }catch(err){btn.disabled=false;btn.textContent='💾 Save changes';btn.classList.remove('saving');setSaveStatus('Failed: '+err.message,'err');}
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LOAD + BOOT
+═══════════════════════════════════════════════════════════ */
+async function loadQueue(){
+  if(!_qid){window.location.href='../manage/page 2.html';return;}
+  try{
+    const res=await fetch(`/api/intime/queues/${encodeURIComponent(_qid)}`,{credentials:'same-origin',headers:{Accept:'application/json'}});
+    const data=await res.json().catch(()=>null);
+    if(!res.ok||!data)throw new Error((data&&data.error)||`HTTP ${res.status}`);
+    const r=data.queue||data;
+    S.queue_name=r.name||'';S.venue_name=r.venue_name||'';S.internal_label=r.internal_label||'';
+    S.language=r.language||'en';S.currency=r.currency||'EUR';S.timezone=r.timezone||'';
+    S.home_region=r.home_region||'';S.arch=r.archetype||null;S.formula=r.booking_formula||null;
+    S.adm=r.admission_mode||'scan';S.show_desk_id=!!r.show_desk_id;S.cal_sync=!!r.cal_sync;
+    S.cal_provider=r.cal_provider||null;S.theme=r.theme||'default';S.identity_policy=r.identity_policy||null;
+    if(r.location_geo&&(r.location_geo.lat||r.location_geo.lng)){S.lat=r.location_geo.lat;S.lng=r.location_geo.lng;}
+    if(r.location_text)S.address=r.location_text;
+    /* Safe JSON helper — handles TEXT (string) and JSONB (already parsed by pg driver) */
+    function jp(v){if(v==null)return null;if(typeof v==='object')return v;try{return JSON.parse(v);}catch(_){return null;}}
+
+    const pub=jp(r.publics_json);     if(Array.isArray(pub))S.publics=pub;
+    const ef=jp(r.extra_fields_json); if(Array.isArray(ef))S.extra_fields=ef;
+    if(typeof r.show_eet==='boolean')S.show_eet=r.show_eet;
+    if(typeof r.show_ete==='boolean')S.show_ete=r.show_ete;
+    if(typeof r.payment_gate==='boolean')S.payment_gate=r.payment_gate;
+    const ch=jp(r.channels_json);     if(Array.isArray(ch))S.channels=ch;
+    if(r.sender_email)S.sender_email=r.sender_email;
+    if(r.sync_horizon)S.sync_horizon=r.sync_horizon;
+    const sched=jp(r.schedule_json);  if(sched&&typeof sched==='object')Object.assign(S.schedule,sched);
+    const sl=jp(r.slots_json);        if(Array.isArray(sl))S.slots=sl;
+    if(r.wave_duration)S.wave_duration=r.wave_duration;if(r.wave_capacity)S.wave_capacity=r.wave_capacity;
+    if(r.flow_capacity)S.flow_capacity=r.flow_capacity;if(r.release_mode)S.release_mode=r.release_mode;
+    if(r.release_count)S.release_count=r.release_count;if(r.release_interval)S.release_interval=r.release_interval;
+    const cal=jp(r.calling_json);     if(cal&&typeof cal==='object')Object.assign(S.calling,cal);
+    const ear=jp(r.early_json);       if(ear&&typeof ear==='object')Object.assign(S.early,ear);
+    if(typeof r.use_host_wall==='boolean')S.use_host_wall=r.use_host_wall;
+    if(r.noscan_win!=null)S.noscan_win=r.noscan_win;
+    if(typeof r.scan_fallback==='boolean')S.scan_fallback=r.scan_fallback;
+    if(r.payment_mode)S.payment_mode=r.payment_mode;
+    const ops=jp(r.operators_json);   if(Array.isArray(ops))S.operators=ops;
+    const res2=jp(r.resellers_json);  if(Array.isArray(res2))S.resellers=res2;
+    /* New fields */
+    if(r.wave_cap_mode)S.wave_cap_mode=r.wave_cap_mode;
+    if(r.wave_var_scope)S.wave_var_scope=r.wave_var_scope;
+    const ws=jp(r.wave_schedule_json); if(Array.isArray(ws))S.wave_schedule=ws;
+    if(r.flow_cap_mode)S.flow_cap_mode=r.flow_cap_mode;
+    const fs=jp(r.flow_schedule_json); if(Array.isArray(fs))S.flow_schedule=fs;
+    if(r.fixed_release_scope)S.fixed_release_scope=r.fixed_release_scope;
+    if(r.release_time_span)S.release_time_span=r.release_time_span;
+    const rs=jp(r.release_schedule_json); if(Array.isArray(rs))S.release_schedule=rs;
+    if(typeof r.access_req==='boolean')S.access_req=r.access_req;
+    if(typeof r.bulk_invite==='boolean')S.bulk_invite=r.bulk_invite;
+    if(typeof r.show_operator_name==='boolean')S.show_operator_name=r.show_operator_name;
+    if(typeof r.manual_refresh==='boolean')S.manual_refresh=r.manual_refresh;
+    if(typeof r.conf_review==='boolean')S.conf_review=r.conf_review;
+    if(typeof r.bulk_res==='boolean')S.bulk_res=r.bulk_res;
+    if(typeof r.notify_imp==='boolean')S.notify_imp=r.notify_imp;
+    if(r.wallpaper_data)S.wallpaper_data=r.wallpaper_data;
+  }catch(err){
+    document.getElementById('tb-sub').textContent='⚠️ '+err.message;
+    document.getElementById('mainPanel').innerHTML=`<div style="max-width:680px;margin:20px auto;background:var(--red-s);border:1.5px solid #fca5a5;border-radius:var(--r);padding:16px;color:var(--red);font-size:13px"><strong>⚠️ Load failed:</strong> ${esc(err.message)}<br><a href="../manage/page 2.html" style="color:var(--red)">← My Queues</a></div>`;
+    return;
+  }
+  document.getElementById('tb-title').textContent='Editing: '+(S.queue_name||'Queue');
+  document.getElementById('tb-sub').textContent=(S.venue_name||'')+(S.timezone?' · '+S.timezone:'');
+  document.title=`Edit: ${S.queue_name||'Queue'} — In-Time`;
+
+  /* Build tabs */
+  const startStep=new URLSearchParams(location.search).get('step')||'s0';
+  const mapped=startStep==='s_op'?'sop':startStep;
+  _activeSeg=SEGS.find(s=>s.id===mapped&&s.show())?mapped:(SEGS.find(s=>s.show())?.id||'s0');
+  buildTabs();
+  switchSeg(_activeSeg);
+  _dirty=false;
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  if(window.Drawer?.mount)window.Drawer.mount({mode:'host'});
+  if(window.FAB?.mount)window.FAB.mount({useTopBand:true,useBottomBand:true,
+    home:{title:'Home',label:'🏠',onClick:()=>window.Drawer?.open?.()},
+    config:{title:'Page style',label:'⚙️',onClick:()=>openStylePanel()},
+    onBack:()=>{window.location.href='../manage/page 2.html';}});
+  document.getElementById('backLink')?.addEventListener('click',e=>{if(_dirty&&!confirm('Unsaved changes. Leave?'))e.preventDefault();});
+  document.getElementById('footerBack')?.addEventListener('click',e=>{if(_dirty&&!confirm('Unsaved changes. Leave?'))e.preventDefault();});
+  document.getElementById('btnSave')?.addEventListener('click',saveAll);
+  window.addEventListener('beforeunload',e=>{if(_dirty){e.preventDefault();e.returnValue='';}});
+  loadQueue();
+});
+
+/* ═══════════════════════════════════════════════════════════
+   CHART HELPERS — shared by wave (arch C) and release (arch D)
+═══════════════════════════════════════════════════════════ */
+function timeStrToMin(str){const p=(str||'0:0').split(':');return parseInt(p[0]||0)*60+parseInt(p[1]||0);}
+function minToTimeStr(min){const h=Math.floor((min||0)/60),m=(min||0)%60;return h+':'+(m<10?'0':'')+m;}
+
+function getChartOperatingHours(){
+  const days=S.schedule.days.filter(d=>d.on);
+  if(!days.length)return{start:9*60,end:18*60};
+  const d=days[0];
+  const [sh,sm]=(d.open||'9:00').split(':').map(Number);
+  const [eh,em]=(d.close||'18:00').split(':').map(Number);
+  return{start:sh*60+(sm||0),end:eh*60+(em||0)};
+}
+
+/* ── WAVE CHARTS (arch C variable mode) ── */
+function ensureWaveSchedule(){
+  const days=S.schedule.days.filter(d=>d.on);
+  const{start,end}=getChartOperatingHours();
+  const dur=Math.max(5,S.wave_duration||15);
+  function makeSegs(){const s=[];for(let t=start;t<=end;t+=dur)s.push({time:t,cap:S.wave_capacity||20});return s;}
+  if(S.wave_var_scope==='all'){
+    if(!S.wave_schedule.find(ws=>ws.day==='All days'))S.wave_schedule.push({day:'All days',segments:makeSegs()});
+    S.wave_schedule=S.wave_schedule.filter(ws=>ws.day==='All days');
+    const ex=S.wave_schedule[0];
+    if(ex&&ex.segments.length>1&&ex.segments[1].time-ex.segments[0].time!==dur)ex.segments=makeSegs();
+  }else{
+    days.forEach(d=>{
+      const ex=S.wave_schedule.find(ws=>ws.day===d.n);
+      if(!ex)S.wave_schedule.push({day:d.n,segments:makeSegs()});
+      else if(ex.segments.length>1&&ex.segments[1].time-ex.segments[0].time!==dur)ex.segments=makeSegs();
+    });
+    S.wave_schedule=S.wave_schedule.filter(ws=>ws.day!=='All days'&&days.some(d=>d.n===ws.day));
+  }
+}
+
+function renderWaveCharts(){
+  ensureWaveSchedule();
+  const container=document.getElementById('wave-day-charts');
+  if(!container)return;
+  container.innerHTML='';
+  S.wave_schedule.forEach(ws=>{
+    const card=document.createElement('div');
+    card.className='slotcard';
+    card.style.cssText='margin-bottom:14px;padding:14px 16px';
+    card.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-weight:700;font-size:14px;color:var(--txt)">${ws.day}</div>
+        <button type="button" class="btn-link" style="font-size:12px" onclick="resetWaveDay('${ws.day}')">↺ Reset to default</button>
+      </div>
+      <div style="position:relative;user-select:none" id="chart-wrap-${ws.day}">
+        <canvas id="wc-${ws.day}" width="560" height="160"
+          style="width:100%;height:160px;cursor:crosshair;border-radius:8px;background:linear-gradient(180deg,#1e1b3a 0%,#16132e 100%)"></canvas>
+        <div id="wc-tooltip-${ws.day}" style="position:absolute;pointer-events:none;display:none;background:rgba(30,27,58,.92);color:#e0e7ff;font-size:11px;padding:4px 8px;border-radius:6px;white-space:nowrap;z-index:10"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--muted)" id="wc-xlabel-${ws.day}"></div>`;
+    container.appendChild(card);
+    drawWaveChart(ws.day);
+    bindWaveChart(ws.day);
+  });
+}
+
+function drawWaveChart(day){
+  const ws=S.wave_schedule.find(w=>w.day===day);if(!ws)return;
+  const canvas=document.getElementById('wc-'+day);if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height,PAD={l:38,r:12,t:14,b:28};
+  const cw=W-PAD.l-PAD.r,ch=H-PAD.t-PAD.b;
+  const segs=ws.segments;
+  const maxCap=Math.max(...segs.map(s=>s.cap),S.wave_capacity*2,10);
+  const minT=segs[0].time,maxT=segs[segs.length-1].time,span=maxT-minT||1;
+  const xOf=t=>PAD.l+((t-minT)/span)*cw;
+  const yOf=c=>PAD.t+ch-(c/maxCap)*ch;
+  const ptR=Math.max(2.5,Math.min(5,cw/(segs.length*3)));
+  ctx.clearRect(0,0,W,H);
+  // Grid
+  ctx.strokeStyle='rgba(99,91,167,0.18)';ctx.lineWidth=1;
+  [0,.25,.5,.75,1].forEach(t=>{
+    const y=PAD.t+ch*t;
+    ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+cw,y);ctx.stroke();
+    ctx.fillStyle='rgba(160,155,210,0.55)';ctx.font='10px Arial';ctx.textAlign='right';
+    ctx.fillText(Math.round(maxCap*(1-t)),PAD.l-4,y+3.5);
+  });
+  // Breaks
+  const brkList=(day!=='All days')?(S.schedule.days.find(d=>d.n===day)?.breaks||[]):(S.schedule.breaks||[]);
+  brkList.forEach(br=>{
+    const bs=timeStrToMin(br.from||'0:0'),be=timeStrToMin(br.to||'0:0');
+    if(bs<be&&bs>=minT&&bs<=maxT){
+      const bx1=xOf(bs),bx2=Math.min(xOf(be),PAD.l+cw);
+      ctx.fillStyle='rgba(239,68,68,0.10)';ctx.fillRect(bx1,PAD.t,bx2-bx1,ch);
+      ctx.strokeStyle='rgba(239,68,68,0.28)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(bx1,PAD.t);ctx.lineTo(bx1,PAD.t+ch);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(bx2,PAD.t);ctx.lineTo(bx2,PAD.t+ch);ctx.stroke();
+      ctx.fillStyle='rgba(239,68,68,0.5)';ctx.font='bold 9px Arial';ctx.textAlign='center';
+      ctx.fillText('break',bx1+(bx2-bx1)/2,PAD.t+9);
+    }
+  });
+  // Filled area
+  const grad=ctx.createLinearGradient(0,PAD.t,0,PAD.t+ch);
+  grad.addColorStop(0,'rgba(99,91,255,0.35)');grad.addColorStop(1,'rgba(99,91,255,0.04)');
+  ctx.beginPath();ctx.moveTo(xOf(segs[0].time),yOf(segs[0].cap));
+  for(let i=1;i<segs.length;i++)ctx.lineTo(xOf(segs[i].time),yOf(segs[i].cap));
+  ctx.lineTo(xOf(segs[segs.length-1].time),PAD.t+ch);ctx.lineTo(xOf(segs[0].time),PAD.t+ch);
+  ctx.closePath();ctx.fillStyle=grad;ctx.fill();
+  // Line
+  ctx.beginPath();ctx.moveTo(xOf(segs[0].time),yOf(segs[0].cap));
+  for(let i=1;i<segs.length;i++)ctx.lineTo(xOf(segs[i].time),yOf(segs[i].cap));
+  ctx.strokeStyle='rgba(139,92,246,0.9)';ctx.lineWidth=2.5;ctx.stroke();
+  // Points
+  segs.forEach(seg=>{
+    const x=xOf(seg.time),y=yOf(seg.cap);
+    ctx.beginPath();ctx.arc(x,y,ptR,0,Math.PI*2);
+    ctx.fillStyle='#a78bfa';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+  });
+  // X labels inside canvas
+  const xlabel=document.getElementById('wc-xlabel-'+day);if(xlabel)xlabel.style.display='none';
+  const lstep=span>600?60:30,first=Math.ceil(minT/lstep)*lstep;
+  ctx.font='10px Arial';ctx.textAlign='center';
+  for(let t=first;t<=maxT;t+=lstep){
+    const lx=xOf(t);
+    ctx.strokeStyle='rgba(160,155,210,0.3)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(lx,PAD.t+ch);ctx.lineTo(lx,PAD.t+ch+4);ctx.stroke();
+    ctx.fillStyle='rgba(160,155,210,0.75)';ctx.fillText(minToTimeStr(t),lx,H-6);
+  }
+}
+
+function bindWaveChart(day){
+  const canvas=document.getElementById('wc-'+day);
+  const tooltip=document.getElementById('wc-tooltip-'+day);
+  if(!canvas)return;
+  const ws=S.wave_schedule.find(w=>w.day===day);
+  let dragging=null;
+  function getPos(e){const r=canvas.getBoundingClientRect(),sx=canvas.width/r.width,sy=canvas.height/r.height;return{x:((e.touches?e.touches[0].clientX:e.clientX)-r.left)*sx,y:((e.touches?e.touches[0].clientY:e.clientY)-r.top)*sy};}
+  function hitTest(p){
+    const segs=ws.segments,W=canvas.width,H=canvas.height,PAD={l:38,r:12,t:14,b:28};
+    const cw=W-PAD.l-PAD.r,ch=H-PAD.t-PAD.b;
+    const maxCap=Math.max(...segs.map(s=>s.cap),S.wave_capacity*2,10);
+    const minT=segs[0].time,maxT=segs[segs.length-1].time;
+    const xOf=t=>PAD.l+((t-minT)/(maxT-minT||1))*cw,yOf=c=>PAD.t+ch-(c/maxCap)*ch;
+    for(let i=0;i<segs.length;i++){const dx=p.x-xOf(segs[i].time),dy=p.y-yOf(segs[i].cap);if(Math.sqrt(dx*dx+dy*dy)<12)return i;}
+    return null;
+  }
+  function updatePos(idx,p){
+    const segs=ws.segments,H=canvas.height,PAD={l:38,r:12,t:14,b:28},ch=H-PAD.t-PAD.b;
+    const maxCap=Math.max(...segs.map(s=>s.cap),S.wave_capacity*2,10);
+    segs[idx].cap=Math.max(1,Math.min(Math.round(maxCap*(1-(p.y-PAD.t)/ch)),maxCap));
+    drawWaveChart(day);markDirty();
+    if(tooltip){tooltip.style.display='block';tooltip.style.left=(p.x/canvas.width*100)+'%';tooltip.style.top=Math.max(PAD.t,p.y-28)+'px';tooltip.textContent=minToTimeStr(segs[idx].time)+' → '+segs[idx].cap+' visitors';}
+  }
+  canvas.addEventListener('mousedown',e=>{const p=getPos(e),i=hitTest(p);if(i!==null){dragging=i;e.preventDefault();}});
+  canvas.addEventListener('mousemove',e=>{const p=getPos(e);if(dragging!==null){updatePos(dragging,p);return;}canvas.style.cursor=hitTest(p)!==null?'grab':'crosshair';if(tooltip)tooltip.style.display='none';});
+  canvas.addEventListener('mouseup',()=>{dragging=null;if(tooltip)tooltip.style.display='none';});
+  canvas.addEventListener('mouseleave',()=>{dragging=null;if(tooltip)tooltip.style.display='none';});
+  canvas.addEventListener('touchstart',e=>{const p=getPos(e),i=hitTest(p);if(i!==null){dragging=i;e.preventDefault();}},{passive:false});
+  canvas.addEventListener('touchmove',e=>{if(dragging!==null){updatePos(dragging,getPos(e));e.preventDefault();}},{passive:false});
+  canvas.addEventListener('touchend',()=>{dragging=null;});
+}
+
+function resetWaveDay(day){
+  const ws=S.wave_schedule.find(w=>w.day===day);
+  if(ws)ws.segments.forEach(s=>s.cap=S.wave_capacity||20);
+  drawWaveChart(day);markDirty();
+}
+
+/* ── RELEASE CHARTS (arch D planned mode) ── */
+function ensureReleaseSchedule(){
+  const days=S.schedule.days.filter(d=>d.on);
+  const{start,end}=getChartOperatingHours();
+  const spanMin=Math.max(5,S.release_time_span||60);
+  function makeSegs(){const s=[];for(let t=start;t<=end;t+=spanMin)s.push({time:t,count:S.release_count||10});return s;}
+  if(S.fixed_release_scope==='all'){
+    if(!S.release_schedule.find(rs=>rs.day==='All days'))S.release_schedule.push({day:'All days',segments:makeSegs()});
+    S.release_schedule=S.release_schedule.filter(rs=>rs.day==='All days');
+    const ex=S.release_schedule[0];
+    if(ex&&ex.segments.length>1&&ex.segments[1].time-ex.segments[0].time!==spanMin)ex.segments=makeSegs();
+  }else{
+    days.forEach(d=>{
+      const ex=S.release_schedule.find(rs=>rs.day===d.n);
+      if(!ex)S.release_schedule.push({day:d.n,segments:makeSegs()});
+      else if(ex.segments.length>1&&ex.segments[1].time-ex.segments[0].time!==spanMin)ex.segments=makeSegs();
+    });
+    S.release_schedule=S.release_schedule.filter(rs=>rs.day!=='All days'&&days.some(d=>d.n===rs.day));
+  }
+}
+
+function renderReleaseCharts(){
+  ensureReleaseSchedule();
+  const container=document.getElementById('release-day-charts');
+  if(!container)return;
+  container.innerHTML='';
+  S.release_schedule.forEach(rs=>{
+    const dayId=rs.day.replace(/\s+/g,'_');
+    const card=document.createElement('div');
+    card.className='slotcard';
+    card.style.cssText='margin-bottom:14px;padding:14px 16px';
+    card.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-weight:700;font-size:14px;color:var(--txt)">${rs.day}</div>
+        <button type="button" class="btn-link" style="font-size:12px" onclick="resetReleaseDay('${rs.day}')">↺ Reset to default</button>
+      </div>
+      <div style="position:relative;user-select:none" id="rc-wrap-${dayId}">
+        <canvas id="rc-${dayId}" width="560" height="160"
+          style="width:100%;height:160px;cursor:crosshair;border-radius:8px;background:linear-gradient(180deg,#1e1b3a 0%,#16132e 100%)"></canvas>
+        <div id="rc-tooltip-${dayId}" style="position:absolute;pointer-events:none;display:none;background:rgba(30,27,58,.92);color:#e0e7ff;font-size:11px;padding:4px 8px;border-radius:6px;white-space:nowrap;z-index:10"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--muted)" id="rc-xlabel-${dayId}"></div>`;
+    container.appendChild(card);
+    drawReleaseChart(rs.day);
+    bindReleaseChart(rs.day);
+  });
+}
+
+function drawReleaseChart(day){
+  const dayId=day.replace(/\s+/g,'_');
+  const rs=S.release_schedule.find(r=>r.day===day);if(!rs)return;
+  const canvas=document.getElementById('rc-'+dayId);if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height,PAD={l:38,r:12,t:14,b:28};
+  const cw=W-PAD.l-PAD.r,ch=H-PAD.t-PAD.b;
+  const segs=rs.segments;
+  const maxCount=Math.max(S.release_count||10,...segs.map(s=>s.count),1);
+  const minT=segs[0].time,maxT=segs[segs.length-1].time,span=maxT-minT||1;
+  const xOf=t=>PAD.l+((t-minT)/span)*cw;
+  const yOf=v=>PAD.t+ch-(v/maxCount)*ch;
+  const ptR=Math.max(2.5,Math.min(5,cw/(segs.length*3)));
+  ctx.clearRect(0,0,W,H);
+  // Grid
+  ctx.strokeStyle='rgba(99,91,167,0.18)';ctx.lineWidth=1;
+  [0,.25,.5,.75,1].forEach(t=>{
+    const y=PAD.t+ch*t;
+    ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+cw,y);ctx.stroke();
+    ctx.fillStyle='rgba(160,155,210,0.6)';ctx.font='10px Arial';ctx.textAlign='right';
+    ctx.fillText(Math.round(maxCount*(1-t)),PAD.l-4,y+3.5);
+  });
+  // Breaks
+  const brkList=(day!=='All days')?(S.schedule.days.find(d=>d.n===day)?.breaks||[]):(S.schedule.breaks||[]);
+  brkList.forEach(br=>{
+    const bs=timeStrToMin(br.from||'0:0'),be=timeStrToMin(br.to||'0:0'),spanMin=Math.max(5,S.release_time_span||60);
+    if(bs<be&&bs>=minT&&be<=maxT+spanMin){
+      const bx1=xOf(bs),bx2=xOf(Math.min(be,maxT));
+      ctx.fillStyle='rgba(239,68,68,0.10)';ctx.fillRect(bx1,PAD.t,bx2-bx1,ch);
+      ctx.strokeStyle='rgba(239,68,68,0.30)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(bx1,PAD.t);ctx.lineTo(bx1,PAD.t+ch);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(bx2,PAD.t);ctx.lineTo(bx2,PAD.t+ch);ctx.stroke();
+      ctx.fillStyle='rgba(239,68,68,0.55)';ctx.font='bold 9px Arial';ctx.textAlign='center';
+      ctx.fillText('break',bx1+(bx2-bx1)/2,PAD.t+9);
+    }
+  });
+  // Filled area
+  const grad=ctx.createLinearGradient(0,PAD.t,0,PAD.t+ch);
+  grad.addColorStop(0,'rgba(99,91,255,0.28)');grad.addColorStop(1,'rgba(99,91,255,0.03)');
+  ctx.beginPath();ctx.moveTo(xOf(segs[0].time),yOf(segs[0].count));
+  for(let i=1;i<segs.length;i++)ctx.lineTo(xOf(segs[i].time),yOf(segs[i].count));
+  ctx.lineTo(xOf(segs[segs.length-1].time),PAD.t+ch);ctx.lineTo(xOf(segs[0].time),PAD.t+ch);
+  ctx.closePath();ctx.fillStyle=grad;ctx.fill();
+  // Line
+  ctx.beginPath();ctx.moveTo(xOf(segs[0].time),yOf(segs[0].count));
+  for(let i=1;i<segs.length;i++)ctx.lineTo(xOf(segs[i].time),yOf(segs[i].count));
+  ctx.strokeStyle='rgba(139,92,246,0.9)';ctx.lineWidth=2.5;ctx.stroke();
+  // Points
+  segs.forEach(seg=>{
+    const x=xOf(seg.time),y=yOf(seg.count);
+    ctx.beginPath();ctx.arc(x,y,ptR,0,Math.PI*2);
+    ctx.fillStyle='#a78bfa';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+  });
+  // X labels inside canvas
+  const xlabel=document.getElementById('rc-xlabel-'+dayId);if(xlabel)xlabel.style.display='none';
+  const lstep=span>600?60:30,first=Math.ceil(minT/lstep)*lstep;
+  ctx.font='10px Arial';ctx.textAlign='center';
+  for(let t=first;t<=maxT;t+=lstep){
+    const lx=xOf(t);
+    ctx.strokeStyle='rgba(160,155,210,0.3)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(lx,PAD.t+ch);ctx.lineTo(lx,PAD.t+ch+4);ctx.stroke();
+    ctx.fillStyle='rgba(160,155,210,0.75)';ctx.fillText(minToTimeStr(t),lx,H-6);
+  }
+}
+
+function bindReleaseChart(day){
+  const dayId=day.replace(/\s+/g,'_');
+  const canvas=document.getElementById('rc-'+dayId);
+  const tooltip=document.getElementById('rc-tooltip-'+dayId);
+  if(!canvas)return;
+  const rs=S.release_schedule.find(r=>r.day===day);
+  let dragging=null;
+  function getPos(e){const r=canvas.getBoundingClientRect(),sx=canvas.width/r.width,sy=canvas.height/r.height;return{x:((e.touches?e.touches[0].clientX:e.clientX)-r.left)*sx,y:((e.touches?e.touches[0].clientY:e.clientY)-r.top)*sy};}
+  function hitTest(p){
+    const segs=rs.segments,W=canvas.width,H=canvas.height,PAD={l:38,r:12,t:14,b:28};
+    const cw=W-PAD.l-PAD.r,ch=H-PAD.t-PAD.b;
+    const maxCount=Math.max(S.release_count||10,...segs.map(s=>s.count),1);
+    const minT=segs[0].time,maxT=segs[segs.length-1].time;
+    const xOf=t=>PAD.l+((t-minT)/(maxT-minT||1))*cw,yOf=v=>PAD.t+ch-(v/maxCount)*ch;
+    for(let i=0;i<segs.length;i++){const dx=p.x-xOf(segs[i].time),dy=p.y-yOf(segs[i].count);if(Math.sqrt(dx*dx+dy*dy)<12)return i;}
+    return null;
+  }
+  function updatePos(idx,p){
+    const segs=rs.segments,H=canvas.height,PAD={l:38,r:12,t:14,b:28},ch=H-PAD.t-PAD.b;
+    const maxCount=Math.max(S.release_count||10,...segs.map(s=>s.count),1);
+    segs[idx].count=Math.max(0,Math.min(Math.round(maxCount*(1-(p.y-PAD.t)/ch)),maxCount));
+    drawReleaseChart(day);markDirty();
+    if(tooltip){tooltip.style.display='block';tooltip.style.left=(p.x/canvas.width*100)+'%';tooltip.style.top=Math.max(PAD.t,p.y-28)+'px';tooltip.textContent=minToTimeStr(segs[idx].time)+' → '+segs[idx].count+' releases';}
+  }
+  canvas.addEventListener('mousedown',e=>{const p=getPos(e),i=hitTest(p);if(i!==null){dragging=i;e.preventDefault();}});
+  canvas.addEventListener('mousemove',e=>{const p=getPos(e);if(dragging!==null){updatePos(dragging,p);return;}canvas.style.cursor=hitTest(p)!==null?'grab':'crosshair';if(tooltip)tooltip.style.display='none';});
+  canvas.addEventListener('mouseup',()=>{dragging=null;if(tooltip)tooltip.style.display='none';});
+  canvas.addEventListener('mouseleave',()=>{dragging=null;if(tooltip)tooltip.style.display='none';});
+  canvas.addEventListener('touchstart',e=>{const p=getPos(e),i=hitTest(p);if(i!==null){dragging=i;e.preventDefault();}},{passive:false});
+  canvas.addEventListener('touchmove',e=>{if(dragging!==null){updatePos(dragging,getPos(e));e.preventDefault();}},{passive:false});
+  canvas.addEventListener('touchend',()=>{dragging=null;});
+}
+
+function resetReleaseDay(day){
+  const rs=S.release_schedule.find(r=>r.day===day);
+  if(rs)rs.segments.forEach(s=>s.count=S.release_count||10);
+  drawReleaseChart(day);markDirty();
+}
+</script>
+<script src="/js/intime-theme.js"></script>
+</body>
+</html>

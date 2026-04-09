@@ -1,0 +1,575 @@
+/* ========= Root + Base ========= */
+:root {
+  --bg:#FAFAFA;
+  --tx:#212121;
+  --mu:#616161;
+
+  --p:#1E88E5;
+  --s:#43A047;
+
+  --fab-size:48px;
+  --fab-radius:9999px;
+  --fab-gap:12px;
+  --bottom-offset:12px;
+  --topband-h:68px;
+  --band-h:68px;
+}
+
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+
+body{
+  margin:0;
+  background:url("/wallpapers/test - hills.jpg") no-repeat center center fixed;
+  color:var(--tx);
+  font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+}
+
+/* 
+body{
+  margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;
+  
+  background-size:cover;
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;color:#fff;
+}
+
+*/
+
+.muted{
+  color:var(--mu);
+  font-size:0.9rem;
+}
+
+/* ========= Header / Layout ========= */
+header.site{
+  position:sticky;
+  top:0;
+  z-index:10;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 16px;
+
+  color:#fff;
+}
+header.site .title{
+  font-weight:700;
+  font-size:22px;
+}
+
+main.container{
+  max-width:1100px;
+  margin:0 auto;
+  padding:18px 18px 84px;
+}
+
+footer.site{
+  padding:16px;
+  text-align:center;
+  color:var(--mu);
+}
+
+/* ========= Grid ========= */
+.grid{ display:grid; gap:14px; }
+.cards{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:14px;
+}
+
+/* =====================================
+   Cards UI — transparent background,
+   REAL hover-image curtain + overlay links
+   ===================================== */
+
+.card{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  text-align:center;
+  border-radius:32px;
+  padding:0px 0px 6px;
+  background:transparent;
+  color:var(--tx);
+  overflow:hidden;
+}
+
+/* Top area: logo frame (icon + curtain + links) */
+.card-logo-area{
+  position:relative;
+  padding:0px;
+  height: 22vh;
+  width: 22vh;
+  aspect-ratio: 1/1;
+  border-radius:28px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;           /* clip curtain + links */
+}
+
+/* Base logo in <img>:
+   - JS keeps this on "-off" by default
+   - switches to "-on" when selected
+   - the "-hover" image is drawn by CSS above it */
+.card-logo-area .logo{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;   /* <-- SAME as the background */
+  object-position: center;
+  border-radius: inherit;
+  z-index: 0;
+  pointer-events: none;
+  border-radius:inherit;
+}
+
+/* ===== Curtain: reveal the -hover icon using CSS var --hover-src =====
+   JS sets: area.style.setProperty('--hover-src', `url("...-hover.png")`)
+*/
+.card-logo-area::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+
+  background-image:var(--hover-src);
+  background-position:center;
+  background-size:contain;
+  background-repeat:no-repeat;
+
+  /* Start fully hidden at the RIGHT edge (visible width = 0) */
+  clip-path:inset(0 0 0 100%);        /* top right bottom left */
+  transition:clip-path .5s ease-out;
+  pointer-events:none;
+  z-index:1;
+}
+
+/* Curtain appears:
+   - when JS adds .hovering (logo hover → curtain + links)
+   - when the whole card is hovered (e.g. bottom title) → curtain only */
+.card.hovering .card-logo-area::after,
+.card:hover .card-logo-area::after{
+  clip-path:inset(0 0 0 0);          /* full image visible */
+  font-weight: 650; 
+}
+
+
+/* If you *don't* want any curtain when already selected, uncomment:
+.card.selected .card-logo-area::after{
+  clip-path:inset(0 0 0 100%);
+}
+*/
+
+/* ===== Links overlay: appear over icon, swipe in from left ===== */
+
+.card-links{
+  position:absolute;
+                         /* safe padding inside logo box */
+
+  display:flex;
+  flex-direction:column;
+  justify-content:space-around;
+  align-items:center;                /* <-- centers the links horizontally */
+  gap:1.5vh;
+
+  width:95%;                         /* safe width */
+  max-height:90%;
+
+  overflow:hidden;
+  overflow-y:auto;
+  scrollbar-width:none;
+}
+.card-links::-webkit-scrollbar { display:none; }
+
+/* Hidden state */
+.card-links{
+
+  pointer-events:none;
+  transform:translateX(-340%);
+  transition:
+    opacity .45s ease-out,
+    transform .45s ease-out;
+  z-index:2;
+}
+
+/* Show on hover */
+.card.hovering .card-links{
+  opacity:1;
+  pointer-events:auto;
+  transform:translateX(0);
+  font-weight: 650; 
+}
+
+/* Link pills */
+.card-links .card-link{
+  display:block;
+  width:100%;                        /* stays within 80% inset container */
+  padding:6px 10px;
+  border-radius:6px;
+  text-align:center;
+
+  text-decoration:none;
+  font-weight:600;
+  font-size:14px;
+
+  background:#7f7f7f;
+  color:#ffffff;
+  box-shadow:0 2px 6px rgba(0,0,0,.08);
+
+  transition:
+    background-color .15s ease,
+    color .15s ease,
+    transform .08s ease;
+}
+
+/* Hover highlight */
+.card-links .card-link:hover,
+.card-links .card-link:focus-visible{
+  background:#ffffff;
+  color:#000000;
+  transform:translateY(-1px);
+}
+
+/* Bottom title — always visible & clickable */
+.card-title-link{
+  display:block;
+  padding:4px 6px 8px;
+  text-decoration:none;
+}
+
+.card-title{
+  margin:0;
+  font-weight:600;
+  font-size:0.95rem;
+  color:white;
+
+}
+/* Highlight bottom title when the card is hovered */
+.card.hovering .card-title {
+  font-weight: 650;       /* +50 from the default 600 */
+  transform: scale(1.03);
+  transition: transform .2s ease;
+  font-weight .2s ease;
+}
+
+
+
+/* Mobile tweaks */
+@media (max-width:480px){
+  .card-links .card-link{
+    width:100%;
+    text-align:center;
+  }
+}
+
+/* Motion safety */
+@media (prefers-reduced-motion:reduce){
+  .card,
+  .card-logo-area,
+  .card-links,
+  .card-links .card-link,
+  .card-logo-area::after,
+  .card-logo-area .logo{
+    transition:none !important;
+  }
+}
+
+/* ========= FABs & Bands (for FAB.mount) ========= */
+
+.fab{
+  position:fixed;
+  width:var(--fab-size);
+  height:var(--fab-size);
+  border:none;
+  border-radius:var(--fab-radius);
+  background:#fff;
+  box-shadow:0 6px 18px rgba(0,0,0,.12);
+  cursor:pointer;
+  font-size:18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:800;
+}
+.fab:hover{ transform:translateY(-1px); }
+
+.fab.tl{ top:var(--fab-gap); left:var(--fab-gap); }
+.fab.tr{ top:var(--fab-gap); right:var(--fab-gap); }
+.fab.bl{ bottom:var(--bottom-offset); left:var(--fab-gap); }
+.fab.br{ bottom:var(--bottom-offset); right:var(--fab-gap); }
+
+body.with-nav{ --bottom-offset:72px; }
+
+/* Top band */
+.top-band{
+  position:fixed;
+  left:0;
+  right:0;
+  top:0;
+  height:var(--topband-h);
+  background:linear-gradient(90deg,var(--p),var(--s));
+  color:#fff;
+  box-shadow:0 8px 24px rgba(0,0,0,.08);
+  z-index:760;
+}
+.top-band .inner{
+  height:100%;
+  max-width:1100px;
+  margin:0 auto;
+  padding:0 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.fab.band-top{
+  position:static;
+  width:var(--fab-size);
+  height:var(--fab-size);
+  background:#fff;
+  color:#000;
+}
+body.has-top-band main.container{
+  padding-top:calc(var(--topband-h) + 16px);
+}
+body.has-top-band > header.site{
+  display:none !important;
+}
+
+/* Bottom band */
+.bottom-band{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  height:var(--band-h);
+  background:linear-gradient(90deg,var(--p),var(--s));
+  border-top:1px solid #eee;
+  box-shadow:0 -8px 24px rgba(0,0,0,.06);
+  z-index:750;
+}
+.bottom-band .inner{
+  height:100%;
+  max-width:1100px;
+  margin:0 auto;
+  padding:0 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.fab.band{
+  position:static;
+  width:var(--fab-size);
+  height:var(--fab-size);
+}
+body.has-bottom-band main.container{
+  padding-bottom:calc(var(--band-h) + 16px);
+}
+body.has-bottom-band > footer.site{
+  display:none !important;
+}
+
+/* ========= Drawer + Backdrop ========= */
+
+.drawer{
+  position:fixed;
+  top:0;
+  left:0;
+  bottom:0;
+  width:min(420px,92vw);
+  background:#fff;
+  box-shadow:0 10px 28px rgba(0,0,0,.22);
+  transform:translateX(-100%);
+  transition:transform .25s ease;
+  z-index:1200;
+  overflow:auto;
+  padding:14px;
+}
+.drawer.open{ transform:translateX(0); }
+
+.backdrop{
+  position:fixed;
+  left:0;
+  right:0;
+  top:0;
+  bottom:0;
+  background:rgba(0,0,0,.25);
+  opacity:0;
+  visibility:hidden;
+  transition:opacity .2s ease;
+  z-index:1100;
+}
+.backdrop.show{
+  opacity:1;
+  visibility:visible;
+}
+
+/* Drawer content helpers */
+.drawer-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+.drawer-user{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.drawer-user .avatar{
+  width:44px;
+  height:44px;
+  border-radius:50%;
+  object-fit:cover;
+  border:1px solid #eee;
+}
+.drawer-user .u-name{ font-weight:700; }
+.drawer-user .u-role{ color:var(--mu); font-size:12px; }
+
+.drawer-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:12px;
+  border:1px solid #eee;
+  border-radius:12px;
+  background:#fff;
+  text-decoration:none;
+  color:inherit;
+  margin:10px 0;
+}
+.drawer-row .chev{
+  margin-left:auto;
+  color:var(--mu);
+}
+
+
+
+
+.fab {
+  /* … your existing stuff … */
+  color:#000;          /* Ionicons inherit this when used */
+}
+
+.fab .fab-icon {
+  width: 1.3em;
+  height: 1.3em;
+  display:inline-block;
+  pointer-events:none; /* clicks go to the button */
+}
+
+/* Hover effect ONLY for bottom band buttons */
+.bottom-band .fab.band:hover {
+  background:#000;      /* light grey */
+  color:#000;              /* makes ion-icons inherit black */
+}
+
+/* Invert the icon ONLY on hover */
+.bottom-band .fab.band:hover img,
+.bottom-band .fab.band:hover ion-icon,
+.bottom-band .fab.band:hover .fab-icon {
+  filter: invert(1);
+}
+
+/* Hover effect ONLY for top band buttons */
+.top-band .fab.band-top:hover {
+  background:#000;     /* light grey background on hover */
+  color:#000;             /* icons inherit black if they are SVG */
+}
+
+/* Invert ONLY the icon on hover */
+.top-band .fab.band-top:hover img,
+.top-band .fab.band-top:hover ion-icon,
+.top-band .fab.band-top:hover .fab-icon {
+  filter: invert(1);
+}
+
+
+
+/* =========================================================
+   MODALS — HARDENED LAYOUT (fixes "can't scroll in modal")
+   Paste at END of style.css
+   ========================================================= */
+
+.modal-overlay{
+  position:fixed;
+  inset:0;
+  background: rgba(0,0,0,0.55);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:3000;
+
+  /* Allow inner scrolling on iOS */
+  overscroll-behavior: contain;
+}
+
+.modal-overlay.show,
+.modal-overlay[style*="display: flex"]{
+  /* supports both: class-based and inline display:flex */
+  display:flex;
+}
+
+/* The "wide" modal shell */
+.wide-dialog{
+  width: min(1080px, 96vw);
+  height: min(92vh, 920px);          /* ✅ REAL HEIGHT => enables scroll */
+  display:flex;
+  flex-direction:column;
+  background:#fff;
+  border-radius:18px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.25);
+  padding:16px 16px 12px;
+}
+
+/* Header and footer should not scroll */
+.wide-header,
+.wide-footer{
+  flex: 0 0 auto;
+}
+
+/* Body MUST be a flex child that can shrink */
+.wide-body{
+  flex: 1 1 auto;
+  min-height: 0;                     /* ✅ critical for overflow in flex */
+  border-radius:14px;
+  background:#fff;
+  border:1px solid #eee;
+  overflow:hidden;                   /* ✅ only inner areas scroll */
+}
+
+/* Inner body is a column; allow child scroll areas */
+.wide-body-inner{
+  height: 100%;
+  min-height: 0;                     /* ✅ critical */
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding:10px 10px 12px;
+  box-sizing:border-box;
+}
+
+/* The calendar scroll box — THIS is where scrolling happens */
+.cv-grid-scroll{
+  flex: 1 1 auto;
+  min-height: 0;                     /* ✅ critical */
+  overflow-y:auto !important;
+  overflow-x:auto;
+  -webkit-overflow-scrolling: touch; /* ✅ iOS momentum */
+  touch-action: pan-x pan-y;         /* ✅ allow touch scroll */
+}
+
+/* Prevent the grid from stretching the scroll box vertically */
+.cv-grid-stack{
+  position:relative;
+  width:max-content;
+  height:max-content;
+}
+

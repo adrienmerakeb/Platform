@@ -1,0 +1,64 @@
+{
+  "appTitle": "WanderPal",
+  "langLabel": "Idioma",
+
+  "loginTitle": "Entrar",
+  "registerTitle": "Registrar",
+
+  "email": "E-mail",
+  "password": "Senha",
+  "createPassword": "Criar uma senha",
+  "namePlaceholder": "Nome",
+  "companyName": "Nome da empresa",
+  "website": "Site oficial",
+
+  "remember": "Lembrar de mim",
+  "forgot": "Esqueceu a senha?",
+  "forgotTitle": "Redefinir senha",
+  "forgotDesc": "Informe seu e-mail e enviaremos um link para redefinição.",
+  "forgotCancel": "Cancelar",
+  "forgotSend": "Enviar",
+  "forgotSuccess": "Se a conta existir, enviamos um link de redefinição.",
+  "forgotError": "Não foi possível processar sua solicitação.",
+
+  "loginBtn": "Entrar",
+  "registerBtn": "Registrar",
+  "or": "ou",
+  "noAccount": "Não tem conta?",
+  "signup": "Cadastre-se",
+  "haveAccount": "Já possui conta?",
+  "signin": "Entrar",
+
+  "invalidCreds": "Credenciais inválidas",
+  "suspendedMsg": "Esta conta está suspensa. Contate o suporte.",
+
+  "networkError": "Erro de rede",
+  "registerSuccess": "Conta criada. Você já pode entrar.",
+  "registerFail": "Não foi possível criar a conta (e-mail já usado?)",
+
+  "hostTitle": "Anfitrião",
+  "hostLogin": "Anfitrião — Login",
+  "hostRegister": "Anfitrião — Registro",
+  "hostForgotTitle": "Redefinir senha do Anfitrião",
+  "hostForgotDesc": "Você receberá um link se este e-mail estiver cadastrado como anfitrião.",
+
+  "partnerTitle": "Parceiro",
+  "partnerLogin": "Parceiro — Login",
+  "partnerRegister": "Parceiro — Registro",
+  "partnerForgotTitle": "Redefinir senha do Parceiro",
+  "partnerForgotDesc": "Você receberá um link se este e-mail estiver cadastrado como parceiro.",
+
+  "chooseSector": "Escolher setor",
+  "recommendedServices": "Serviços recomendados",
+
+  "museum": "Museu / Galeria / Monumento",
+  "doctor": "Médico / Clínica / Dentista",
+  "salon": "Beleza / Spa / Cabeleireiro",
+  "event": "Organizador de eventos / Local",
+  "restaurant": "Restaurante / Café / Bar",
+  "hotel": "Hotel / Pousada / BnB",
+  "retail": "Loja / Shopping",
+  "sports": "Centro esportivo / Academia / Estádio",
+  "public": "Administração pública / Banco / Correios",
+  "other": "Outro"
+}

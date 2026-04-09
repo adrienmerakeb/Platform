@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>My Booking — In-Time</title>
+<link rel="stylesheet" href="/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --v:#7c3aed;--v-s:#ede9fc;--v-d:#6d28d9;
+  --green:#16a34a;--green-s:#f0fdf4;
+  --amber:#d97706;--amber-s:#fffbeb;
+  --red:#dc2626;--red-s:#fef2f2;
+  --txt:#1a1825;--muted:#6b6880;--hint:#9b98aa;
+  --surf:#fff;--bg:#f4f3f8;--bord:#e2e0ea;
+  --gray:#f0eff5;--gray-m:#d4d2de;
+  --r:14px;--ri:9px;
+  --sh:0 2px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --font:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:var(--font);background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55}
+.shell{max-width:520px;margin:0 auto;padding:84px 16px 120px}
+.errbar{background:var(--red-s);border:1.5px solid #fca5a5;border-radius:var(--ri);padding:10px 14px;font-size:13px;color:var(--red);font-weight:500;margin-bottom:14px;display:none}
+.errbar.on{display:block}
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(26,24,37,.92);color:#fff;padding:8px 20px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:200;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.skel{background:linear-gradient(90deg,var(--gray) 25%,var(--bord) 50%,var(--gray) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* STATUS BAND */
+.status-band{border-radius:var(--r);padding:28px 22px 24px;margin-bottom:14px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;box-shadow:var(--sh);position:relative;overflow:hidden}
+.status-band::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.06);pointer-events:none}
+.sb-waiting  {background:linear-gradient(135deg,#7c3aed 0%,#4f46e5 100%)}
+.sb-calling  {background:linear-gradient(135deg,#059669 0%,#0d9488 100%)}
+.sb-missed   {background:linear-gradient(135deg,#dc2626 0%,#9f1239 100%)}
+.sb-redeemed {background:linear-gradient(135deg,#16a34a 0%,#15803d 100%)}
+.sb-cancelled{background:linear-gradient(135deg,#64748b 0%,#475569 100%)}
+.sb-expired  {background:linear-gradient(135deg,#64748b 0%,#475569 100%)}
+.sb-loading  {background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%);opacity:.6}
+.sb-eyebrow{font-size:10px;font-weight:700;letter-spacing:.10em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+.sb-status{font-size:26px;font-weight:800;color:#fff;letter-spacing:-.02em;line-height:1.1}
+.sb-sub{font-size:13px;color:rgba(255,255,255,.82);font-weight:500;line-height:1.5;max-width:280px}
+.sb-loc-link{display:inline-flex;align-items:center;gap:6px;color:rgba(255,255,255,.95);font-weight:700;font-size:13.5px;text-decoration:none;padding:7px 16px;background:rgba(255,255,255,.16);border-radius:999px;transition:background .15s}
+.sb-loc-link:hover{background:rgba(255,255,255,.26)}
+.sb-countdown{background:rgba(255,255,255,.15);border-radius:var(--ri);padding:8px 18px;font-size:15px;font-weight:700;color:#fff}
+.sb-notif{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:var(--ri);padding:9px 14px;width:100%;max-width:320px}
+.sb-notif-lbl{flex:1;font-size:13px;color:rgba(255,255,255,.9);font-weight:500;text-align:left}
+.sw{position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0}
+.sw input{opacity:0;width:0;height:0}
+.sw-tr{position:absolute;inset:0;background:rgba(255,255,255,.3);border-radius:11px;cursor:pointer;transition:.22s}
+.sw-tr::before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.22s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.sw input:checked+.sw-tr{background:rgba(255,255,255,.75)}
+.sw input:checked+.sw-tr::before{transform:translateX(18px);background:var(--v)}
+.dot-anim{display:flex;gap:9px;justify-content:center}
+.dot-anim span{width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.85);display:inline-block;animation:dotpop 1.3s infinite ease-in-out}
+.dot-anim span:nth-child(2){animation-delay:.22s}
+.dot-anim span:nth-child(3){animation-delay:.44s}
+@keyframes dotpop{0%,80%,100%{transform:scale(.4);opacity:.25}40%{transform:scale(1);opacity:1}}
+.bar-anim{display:flex;gap:6px;justify-content:center;align-items:flex-end;height:32px}
+.bar-anim span{width:10px;border-radius:5px;background:rgba(255,255,255,.9);animation:barpop 1s infinite ease-in-out}
+.bar-anim span:nth-child(1){animation-delay:0s}
+.bar-anim span:nth-child(2){animation-delay:.15s}
+.bar-anim span:nth-child(3){animation-delay:.3s}
+@keyframes barpop{0%,100%{height:6px;opacity:.3}50%{height:30px;opacity:1}}
+
+/* TICKET CARD */
+.ticket{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:14px;border-top:4px solid var(--v)}
+.ticket-top{padding:18px 20px 14px}
+.tk-eyebrow{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--hint);margin-bottom:6px}
+.tk-name{font-size:22px;font-weight:800;color:var(--txt);line-height:1.15;margin-bottom:3px}
+.tk-venue{font-size:14px;font-weight:500;color:var(--muted);margin-bottom:10px}
+.tk-loc{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:var(--v);text-decoration:none;padding:5px 12px 5px 8px;background:var(--v-s);border-radius:999px;transition:background .15s}
+.tk-loc:hover{background:var(--v);color:#fff}
+.perf{height:1px;margin:0 14px;background:repeating-linear-gradient(90deg,var(--bord) 0,var(--bord) 7px,transparent 7px,transparent 14px);position:relative}
+.perf::before,.perf::after{content:'';width:18px;height:18px;border-radius:50%;background:var(--bg);border:1px solid var(--bord);position:absolute;top:50%;transform:translateY(-50%)}
+.perf::before{left:-20px}.perf::after{right:-20px}
+.ticket-body{padding:14px 20px 18px;display:flex;flex-direction:column;gap:0}
+.tk-row{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--bord);font-size:13.5px}
+.tk-row:last-child{border-bottom:none}
+.tk-key{color:var(--muted);font-weight:500;font-size:13px}
+.tk-val{font-weight:700;color:var(--txt);text-align:right;max-width:62%}
+.tk-val.accent{color:var(--v);font-size:14px}
+.tk-val.small{font-size:13px;font-weight:600}
+
+/* Wave rows inside ticket */
+.tk-wave-row{align-items:center}
+.tk-wave-badge{display:inline-flex;align-items:center;background:var(--v-s);color:var(--v);font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;margin-right:6px;white-space:nowrap}
+.tk-wave-time{font-size:12px;color:var(--hint);font-weight:500}
+
+/* IDENTITY CARD */
+/* id-card is now embedded inside .ticket */
+.id-inner{padding:22px 18px 20px;display:flex;flex-direction:column;align-items:center;gap:18px}
+.pos-block{width:100%;background:var(--v-s);border:1.5px solid rgba(124,58,237,.18);border-radius:12px;padding:14px 18px;text-align:center}
+.pos-eyebrow{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--hint);margin-bottom:4px}
+.pos-num{font-size:52px;font-weight:900;color:var(--v);line-height:1;letter-spacing:-.03em}
+.pos-calling{font-size:13px;color:var(--muted);margin-top:6px}
+.pos-calling strong{color:var(--txt)}
+.qr-wrap{position:relative;cursor:pointer;width:240px;height:240px;border-radius:16px;overflow:hidden;border:2px solid var(--bord);background:var(--gray);display:flex;align-items:center;justify-content:center;transition:border-color .15s,box-shadow .15s}
+.qr-wrap:hover{border-color:var(--v);box-shadow:0 0 0 4px var(--v-s)}
+.qr-wrap img{width:240px;height:240px;display:block;border-radius:14px}
+.qr-hint{position:absolute;bottom:0;left:0;right:0;background:rgba(26,24,37,.65);color:#fff;font-size:11px;font-weight:700;letter-spacing:.04em;text-align:center;padding:7px;opacity:0;transition:opacity .18s}
+.qr-wrap:hover .qr-hint{opacity:1}
+.qr-loading{display:flex;flex-direction:column;align-items:center;gap:10px;font-size:12px;color:var(--hint)}
+.ref-pill{display:inline-flex;align-items:center;gap:12px;font-size:24px;font-weight:800;letter-spacing:.16em;color:var(--v);background:var(--v-s);border:2.5px solid var(--v);border-radius:var(--ri);padding:12px 26px;cursor:pointer;transition:all .15s;user-select:all}
+.ref-pill:hover{background:var(--v);color:#fff}
+.ref-copy{font-size:16px;opacity:.5;transition:opacity .15s}
+.ref-pill:hover .ref-copy{opacity:1}
+.ref-hint{font-size:11.5px;color:var(--hint);margin-top:-8px}
+
+/* REFRESH STRIP */
+.rf-strip{display:flex;align-items:center;gap:8px;padding:9px 14px;background:var(--gray);border:1px solid var(--bord);border-radius:var(--ri);margin-bottom:14px;font-size:12.5px;color:var(--muted)}
+.rf-dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0;animation:rfpulse 2s infinite}
+@keyframes rfpulse{0%,100%{box-shadow:0 0 0 3px rgba(22,163,74,.18)}50%{box-shadow:0 0 0 6px rgba(22,163,74,.05)}}
+.rf-now{margin-left:auto;font-size:12px;font-weight:600;color:var(--v);cursor:pointer;background:none;border:none;font-family:var(--font)}
+.rf-now:hover{text-decoration:underline}
+
+/* ACTIONS CARD */
+.act-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:14px}
+.act-section{padding:14px 16px;border-bottom:1px solid var(--bord)}
+.act-section:last-child{border-bottom:none}
+.email-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;user-select:none}
+.email-toggle-lbl{font-size:14px;font-weight:600;color:var(--txt);display:flex;align-items:center;gap:7px}
+.email-arrow{font-size:12px;color:var(--hint);transition:transform .2s;display:inline-block}
+.email-arrow.open{transform:rotate(180deg)}
+.email-reveal{display:none;gap:8px;margin-top:12px}
+.email-reveal.open{display:flex}
+.email-inp{flex:1;padding:10px 12px;border:1.5px solid var(--bord);border-radius:var(--ri);font-family:var(--font);font-size:14px;color:var(--txt);background:var(--surf);outline:none;transition:border-color .18s}
+.email-inp:focus{border-color:var(--v)}
+.email-send{padding:10px 18px;border:none;border-radius:var(--ri);background:var(--v);color:#fff;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .15s}
+.email-send:hover{background:var(--v-d)}
+.act-btn{width:100%;padding:13px;border:none;border-radius:var(--ri);font-family:var(--font);font-size:15px;font-weight:700;cursor:pointer;transition:background .15s,transform .1s;display:flex;align-items:center;justify-content:center;gap:8px}
+.act-btn:active{transform:scale(.98)}
+.act-btn+.act-btn{margin-top:8px}
+.act-modify{background:var(--v);color:#fff;box-shadow:0 3px 14px rgba(124,58,237,.22)}
+.act-modify:hover{background:var(--v-d)}
+.act-cancel{background:var(--red);color:#fff;box-shadow:0 3px 14px rgba(220,38,38,.15)}
+.act-cancel:hover{background:#b91c1c}
+.act-nav{display:flex;gap:8px}
+.act-nav-btn{flex:1;padding:11px;border-radius:var(--ri);border:1.5px solid var(--bord);background:var(--surf);color:var(--txt);font-family:var(--font);font-size:13.5px;font-weight:600;cursor:pointer;transition:all .15s;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px}
+.act-nav-btn:hover{background:var(--gray);border-color:var(--gray-m)}
+
+/* QR OVERLAY */
+#qrOverlay{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.88);align-items:center;justify-content:center;flex-direction:column;gap:18px;padding:20px}
+#qrOverlay.on{display:flex}
+#qrOvImg{width:min(92vw,440px);height:min(92vw,440px);display:block;border-radius:18px;background:#fff;border:3px solid rgba(255,255,255,.12)}
+.qrov-ref{font-size:22px;font-weight:800;letter-spacing:.16em;color:#fff;background:rgba(255,255,255,.12);border-radius:var(--ri);padding:10px 24px}
+.qrov-hint{font-size:12px;color:rgba(255,255,255,.35)}
+
+/* SKELETON */
+.skel-page{display:flex;flex-direction:column;gap:14px}
+.skel-band{height:160px;border-radius:var(--r);background:linear-gradient(135deg,#7c3aed,#6d28d9);opacity:.35}
+.skel-box{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:10px}
+</style>
+</head>
+<body class="has-top-band has-bottom-band">
+<header class="site"><div class="title">My Booking</div></header>
+
+<div class="shell">
+  <div class="errbar" id="errbar"></div>
+
+  <!-- Skeleton -->
+  <div id="skel" class="skel-page">
+    <div class="skel-band"></div>
+    <div class="skel-box">
+      <div class="skel" style="width:40%;height:10px"></div>
+      <div class="skel" style="width:72%;height:22px"></div>
+      <div class="skel" style="width:50%;height:13px;margin-top:4px"></div>
+    </div>
+    <div class="skel-box" style="align-items:center;padding:28px 20px;gap:16px">
+      <div class="skel" style="width:200px;height:200px;border-radius:12px"></div>
+      <div class="skel" style="width:55%;height:42px;border-radius:var(--ri)"></div>
+    </div>
+  </div>
+
+  <!-- ① STATUS -->
+  <div class="status-band sb-loading" id="statusBand" style="display:none">
+    <div class="sb-eyebrow">In-Time · Virtual Queue</div>
+    <div class="sb-status" id="sbStatus">Checking…</div>
+    <div id="sbAnim"></div>
+    <div class="sb-sub" id="sbSub" style="display:none"></div>
+    <a class="sb-loc-link" id="sbLoc" href="#" target="_blank" rel="noopener" style="display:none">📍 <span id="sbLocTxt"></span> ↗</a>
+    <div class="sb-countdown" id="sbCountdown" style="display:none"></div>
+    <div class="sb-notif" id="sbNotif" style="display:none">
+      <span class="sb-notif-lbl">🔔 Notify me when it's my turn</span>
+      <label class="sw"><input type="checkbox" id="notifChk" onchange="onNotifToggle(this)"><span class="sw-tr"></span></label>
+    </div>
+  </div>
+
+  <!-- ② TICKET INFO + ③ IDENTITY — unified frame -->
+  <div class="ticket" id="ticketCard" style="display:none">
+    <!-- What / Where -->
+    <div class="ticket-top">
+      <div class="tk-eyebrow">Virtual Queue Ticket · In-Time</div>
+      <div class="tk-name" id="tkName">—</div>
+      <div class="tk-venue" id="tkVenue" style="display:none"></div>
+      <a class="tk-loc" id="tkLoc" href="#" target="_blank" rel="noopener" style="display:none">📍 <span id="tkLocTxt"></span> ↗</a>
+    </div>
+    <!-- When / Who -->
+    <div class="perf"></div>
+    <div class="ticket-body" id="ticketBody"></div>
+    <!-- Identity: position / QR / ref -->
+    <div class="perf"></div>
+    <div id="idCard" style="display:none">
+      <div class="id-inner">
+        <div class="pos-block" id="posBlock" style="display:none">
+          <div class="pos-eyebrow">Your queue position</div>
+          <div class="pos-num" id="posNum">—</div>
+          <div class="pos-calling">Currently calling: <strong id="callingNum">—</strong></div>
+        </div>
+        <div class="qr-wrap" id="qrWrap" onclick="openQrOverlay()" title="Tap to enlarge">
+          <div class="qr-loading" id="qrLoading">
+            <div class="skel" style="width:190px;height:190px;border-radius:10px"></div>
+            <span>Generating QR…</span>
+          </div>
+          <div class="qr-hint">⛶ Tap to enlarge</div>
+        </div>
+        <div class="ref-pill" onclick="copyCode()" title="Tap to copy">
+          <span id="refText">—</span><span class="ref-copy">⎘</span>
+        </div>
+        <div class="ref-hint">Tap to copy · Booking reference</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auto-refresh -->
+  <div class="rf-strip" id="rfStrip" style="display:none">
+    <div class="rf-dot"></div>
+    <span id="rfLabel">Auto-refreshing</span>
+    <button class="rf-now" onclick="doRefresh()">Refresh now</button>
+  </div>
+
+  <!-- ④ ACTIONS -->
+  <div class="act-card" id="actCard" style="display:none">
+    <div class="act-section">
+      <div class="email-toggle-row" onclick="toggleEmail()">
+        <span class="email-toggle-lbl">📧 Send recap by email</span>
+        <span class="email-arrow" id="emailArrow">▼</span>
+      </div>
+      <div class="email-reveal" id="emailReveal">
+        <input class="email-inp" type="email" id="recapEmail" placeholder="your@email.com">
+        <button class="email-send" onclick="sendRecapEmail()">Send</button>
+      </div>
+    </div>
+    <div class="act-section" id="actMutate" style="display:none"></div>
+    <div class="act-section">
+      <div class="act-nav">
+        <a class="act-nav-btn" href="/modules/In-Time/use/page 1.html">🎟 My bookings</a>
+        <a class="act-nav-btn" href="/modules/In-Time/use/main.html">🏠 Home</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="qrOverlay" onclick="closeQrOverlay()">
+  <img id="qrOvImg" src="" alt="QR" onclick="event.stopPropagation()">
+  <div class="qrov-ref" id="qrOvRef"></div>
+  <div class="qrov-hint">Tap anywhere to close</div>
+</div>
+
+<div id="toast"></div>
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+<script>
+'use strict';
+const params  = new URLSearchParams(location.search);
+const token   = params.get('token')   || '';
+const bid     = params.get('bid')     || '';
+const queueId = params.get('queueId') || '';
+
+let booking = null, queue = null, pollTimer = null, nextRefresh = 30;
+let _qrSrc = '';
+let _tt;
+
+function toast(msg,ms){ms=ms||2400;const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(function(){el.classList.remove('show');},ms);}
+function setErr(msg){const e=document.getElementById('errbar');e.textContent=msg||'';e.classList.toggle('on',!!msg);}
+function esc(s){const d=document.createElement('div');d.textContent=String(s!=null?s:'');return d.innerHTML;}
+function todayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function toHHMM(min){return String(Math.floor(min/60)).padStart(2,'0')+':'+String(min%60).padStart(2,'0');}
+function formatCode(raw){if(!raw)return'';const s=String(raw).toUpperCase().replace(/-/g,'');return s.length>=9?s.slice(0,3)+'-'+s.slice(3,6)+'-'+s.slice(6):s;}
+function mapsUrl(txt,lat,lng){if(lat&&lng)return'https://www.google.com/maps?q='+encodeURIComponent(lat+','+lng);if(txt)return'https://www.google.com/maps/search/'+encodeURIComponent(txt);return null;}
+function fmtDay(iso){if(!iso)return'';const d=new Date(iso+'T12:00:00');return d.toLocaleDateString('en',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}
+function daysUntil(iso){if(!iso)return null;const ms=new Date(iso+'T12:00:00')-new Date();return Math.ceil(ms/(1000*60*60*24));}
+
+function computeDisplayStatus(b,q){
+  const srv=String(b.status||'').toUpperCase();
+  if(srv==='CALLING'||srv==='MISSED') return srv;
+  if(srv!=='BOOKED') return srv;
+  if(b.valid_use_day!==todayISO()) return srv;
+  const nowMin=new Date().getHours()*60+new Date().getMinutes();
+  const sm=b.start_min;
+  if(sm!=null&&nowMin>sm+60) return 'MISSED';
+  const lead=q&&q.lead_time_mins!=null?Number(q.lead_time_mins):null;
+  if(sm!=null&&lead!=null&&nowMin>=sm-lead) return 'CALLING';
+  return srv;
+}
+
+async function fetchBooking(){
+  if(!token&&!bid){setErr('No booking token in URL.');return null;}
+  const url=token?'/api/intime/bookings/by-token/'+encodeURIComponent(token):'/api/intime/bookings/'+encodeURIComponent(bid);
+  const r=await fetch(url,{credentials:'same-origin',headers:{Accept:'application/json'}});
+  const d=await r.json().catch(function(){return{};});
+  if(!r.ok||!d.ok) throw new Error(d.error||'HTTP '+r.status);
+  return d.booking||d;
+}
+async function fetchQueue(qid){
+  if(!qid) return null;
+  const r=await fetch('/api/intime/queues/'+encodeURIComponent(qid),{credentials:'same-origin',headers:{Accept:'application/json'}});
+  const d=await r.json().catch(function(){return{};});
+  if(!r.ok||!d.ok) return null;
+  return d.queue;
+}
+
+function buildTicketRows(b,q){
+  var showEET=q?q.show_eet!==false:true;
+  var showETE=q?!!q.show_ete:false;
+  var arch=q?(q.archetype||'D'):'D';
+  var html='';
+
+  function row(key,val,accent,small){
+    return '<div class="tk-row">'+
+      '<span class="tk-key">'+key+'</span>'+
+      '<span class="tk-val'+(accent?' accent':small?' small':'')+'">'+(val||'—')+'</span>'+
+    '</div>';
+  }
+  function waveRow(label,timeStr,ppl){
+    return '<div class="tk-row tk-wave-row">'+
+      '<span class="tk-key">'+
+        '<span class="tk-wave-badge">'+label+'</span>'+
+        (timeStr?'<span class="tk-wave-time">'+timeStr+'</span>':'')+
+      '</span>'+
+      '<span class="tk-val small">'+ppl+'</span>'+
+    '</div>';
+  }
+
+  /* DATE — reservation date, always */
+  if(b.valid_use_day) html+=row('📅 Reservation date',esc(fmtDay(b.valid_use_day)));
+
+  /* TIMING — adapted to booking type */
+  if(b.start_min!=null){
+    /* Firm slot (arch A/B) or single wave */
+    var t=toHHMM(b.start_min)+(b.stop_min!=null?' – '+toHHMM(b.stop_min):'');
+    html+=row(showEET?'⏰ EET — expected entry':'⏰ Entry time',t,true);
+  } else if(arch==='C'&&q){
+    /* Wave booking — reconstruct from queue slots_json + booking source */
+    var slotsDef=null;
+    try{slotsDef=typeof q.slots_json==='string'?JSON.parse(q.slots_json):q.slots_json;}catch(e){}
+    var waveDur=q.wave_duration||30;
+    /* Try to find the booked wave from slots_json */
+    if(Array.isArray(slotsDef)&&slotsDef.length>0){
+      /* If booking has explicit wave data use it; otherwise show from queue config */
+      var bookedWaves=null;
+      try{bookedWaves=b.booking_detail?(typeof b.booking_detail==='string'?JSON.parse(b.booking_detail):b.booking_detail):null;}catch(e){}
+      if(bookedWaves&&Array.isArray(bookedWaves)&&bookedWaves.length>0){
+        bookedWaves.forEach(function(w,i){
+          var t2=w.start_min!=null?toHHMM(w.start_min)+(w.stop_min!=null?' – '+toHHMM(w.stop_min):''):'';
+          var ppl=(w.party_size&&w.party_size>1)?w.party_size+' people':'1 person';
+          html+=waveRow('Wave '+(i+1),t2,ppl);
+        });
+      } else {
+        /* Fallback: single entry from booking */
+        html+=row(showEET?'⏰ EET — expected entry':'⏰ Entry time',
+          slotsDef[0]&&slotsDef[0].start_min!=null
+            ?toHHMM(slotsDef[0].start_min)+' – '+toHHMM(slotsDef[0].start_min+waveDur)
+            :'—',true);
+      }
+    } else if(showETE){
+      html+=row('⏱ Est. wait (ETE)','~'+waveDur+' min');
+    }
+  } else if(arch==='D'&&showETE){
+    /* Continuous flow — estimated wait */
+    var cad=15;
+    try{var wc=q&&q.wave_config_json?(typeof q.wave_config_json==='string'?JSON.parse(q.wave_config_json):q.wave_config_json):null;if(wc&&wc.wave_duration)cad=Number(wc.wave_duration);}catch(e){}
+    html+=row('⏱ Est. wait (ETE)','~'+cad+' min');
+  }
+
+  /* PARTY — multiple named slots or single line */
+  if(b.slots&&Array.isArray(b.slots)&&b.slots.length>1){
+    /* Multi-slot booking (e.g. multi-wave C) */
+    b.slots.forEach(function(s,i){
+      var lbl=s.wave_label?'Wave '+esc(String(s.wave_label)):s.slot_label?esc(String(s.slot_label)):'Slot '+(i+1);
+      var t3=s.start_min!=null?toHHMM(s.start_min)+(s.stop_min!=null?' – '+toHHMM(s.stop_min):''):'';
+      var ppl=(s.party_size&&s.party_size>1)?s.party_size+' people':'1 person';
+      html+=waveRow(lbl,t3,ppl);
+    });
+  } else {
+    var ppl2=(b.party_size&&b.party_size>1)?b.party_size+' people':'1 person';
+    html+=row('👥 Party',ppl2,false,true);
+  }
+
+  return html;
+}
+
+function render(){
+  if(!booking) return;
+  var b=booking, q=queue;
+  var ds=computeDisplayStatus(b,q);
+  var srv=String(b.status||'').toUpperCase();
+  var arch=q?(q.archetype||'D'):'D';
+  var code=formatCode(b.human_ref||b.short_code||'');
+  var mu=mapsUrl(q&&q.location_text,q&&q.gps_lat,q&&q.gps_lng);
+
+  document.getElementById('skel').style.display='none';
+
+  /* ① STATUS */
+  var band=document.getElementById('statusBand');
+  band.style.display='';
+  var sbMap={BOOKED:'sb-waiting',CALLING:'sb-calling',MISSED:'sb-missed',REDEEMED:'sb-redeemed',CANCELLED:'sb-cancelled',EXPIRED:'sb-expired'};
+  band.className='status-band '+(sbMap[ds]||'sb-waiting');
+  var sbStatus=document.getElementById('sbStatus');
+  var sbAnim=document.getElementById('sbAnim');
+  var sbSub=document.getElementById('sbSub');
+  var sbLoc=document.getElementById('sbLoc');
+  var sbCountdown=document.getElementById('sbCountdown');
+  var sbNotif=document.getElementById('sbNotif');
+  sbSub.style.display='none'; sbLoc.style.display='none';
+  sbCountdown.style.display='none'; sbNotif.style.display='none';
+  sbAnim.innerHTML='';
+  switch(ds){
+    case 'BOOKED':
+      sbStatus.textContent='Waiting';
+      sbAnim.innerHTML='<div class="dot-anim"><span></span><span></span><span></span></div>';
+      var du=daysUntil(b.valid_use_day);
+      if(du!=null&&du>0){
+        sbCountdown.textContent='Reservation in '+du+' day'+(du===1?'':'s');
+        sbCountdown.style.display='';
+        sbNotif.style.display='';
+        document.getElementById('notifChk').checked=localStorage.getItem('intime_notif_'+b.booking_id)==='1';
+      } else {
+        sbSub.textContent='Queue in progress — show your QR at entry';
+        sbSub.style.display='';
+      }
+      break;
+    case 'CALLING':
+      sbStatus.textContent='Calling — head to the venue now!';
+      sbAnim.innerHTML='<div class="bar-anim"><span></span><span></span><span></span></div>';
+      sbSub.textContent='Show your QR code at the entrance';
+      sbSub.style.display='';
+      if(q&&q.location_text){document.getElementById('sbLocTxt').textContent=q.location_text;if(mu)sbLoc.href=mu;sbLoc.style.display='';}
+      break;
+    case 'MISSED':
+      sbStatus.textContent='Missed';
+      sbSub.textContent='Unfortunately you did not show up on time. You can book again anytime.';
+      sbSub.style.display=''; break;
+    case 'REDEEMED':
+      sbStatus.textContent='Redeemed \u2713';
+      sbSub.textContent=b.redeemed_at?'Checked in at '+new Date(b.redeemed_at).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'}):'Entry confirmed \u2014 enjoy!';
+      sbSub.style.display=''; break;
+    case 'CANCELLED':
+      sbStatus.textContent='Cancelled';
+      sbSub.textContent='This booking has been cancelled.';
+      sbSub.style.display=''; break;
+    case 'EXPIRED':
+      sbStatus.textContent='Expired';
+      sbSub.textContent='The slot has passed.';
+      sbSub.style.display=''; break;
+    default:
+      sbStatus.textContent=ds||'Unknown';
+  }
+
+  /* ② TICKET INFO */
+  document.getElementById('ticketCard').style.display='';
+  document.getElementById('tkName').textContent=b.queue_name||'Queue';
+  var tkVenue=document.getElementById('tkVenue');
+  if(b.venue_name&&b.venue_name!==b.queue_name){tkVenue.textContent=b.venue_name;tkVenue.style.display='';}
+  else tkVenue.style.display='none';
+  var tkLoc=document.getElementById('tkLoc');
+  if(q&&q.location_text){
+    document.getElementById('tkLocTxt').textContent=q.location_text;
+    if(mu) tkLoc.href=mu; else tkLoc.removeAttribute('href');
+    tkLoc.style.display='';
+  } else tkLoc.style.display='none';
+  document.getElementById('ticketBody').innerHTML=buildTicketRows(b,q);
+
+  /* ③ IDENTITY */
+  var needsId=['BOOKED','CALLING','REDEEMED'].includes(ds);
+  var idCard=document.getElementById('idCard');
+  if(needsId){
+    idCard.style.display='';
+    generateQR(token||'intime:booking:'+(b.token_id||bid));
+    document.getElementById('refText').textContent=code||'—';
+    var pb=document.getElementById('posBlock');
+    if(arch==='D'&&b.booking_id){
+      document.getElementById('posNum').textContent='#'+b.booking_id;
+      pb.style.display='';
+    } else pb.style.display='none';
+  } else idCard.style.display='none';
+
+  /* Refresh strip */
+  var rf=document.getElementById('rfStrip');
+  if(ds==='BOOKED'||ds==='CALLING'){rf.style.display='';startAutoRefresh();}
+  else{rf.style.display='none';stopAutoRefresh();}
+
+  /* ④ ACTIONS */
+  document.getElementById('actCard').style.display='';
+  var mutateEl=document.getElementById('actMutate');
+  if(srv==='BOOKED'){
+    mutateEl.style.display='';
+    var qid=(b.queue_id)||queueId;
+    var bid2=b.booking_id;
+    var mhtml='';
+    if(qid){
+      var modUrl='/modules/In-Time/use/page 3-2.html?queueId='+encodeURIComponent(qid)+(bid2?'&modify='+encodeURIComponent(bid2):'');
+      mhtml+='<button class="act-btn act-modify" onclick="location.href=\''+modUrl+'\'">&#x270F;&#xFE0F; Modify booking</button>';
+    }
+    mhtml+='<button class="act-btn act-cancel" onclick="cancelBooking()">&#x2715; Cancel booking</button>';
+    mutateEl.innerHTML=mhtml;
+  } else mutateEl.style.display='none';
+}
+
+function generateQR(payload){
+  var wrap=document.getElementById('qrWrap');
+  if(wrap.dataset.done) return;
+  wrap.dataset.done='1';
+  _qrSrc='https://api.qrserver.com/v1/create-qr-code/?size=240x240&data='+encodeURIComponent(payload);
+  var img=document.createElement('img');
+  img.src=_qrSrc; img.alt='Entry QR';
+  img.style.cssText='width:240px;height:240px;display:block;border-radius:14px';
+  img.onload=function(){var s=document.getElementById('qrLoading');if(s)s.replaceWith(img);};
+  img.onerror=function(){var s=document.getElementById('qrLoading');if(s)s.innerHTML='<span style="font-size:12px;color:var(--hint)">QR unavailable</span>';};
+}
+function openQrOverlay(){
+  if(!_qrSrc) return;
+  document.getElementById('qrOvImg').src=_qrSrc;
+  document.getElementById('qrOvRef').textContent=document.getElementById('refText').textContent;
+  document.getElementById('qrOverlay').classList.add('on');
+  document.body.style.overflow='hidden';
+}
+function closeQrOverlay(){
+  document.getElementById('qrOverlay').classList.remove('on');
+  document.body.style.overflow='';
+}
+function copyCode(){
+  var c=document.getElementById('refText').textContent;
+  navigator.clipboard.writeText(c).then(function(){toast('Reference copied!');}).catch(function(){toast(c);});
+}
+function toggleEmail(){
+  var rev=document.getElementById('emailReveal');
+  var arr=document.getElementById('emailArrow');
+  var open=rev.classList.toggle('open');
+  arr.classList.toggle('open',open);
+  if(open) document.getElementById('recapEmail').focus();
+}
+function onNotifToggle(chk){
+  var bid2=booking&&booking.booking_id;
+  if(bid2) localStorage.setItem('intime_notif_'+bid2,chk.checked?'1':'0');
+  toast(chk.checked?'Notifications on \u2014 we\'ll remind you!':'Notifications off.');
+}
+function sendRecapEmail(){
+  var inp=document.getElementById('recapEmail');
+  var email=inp?inp.value.trim():'';
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('Please enter a valid email address.');return;}
+  if(!booking){toast('Booking not loaded yet.');return;}
+  var b=booking,q=queue;
+  var code=formatCode(b.human_ref||b.short_code||'');
+  var subj=encodeURIComponent('In-Time booking \u2014 '+(b.queue_name||'Queue')+' \u2014 '+(b.valid_use_day||''));
+  var body=encodeURIComponent(
+    'Queue: '+(b.queue_name||'')+'\n'+
+    'Venue: '+(b.venue_name||'')+'\n'+
+    (q&&q.location_text?'Location: '+q.location_text+'\n':'')+
+    'Date: '+(b.valid_use_day||'')+'\n'+
+    (b.start_min!=null?'Entry time: '+toHHMM(b.start_min)+'\n':'')+
+    'Reference: '+code+'\n'+
+    'Status: '+(b.status||'')+'\n'
+  );
+  window.open('mailto:'+encodeURIComponent(email)+'?subject='+subj+'&body='+body);
+  toast('Opening email client\u2026');
+}
+async function cancelBooking(){
+  if(!confirm('Cancel this booking? This cannot be undone.')) return;
+  var deviceId=localStorage.getItem('intime_device_id')||'';
+  try{
+    var id=booking.booking_id||bid;
+    var r=await fetch('/api/intime/bookings/'+id+'/cancel',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({device_id:deviceId})});
+    var d=await r.json().catch(function(){return{};});
+    if(!r.ok&&!d.already) throw new Error(d.error||'HTTP '+r.status);
+    toast('Booking cancelled.'); booking.status='CANCELLED'; render();
+  }catch(err){toast('Could not cancel: '+err.message);}
+}
+function startAutoRefresh(){
+  stopAutoRefresh(); nextRefresh=30; updateCountdown();
+  pollTimer=setInterval(function(){
+    nextRefresh--; updateCountdown();
+    if(nextRefresh<=0){nextRefresh=30;doRefresh();}
+  },1000);
+}
+function stopAutoRefresh(){if(pollTimer){clearInterval(pollTimer);pollTimer=null;}}
+function updateCountdown(){var el=document.getElementById('rfLabel');if(el)el.textContent='Auto-refreshing in '+nextRefresh+'s';}
+async function doRefresh(){
+  nextRefresh=30;
+  try{
+    var b=await fetchBooking();
+    if(b){var w=document.getElementById('qrWrap');if(w)delete w.dataset.done;_qrSrc='';booking=b;render();}
+  }catch(err){toast('Refresh failed: '+err.message);}
+}
+async function init(){
+  if(!token&&!bid){
+    setErr('No booking token or ID in URL. Please use the link from your confirmation page.');
+    document.getElementById('skel').style.display='none';
+    return;
+  }
+  try{
+    var results=await Promise.all([fetchBooking(),queueId?fetchQueue(queueId):Promise.resolve(null)]);
+    booking=results[0]; queue=results[1];
+    if(!booking) throw new Error('Booking not found');
+    setErr(''); render();
+  }catch(err){
+    setErr('Could not load booking: '+err.message);
+    document.getElementById('skel').style.display='none';
+    console.error('[p4]',err);
+  }
+}
+init();
+if(window.Drawer&&window.Drawer.mount) Drawer.mount({mode:'visitor'});
+if(window.FAB&&window.FAB.mount) FAB.mount({
+  useTopBand:true,useBottomBand:true,
+  home:{label:'\uD83C\uDFE0',title:'Home',href:'/modules/In-Time/use/main.html'},
+  config:null,
+  onBack:function(){history.length>1?history.back():(location.href='/modules/In-Time/use/page 1.html');},
+});
+</script>
+</body>
+</html>

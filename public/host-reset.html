@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<title>Host password reset</title>
+
+<form id="reset-form">
+  <label for="reset-email">Email</label>
+  <input id="reset-email" type="email" readonly style="background:#eee;cursor:not-allowed;" />
+
+  <label for="reset-pass1">New password</label>
+  <input id="reset-pass1" type="password" placeholder="New password" required />
+
+  <label for="reset-pass2">Confirm new password</label>
+  <input id="reset-pass2" type="password" placeholder="Confirm new password" required />
+
+  <button type="submit">Reset</button>
+</form>
+
+<script>
+(() => {
+  const params = new URLSearchParams(location.search);
+  const token  = params.get('token') || '';
+  const email  = (params.get('email') || '').toLowerCase();
+
+  const emailEl = document.getElementById('reset-email');
+  const form    = document.getElementById('reset-form');
+  const pwd1    = document.getElementById('reset-pass1');
+  const pwd2    = document.getElementById('reset-pass2');
+
+  // Pre-fill and lock the email
+  emailEl.value = email;
+  // Extra hardening (prevents quick edits via keyboard/paste)
+  emailEl.addEventListener('keydown', e => e.preventDefault());
+  emailEl.addEventListener('paste',   e => e.preventDefault());
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    if (!token || !email) {
+      alert('Invalid or missing reset link.');
+      return;
+    }
+
+    const p1 = (pwd1.value || '').trim();
+    const p2 = (pwd2.value || '').trim();
+
+    if (p1.length < 4) {
+      alert('Password must be at least 4 characters.');
+      return;
+    }
+    if (p1 !== p2) {
+      alert('Passwords do not match.');
+      return;
+    }
+
+    try {
+      const r = await fetch('/api/host/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // IMPORTANT: server expects { token, email, password }
+        body: JSON.stringify({ token, email, password: p1 })
+      });
+      const j = await r.json().catch(() => ({}));
+
+      if (r.ok && j.ok) {
+        alert('Password updated. You can sign in now.');
+        location.href = '/host.html';
+      } else {
+        alert(j.error || `Failed (HTTP ${r.status})`);
+      }
+    } catch (err) {
+      console.error('[HOST RESET] network error:', err);
+      alert('Network error. Please try again.');
+    }
+  });
+})();
+</script>

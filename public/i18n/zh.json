@@ -1,0 +1,64 @@
+{
+  "appTitle": "WanderPal",
+  "langLabel": "语言",
+
+  "loginTitle": "登录",
+  "registerTitle": "注册",
+
+  "email": "电子邮箱",
+  "password": "密码",
+  "createPassword": "创建密码",
+  "namePlaceholder": "姓名",
+  "companyName": "公司名称",
+  "website": "官方网站",
+
+  "remember": "记住我",
+  "forgot": "忘记密码？",
+  "forgotTitle": "重置密码",
+  "forgotDesc": "输入您的邮箱，我们会发送重置链接。",
+  "forgotCancel": "取消",
+  "forgotSend": "发送",
+  "forgotSuccess": "如账户存在，我们已发送重置链接。",
+  "forgotError": "无法处理您的请求。",
+
+  "loginBtn": "登录",
+  "registerBtn": "注册",
+  "or": "或",
+  "noAccount": "没有账户？",
+  "signup": "注册",
+  "haveAccount": "已有账户？",
+  "signin": "登录",
+
+  "invalidCreds": "凭据无效",
+  "suspendedMsg": "该账户已被暂停。请联系支持。",
+
+  "networkError": "网络错误",
+  "registerSuccess": "账户已创建。现在可以登录。",
+  "registerFail": "无法创建账户（邮箱已被使用？）",
+
+  "hostTitle": "主办方",
+  "hostLogin": "主办方 — 登录",
+  "hostRegister": "主办方 — 注册",
+  "hostForgotTitle": "重置主办方密码",
+  "hostForgotDesc": "如果邮箱已注册为主办方，您将收到链接。",
+
+  "partnerTitle": "合作方",
+  "partnerLogin": "合作方 — 登录",
+  "partnerRegister": "合作方 — 注册",
+  "partnerForgotTitle": "重置合作方密码",
+  "partnerForgotDesc": "如果邮箱已注册为合作方，您将收到链接。",
+
+  "chooseSector": "选择行业",
+  "recommendedServices": "推荐服务",
+
+  "museum": "博物馆 / 画廊 / 纪念碑",
+  "doctor": "医生 / 诊所 / 牙医",
+  "salon": "美容 / 水疗 / 理发",
+  "event": "活动主办 / 场地",
+  "restaurant": "餐厅 / 咖啡馆 / 酒吧",
+  "hotel": "酒店 / 民宿 / BnB",
+  "retail": "商店 / 购物中心",
+  "sports": "体育中心 / 健身房 / 体育场",
+  "public": "公共机构 / 银行 / 邮局",
+  "other": "其他"
+}

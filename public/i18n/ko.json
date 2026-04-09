@@ -1,0 +1,64 @@
+{
+  "appTitle": "WanderPal",
+  "langLabel": "언어",
+
+  "loginTitle": "로그인",
+  "registerTitle": "회원가입",
+
+  "email": "이메일 주소",
+  "password": "비밀번호",
+  "createPassword": "비밀번호 생성",
+  "namePlaceholder": "이름",
+  "companyName": "회사명",
+  "website": "공식 웹사이트",
+
+  "remember": "로그인 유지",
+  "forgot": "비밀번호를 잊으셨나요?",
+  "forgotTitle": "비밀번호 재설정",
+  "forgotDesc": "이메일을 입력하면 재설정 링크를 보내드립니다.",
+  "forgotCancel": "취소",
+  "forgotSend": "보내기",
+  "forgotSuccess": "계정이 존재할 경우 재설정 링크가 전송되었습니다.",
+  "forgotError": "요청을 처리할 수 없습니다.",
+
+  "loginBtn": "로그인",
+  "registerBtn": "가입하기",
+  "or": "또는",
+  "noAccount": "계정이 없으신가요?",
+  "signup": "가입하기",
+  "haveAccount": "이미 계정이 있으신가요?",
+  "signin": "로그인",
+
+  "invalidCreds": "잘못된 로그인 정보",
+  "suspendedMsg": "계정이 정지되었습니다. 지원팀에 문의하세요.",
+
+  "networkError": "네트워크 오류",
+  "registerSuccess": "계정이 생성되었습니다. 이제 로그인할 수 있습니다.",
+  "registerFail": "계정을 생성할 수 없습니다(이메일 사용 중?).",
+
+  "hostTitle": "호스트",
+  "hostLogin": "호스트 — 로그인",
+  "hostRegister": "호스트 — 회원가입",
+  "hostForgotTitle": "호스트 비밀번호 재설정",
+  "hostForgotDesc": "이 이메일이 호스트로 등록되어 있으면 링크가 전송됩니다.",
+
+  "partnerTitle": "파트너",
+  "partnerLogin": "파트너 — 로그인",
+  "partnerRegister": "파트너 — 회원가입",
+  "partnerForgotTitle": "파트너 비밀번호 재설정",
+  "partnerForgotDesc": "이 이메일이 파트너로 등록되어 있으면 링크가 전송됩니다.",
+
+  "chooseSector": "업종 선택",
+  "recommendedServices": "추천 서비스",
+
+  "museum": "박물관 / 갤러리 / 기념물",
+  "doctor": "의사 / 클리닉 / 치과",
+  "salon": "미용 / 스파 / 미용실",
+  "event": "이벤트 주최자 / 장소",
+  "restaurant": "레스토랑 / 카페 / 바",
+  "hotel": "호텔 / 게스트하우스 / BnB",
+  "retail": "상점 / 쇼핑몰",
+  "sports": "스포츠센터 / 체육관 / 경기장",
+  "public": "행정기관 / 은행 / 우체국",
+  "other": "기타"
+}

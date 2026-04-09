@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Partner Dashboard | WanderPal</title>
+  <link rel="stylesheet" href="/css/dashboards.css"/>
+  <!-- IMPORTANT: we REMOVE dashboard-loader.js here to avoid extra redirects -->
+</head>
+<body>
+  <main class="card">
+    <div class="pad">
+      <h1>Partner Dashboard</h1>
+      <p class="muted" id="hello">Loading profile…</p>
+
+      <div class="row">
+        <button class="btn primary" id="btnCreatePromo">Create Promo</button>
+        <button class="btn ghost" id="btnViewPromos">View Promos</button>
+        <button class="btn ghost" id="btnStats">Statistics</button>
+      </div>
+
+      <div class="grid">
+        <div class="tile">
+          <strong>Quick tip</strong>
+          <p class="muted">Use “Create Promo” to add a discount coupon visible to nearby visitors.</p>
+        </div>
+        <div class="tile">
+          <strong>Status</strong>
+          <p class="muted">Everything looks good.</p>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:16px">
+        <button class="btn" id="logout">Log out</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // 1) Load partner profile using the JWT cookie
+    (async () => {
+      try {
+        const r = await fetch('/api/partner/me', {
+          credentials: 'include'   // 🔑 send token cookie
+        });
+        if (!r.ok) throw new Error('not-ok');
+
+        const data = await r.json();
+        const name = data?.company_name || 'Partner';
+        document.getElementById('hello').textContent = `Hello, ${name}`;
+      } catch (err) {
+        console.warn('[PARTNER DASH] /api/partner/me failed:', err);
+        // Not logged in / wrong role → back to partner login
+        location.href = '/partner.html';
+      }
+    })();
+
+    // 2) Logout → clear cookie on server, then go back to partner login
+    document.getElementById('logout').addEventListener('click', async () => {
+      try {
+        await fetch('/api/logout', {
+          method: 'POST',
+          credentials: 'include'   // 🔑 include cookie for server-side clear
+        });
+      } catch (e) {
+        console.warn('[PARTNER DASH] logout error:', e);
+      }
+      location.href = '/partner.html';
+    });
+
+    // 3) Placeholder buttons
+    document.getElementById('btnCreatePromo').onclick = () =>
+      alert('Create Promo – coming soon');
+    document.getElementById('btnViewPromos').onclick = () =>
+      alert('View Promos – coming soon');
+    document.getElementById('btnStats').onclick = () =>
+      alert('Statistics – coming soon');
+  </script>
+</body>
+</html>

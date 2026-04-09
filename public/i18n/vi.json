@@ -1,0 +1,64 @@
+{
+  "appTitle": "WanderPal",
+  "langLabel": "Ngôn ngữ",
+
+  "loginTitle": "Đăng nhập",
+  "registerTitle": "Đăng ký",
+
+  "email": "Địa chỉ email",
+  "password": "Mật khẩu",
+  "createPassword": "Tạo mật khẩu",
+  "namePlaceholder": "Họ tên",
+  "companyName": "Tên công ty",
+  "website": "Trang web chính thức",
+
+  "remember": "Ghi nhớ tôi",
+  "forgot": "Quên mật khẩu?",
+  "forgotTitle": "Đặt lại mật khẩu",
+  "forgotDesc": "Nhập email, chúng tôi sẽ gửi liên kết đặt lại.",
+  "forgotCancel": "Hủy",
+  "forgotSend": "Gửi",
+  "forgotSuccess": "Nếu tài khoản tồn tại, liên kết đặt lại đã được gửi.",
+  "forgotError": "Không thể xử lý yêu cầu của bạn.",
+
+  "loginBtn": "Đăng nhập",
+  "registerBtn": "Đăng ký",
+  "or": "hoặc",
+  "noAccount": "Chưa có tài khoản?",
+  "signup": "Đăng ký",
+  "haveAccount": "Đã có tài khoản?",
+  "signin": "Đăng nhập",
+
+  "invalidCreds": "Thông tin đăng nhập không hợp lệ",
+  "suspendedMsg": "Tài khoản này đã bị tạm khóa. Vui lòng liên hệ hỗ trợ.",
+
+  "networkError": "Lỗi mạng",
+  "registerSuccess": "Đã tạo tài khoản. Bạn có thể đăng nhập.",
+  "registerFail": "Không thể tạo tài khoản (email đã được dùng?)",
+
+  "hostTitle": "Chủ địa điểm",
+  "hostLogin": "Chủ địa điểm — Đăng nhập",
+  "hostRegister": "Chủ địa điểm — Đăng ký",
+  "hostForgotTitle": "Đặt lại mật khẩu (Chủ địa điểm)",
+  "hostForgotDesc": "Bạn sẽ nhận liên kết nếu email đã đăng ký là chủ địa điểm.",
+
+  "partnerTitle": "Đối tác",
+  "partnerLogin": "Đối tác — Đăng nhập",
+  "partnerRegister": "Đối tác — Đăng ký",
+  "partnerForgotTitle": "Đặt lại mật khẩu (Đối tác)",
+  "partnerForgotDesc": "Bạn sẽ nhận liên kết nếu email đã đăng ký là đối tác.",
+
+  "chooseSector": "Chọn ngành",
+  "recommendedServices": "Dịch vụ gợi ý",
+
+  "museum": "Bảo tàng / Phòng trưng bày / Di tích",
+  "doctor": "Bác sĩ / Phòng khám / Nha sĩ",
+  "salon": "Làm đẹp / Spa / Tiệm tóc",
+  "event": "Tổ chức sự kiện / Địa điểm",
+  "restaurant": "Nhà hàng / Quán cà phê / Quán bar",
+  "hotel": "Khách sạn / Nhà khách / BnB",
+  "retail": "Cửa hàng / Trung tâm thương mại",
+  "sports": "Trung tâm thể thao / Phòng gym / Sân vận động",
+  "public": "Cơ quan công / Ngân hàng / Bưu điện",
+  "other": "Khác"
+}

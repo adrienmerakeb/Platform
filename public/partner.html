@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Partner | WanderPal</title>
+
+  <!-- Ionicons -->
+  <script src="https://unpkg.com/ionicons@4.5.10-0/dist/ionicons.js"></script>
+
+  <!-- Shared styles (rename the file to avoid spaces or ensure server serves it correctly) -->
+  <link rel="stylesheet" href="/css/common login & registration.css" />
+
+  <!-- i18n module -->
+  <script src="/js/i18n.js" defer></script>
+</head>
+<body>
+  <!-- Language -->
+  <div class="lang-switch" aria-label="Language selector">
+    <label for="lang" id="lang-label" data-i18n="langLabel">Language</label>
+    <select id="lang">
+      <option value="fr">Français</option>
+      <option value="en">English</option>
+      <option value="es">Español</option>
+      <option value="zh">中文</option>
+      <option value="hi">हिन्दी</option>
+      <option value="ar">العربية</option>
+      <option value="pt">Português</option>
+      <option value="ru">Русский</option>
+      <option value="bn">বাংলা</option>
+      <option value="id">Bahasa Indonesia</option>
+      <option value="ja">Japanese</option>
+      <option value="ko">Korean</option>
+      <option value="pl">Polish</option>
+      <option value="de">German</option>
+      <option value="vi">Tiếng Việt</option>
+      <option value="th">ไทย</option>
+      <option value="km">ភាសាខ្មែរ</option>
+      <option value="nl">Nederlands</option>
+      <option value="it">Italiano</option>
+      <option value="tr">Türkçe</option>
+      <option value="el">Ελληνικά</option>
+    </select>
+  </div>
+
+  <main class="card">
+    <div class="viewport">
+      <div class="slider" id="slider">
+        <!-- LOGIN -->
+        <section class="panel">
+          <div class="pad">
+            <h2 data-i18n="partnerLogin">Partner — Login</h2>
+            <form class="form" id="loginForm">
+              <div class="field">
+                <input class="input" id="login-company" type="text"
+                       placeholder="Your company name" data-ph="companyName" required />
+                <span class="icon-right"><ion-icon name="business"></ion-icon></span>
+              </div>
+
+              <div class="field">
+                <input class="input" id="login-email" type="email"
+                       placeholder="Email address" data-ph="email" required />
+                <span class="icon-right"><ion-icon name="mail"></ion-icon></span>
+              </div>
+
+              <div class="field">
+                <div class="password-wrapper">
+                  <input class="input" id="login-pass" type="password"
+                         placeholder="Password" data-ph="password"
+                         autocomplete="current-password" onfocus="clearOnce(this)" required />
+                  <button type="button" class="toggle"
+                          onclick="togglePassword('login-pass', this)"
+                          aria-label="Show password">◎</button>
+                  <span class="icon-right"><ion-icon name="lock"></ion-icon></span>
+                </div>
+              </div>
+
+              <div class="row">
+                <label class="remember">
+                  <input type="checkbox" id="remember"/> <span data-i18n="remember">Remember me</span>
+                </label>
+                <a class="link" href="#" id="forgot-link" data-i18n="forgot">Forgot password</a>
+              </div>
+
+              <button class="primary" type="submit" data-i18n="loginBtn">Login</button>
+              <p class="muted">
+                <span data-i18n="noAccount">No account?</span>
+                <a class="link" href="#" id="toRegister" data-i18n="signup">Sign up</a>
+              </p>
+            </form>
+          </div>
+        </section>
+
+        <!-- REGISTER -->
+        <section class="panel">
+          <div class="pad">
+            <h2 data-i18n="partnerRegister">Partner — Register</h2>
+            <form class="form" id="registerForm">
+              <div class="field">
+                <input class="input" id="company" type="text"
+                       placeholder="Company name" data-ph="companyName" required />
+                <span class="icon-right"><ion-icon name="business"></ion-icon></span>
+              </div>
+
+              <div class="field">
+                <input class="input" id="website" type="url"
+                       placeholder="Official website" data-ph="website" />
+                <span class="icon-right"><ion-icon name="globe"></ion-icon></span>
+              </div>
+
+              <div class="field">
+                <input class="input" id="reg-email" type="email"
+                       placeholder="Email address" data-ph="email" required />
+                <span class="icon-right"><ion-icon name="mail"></ion-icon></span>
+              </div>
+
+              <div class="field">
+                <div class="password-wrapper">
+                  <input class="input" id="reg-pass" type="password"
+                         placeholder="Create a password" data-ph="createPassword" required />
+                  <button type="button" class="toggle"
+                          onclick="togglePassword('reg-pass', this)"
+                          aria-label="Show password">◎</button>
+                  <span class="icon-right"><ion-icon name="lock"></ion-icon></span>
+                </div>
+              </div>
+
+              <button class="primary" type="submit" data-i18n="registerBtn">Register</button>
+              <p class="muted">
+                <span data-i18n="haveAccount">Already have an account?</span>
+                <a class="link" href="#" id="toLogin" data-i18n="signin">Sign in</a>
+              </p>
+            </form>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <!-- Forgot password modal -->
+  <div class="backdrop" id="forgot-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="forgot-title">
+      <h3 id="forgot-title" data-i18n="partnerForgotTitle">Reset Partner Password</h3>
+      <p class="muted" style="margin:0 0 8px;opacity:.85" data-i18n="partnerForgotDesc">
+        You’ll receive a password reset link if this email is registered as a partner.
+      </p>
+      <div class="field" style="margin-top:10px">
+        <label class="label" for="forgot-email" data-i18n="email">Email</label>
+        <input class="input" id="forgot-email" type="email"
+               placeholder="you@company.com" data-ph="emailPlaceholder" required />
+        <span class="icon-right"><ion-icon name="mail"></ion-icon></span>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" id="forgot-cancel" data-i18n="forgotCancel">Cancel</button>
+        <button class="btn primary" id="forgot-send" data-i18n="forgotSend">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const slider = document.getElementById('slider');
+
+    // slide switches
+    document.getElementById('toRegister').onclick = (e)=>{ e.preventDefault(); slider.style.transform='translateX(-50%)'; };
+    document.getElementById('toLogin').onclick    = (e)=>{ e.preventDefault(); slider.style.transform='translateX(0%)';  };
+
+    // Register partner
+    document.getElementById('registerForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const payload = {
+        company_name: document.getElementById('company').value.trim(),
+        website: document.getElementById('website').value.trim() || null,
+        email: document.getElementById('reg-email').value.trim(),
+        password: document.getElementById('reg-pass').value
+      };
+      try{
+        const res = await fetch('/api/partner/register', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(()=>({}));
+        if(res.ok && data.ok){
+          // Auto-login after registration
+          const loginRes = await fetch('/api/partner/login', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            credentials: 'include',
+            body: JSON.stringify({
+              company_name: payload.company_name,
+              email: payload.email,
+              password: payload.password
+            })
+          });
+          if (loginRes.ok) {
+            window.location.href = '/dashboard-partner.html';
+          } else {
+            alert('Partner registered successfully.');
+            slider.style.transform='translateX(0%)';
+          }
+        }else{
+          alert(data.error || 'Registration failed');
+        }
+      }catch{
+        alert('Network error');
+      }
+    });
+
+
+// Login (PARTNER)
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const payload = {
+    company_name: document.getElementById('login-company').value.trim(),
+    email:        document.getElementById('login-email').value.trim(),
+    password:     document.getElementById('login-pass').value,
+    remember:     document.getElementById('remember').checked
+  };
+
+  try {
+    const res = await fetch('/api/partner/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',           // 🔑 make sure partner JWT cookie is set
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (res.status === 403) {
+      alert(data.error || 'This partner account is suspended. Please contact abc@hotmail.com.');
+      return;
+    }
+
+    if (res.ok && data.ok) {
+      // 👇 either go straight to partner dashboard:
+      window.location.href = '/dashboard-partner.html';
+
+      // or, if you prefer going through the generic router:
+      // window.location.href = '/dashboard';
+    } else {
+      alert(data.error || 'Identifiants invalides / Invalid credentials');
+    }
+  } catch (err) {
+    console.error('[PARTNER login] error:', err);
+    alert('Network error');
+  }
+});
+
+
+    // Forgot password (PARTNER)
+    (() => {
+      const forgotLink  = document.getElementById('forgot-link');
+      const forgotModal = document.getElementById('forgot-modal');
+      const forgotCancel= document.getElementById('forgot-cancel');
+      const forgotSend  = document.getElementById('forgot-send');
+      const forgotEmail = document.getElementById('forgot-email');
+      if (!forgotLink || !forgotModal || !forgotCancel || !forgotSend || !forgotEmail) return;
+
+      forgotLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        forgotModal.style.display = 'flex';
+        forgotEmail.focus();
+      });
+      forgotCancel.addEventListener('click', () => {
+        forgotModal.style.display = 'none';
+      });
+      forgotSend.addEventListener('click', async () => {
+        const email = (forgotEmail.value || '').trim();
+        if (!email) return;
+        try {
+          const r = await fetch('/api/partner/forgot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) {
+            alert(j.error || 'Could not send reset link.');
+            return;
+          }
+          if (j.resetUrl) console.log('[DEV partner reset URL]', j.resetUrl);
+          alert('If an account exists, we’ve sent a reset link.');
+          forgotModal.style.display = 'none';
+          forgotEmail.value = '';
+        } catch (err) {
+          console.error('[PARTNER forgot] network error:', err);
+          alert('We couldn’t process your request.');
+        }
+      });
+    })();
+
+    // Helpers
+    function clearOnce(el) {
+      if (!el.dataset.cleared) {
+        el.value = '';
+        el.dataset.cleared = '1';
+      }
+    }
+    function togglePassword(id, btn) {
+      const input = document.getElementById(id);
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.textContent = show ? '◉' : '◎';
+      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      input.focus();
+    }
+
+    // i18n init for Partner page
+    window.addEventListener('load', () => {
+      I18N.initSelect(document.getElementById('lang'), {
+        titleKeys: ['partnerTitle','loginTitle']
+      });
+    });
+
+  </script>
+</body>
+</html>

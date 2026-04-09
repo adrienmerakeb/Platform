@@ -1,0 +1,64 @@
+{
+  "appTitle": "WanderPal",
+  "langLabel": "Language",
+
+  "loginTitle": "Login",
+  "registerTitle": "Register",
+
+  "email": "Email address",
+  "password": "Password",
+  "createPassword": "Create a password",
+  "namePlaceholder": "Name",
+  "companyName": "Company name",
+  "website": "Official website",
+
+  "remember": "Remember me",
+  "forgot": "Forgot password?",
+  "forgotTitle": "Forgot your password",
+  "forgotDesc": "Enter your email address and we’ll send you a reset link.",
+  "forgotCancel": "Cancel",
+  "forgotSend": "Send",
+  "forgotSuccess": "If an account exists, we’ve sent a reset link.",
+  "forgotError": "We couldn’t process your request.",
+
+  "loginBtn": "Login",
+  "registerBtn": "Register",
+  "or": "or",
+  "noAccount": "No account?",
+  "signup": "Sign up",
+  "haveAccount": "Already have an account?",
+  "signin": "Sign in",
+
+  "invalidCreds": "Invalid credentials",
+  "suspendedMsg": "This account is suspended. Please contact support.",
+
+  "networkError": "Network error",
+  "registerSuccess": "Account created. You can now log in.",
+  "registerFail": "We couldn’t create your account (email already used?)",
+
+  "hostTitle": "Host",
+  "hostLogin": "Host — Login",
+  "hostRegister": "Host — Registration",
+  "hostForgotTitle": "Reset Host Password",
+  "hostForgotDesc": "You’ll receive a password reset link if this email is registered as a host.",
+
+  "partnerTitle": "Partner",
+  "partnerLogin": "Partner — Login",
+  "partnerRegister": "Partner — Registration",
+  "partnerForgotTitle": "Reset Partner Password",
+  "partnerForgotDesc": "You’ll receive a password reset link if this email is registered as a partner.",
+
+  "chooseSector": "Choose sector",
+  "recommendedServices": "Recommended services",
+
+  "museum": "Museum / Gallery / Monument",
+  "doctor": "Doctor / Clinic / Dentist",
+  "salon": "Beauty / Spa / Hairdresser",
+  "event": "Event Organizer / Venue",
+  "restaurant": "Restaurant / Café / Bar",
+  "hotel": "Hotel / Guesthouse / BnB",
+  "retail": "Shop / Store / Mall",
+  "sports": "Sports center / Gym / Stadium",
+  "public": "Public admin / Bank / Post office",
+  "other": "Other"
+}

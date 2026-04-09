@@ -1,0 +1,64 @@
+{
+  "appTitle": "WanderPal",
+  "langLabel": "Γλώσσα",
+
+  "loginTitle": "Σύνδεση",
+  "registerTitle": "Εγγραφή",
+
+  "email": "Διεύθυνση email",
+  "password": "Κωδικός",
+  "createPassword": "Δημιουργία κωδικού",
+  "namePlaceholder": "Όνομα",
+  "companyName": "Όνομα εταιρείας",
+  "website": "Επίσημος ιστότοπος",
+
+  "remember": "Να με θυμάσαι",
+  "forgot": "Ξεχάσατε τον κωδικό;",
+  "forgotTitle": "Επαναφορά κωδικού",
+  "forgotDesc": "Εισαγάγετε το email σας και θα στείλουμε σύνδεσμο επαναφοράς.",
+  "forgotCancel": "Ακύρωση",
+  "forgotSend": "Αποστολή",
+  "forgotSuccess": "Αν υπάρχει λογαριασμός, στάλθηκε σύνδεσμος επαναφοράς.",
+  "forgotError": "Δεν ήταν δυνατή η επεξεργασία του αιτήματος.",
+
+  "loginBtn": "Σύνδεση",
+  "registerBtn": "Εγγραφή",
+  "or": "ή",
+  "noAccount": "Δεν έχετε λογαριασμό;",
+  "signup": "Εγγραφείτε",
+  "haveAccount": "Έχετε ήδη λογαριασμό;",
+  "signin": "Συνδεθείτε",
+
+  "invalidCreds": "Μη έγκυρα στοιχεία",
+  "suspendedMsg": "Ο λογαριασμός έχει ανασταλεί. Επικοινωνήστε με την υποστήριξη.",
+
+  "networkError": "Σφάλμα δικτύου",
+  "registerSuccess": "Ο λογαριασμός δημιουργήθηκε. Μπορείτε να συνδεθείτε.",
+  "registerFail": "Αδυναμία δημιουργίας λογαριασμού (email σε χρήση;)",
+
+  "hostTitle": "Host",
+  "hostLogin": "Host — Σύνδεση",
+  "hostRegister": "Host — Εγγραφή",
+  "hostForgotTitle": "Επαναφορά κωδικού Host",
+  "hostForgotDesc": "Θα λάβετε σύνδεσμο εάν το email είναι καταχωρημένο ως Host.",
+
+  "partnerTitle": "Partner",
+  "partnerLogin": "Partner — Σύνδεση",
+  "partnerRegister": "Partner — Εγγραφή",
+  "partnerForgotTitle": "Επαναφορά κωδικού Partner",
+  "partnerForgotDesc": "Θα λάβετε σύνδεσμο εάν το email είναι καταχωρημένο ως Partner.",
+
+  "chooseSector": "Επιλογή τομέα",
+  "recommendedServices": "Προτεινόμενες υπηρεσίες",
+
+  "museum": "Μουσείο / Γκαλερί / Μνημείο",
+  "doctor": "Γιατρός / Κλινική / Οδοντίατρος",
+  "salon": "Ομορφιά / Spa / Κομμωτήριο",
+  "event": "Διοργανωτής εκδηλώσεων / Χώρος",
+  "restaurant": "Εστιατόριο / Καφέ / Μπαρ",
+  "hotel": "Ξενοδοχείο / Πανσιόν / BnB",
+  "retail": "Κατάστημα / Εμπορικό κέντρο",
+  "sports": "Αθλητικό κέντρο / Γυμναστήριο / Στάδιο",
+  "public": "Δημόσια διοίκηση / Τράπεζα / Ταχυδρομείο",
+  "other": "Άλλο"
+}

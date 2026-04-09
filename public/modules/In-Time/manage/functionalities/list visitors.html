@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Listed Visitors — In-Time</title>
+<link rel="stylesheet" href="/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<script src="/public/intime-theme.js"></script>
+<style>
+:root{
+  --v:#7c3aed;--v-s:#ede9fc;--v-d:#6d28d9;
+  --green:#16a34a;--green-s:#f0fdf4;
+  --amber:#d97706;--amber-s:#fffbeb;
+  --red:#dc2626;--red-s:#fef2f2;
+  --blue:#2563eb;--blue-s:#eff6ff;
+  --txt:#1a1825;--muted:#6b6880;--hint:#9b98aa;
+  --surf:#fff;--bg:#f4f3f8;--bord:#e2e0ea;--bord-f:#7c3aed;
+  --gray:#f0eff5;--gray-m:#d4d2de;
+  --r:14px;--ri:9px;
+  --sh:0 2px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --ring:0 0 0 3px rgba(124,58,237,.18);
+  --font:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:var(--font);background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55}
+
+/* ── SHELL ── */
+.shell{max-width:760px;margin:0 auto;padding:24px 20px 120px;margin-top:6%}
+
+/* ── PAGE HEADER ── */
+.pg-hd{margin-bottom:22px}
+.pg-hd h1{font-size:21px;font-weight:700;color:var(--txt);margin-bottom:4px}
+.pg-hd p{font-size:13.5px;color:var(--muted)}
+.queue-badge{display:inline-flex;align-items:center;gap:6px;background:var(--v-s);border:1.5px solid var(--v);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;color:var(--v);margin-bottom:12px}
+
+/* ── CARD ── */
+.card{background:var(--surf);border-radius:var(--r);box-shadow:var(--sh);border:1px solid var(--bord);margin-bottom:18px;overflow:hidden}
+.card-hd{padding:20px 22px 16px;border-bottom:1px solid var(--bord)}
+.card-hd h2{font-size:15px;font-weight:700;color:var(--txt);margin-bottom:3px;display:flex;align-items:center;gap:8px}
+.card-hd p{font-size:13px;color:var(--muted)}
+.card-bd{padding:20px 22px}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--bord);margin-bottom:18px}
+.tab{padding:9px 16px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;transition:all .15s;font-family:var(--font)}
+.tab.on{color:var(--v);border-bottom-color:var(--v)}
+.tab:hover:not(.on){color:var(--txt)}
+.tab-pane{display:none}.tab-pane.on{display:block}
+
+/* ── FORM ELEMENTS ── */
+.f{margin-bottom:14px}
+.f:last-child{margin-bottom:0}
+.lbl{display:block;font-size:13px;font-weight:600;color:var(--txt);margin-bottom:5px}
+.hint{font-size:12px;color:var(--hint);margin-top:4px;line-height:1.4}
+input[type=text],input[type=email],textarea{
+  width:100%;padding:9px 12px;border:1.5px solid var(--bord);border-radius:var(--ri);
+  font-family:var(--font);font-size:14px;color:var(--txt);background:var(--surf);
+  outline:none;transition:border-color .18s,box-shadow .18s;
+}
+input:focus,textarea:focus{border-color:var(--bord-f);box-shadow:var(--ring)}
+textarea{resize:vertical;min-height:80px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:var(--font);font-size:13.5px;font-weight:600;padding:9px 20px;border-radius:var(--ri);border:none;cursor:pointer;transition:all .18s;white-space:nowrap}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:none}
+.btn-p{background:var(--v);color:#fff;box-shadow:0 2px 8px rgba(124,58,237,.22)}
+.btn-p:hover{background:var(--v-d)}
+.btn-p:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-s{background:var(--gray);color:var(--txt);border:1.5px solid var(--bord)}
+.btn-s:hover{background:var(--bord)}
+.btn-g{background:var(--green-s);color:var(--green);border:1.5px solid #86efac}
+.btn-g:hover{background:#dcfce7}
+.btn-r{background:var(--red-s);color:var(--red);border:1.5px solid #fca5a5}
+.btn-r:hover{background:#fee2e2}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:7px}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+
+/* ── FILE UPLOAD ZONE ── */
+.upload-zone{
+  border:2px dashed var(--bord);border-radius:var(--r);padding:28px 20px;
+  text-align:center;cursor:pointer;transition:all .2s;
+}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--v);background:var(--v-s)}
+.upload-zone input{display:none}
+.upload-icon{font-size:32px;margin-bottom:8px}
+.upload-lbl{font-size:14px;font-weight:600;color:var(--txt);margin-bottom:4px}
+.upload-sub{font-size:12.5px;color:var(--muted)}
+
+/* ── VISITOR TABLE ── */
+.vtable-wrap{overflow-x:auto}
+.vtable{width:100%;border-collapse:collapse;font-size:13.5px}
+.vtable th{text-align:left;padding:8px 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--hint);border-bottom:1.5px solid var(--bord);background:var(--gray)}
+.vtable td{padding:10px 10px;border-bottom:1px solid var(--bord);color:var(--txt)}
+.vtable tr:last-child td{border-bottom:none}
+.vtable tr:hover td{background:var(--gray)}
+.vtable .email-cell{font-weight:500}
+.vtable .date-cell{font-size:12px;color:var(--hint)}
+.vtable .note-cell{font-size:12px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vtable .act-cell{width:48px}
+
+/* ── SEARCH BAR ── */
+.search-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.search-bar input{flex:1;min-width:180px;padding:8px 12px;border:1.5px solid var(--bord);border-radius:var(--ri);font-family:var(--font);font-size:13px;outline:none;transition:border-color .18s}
+.search-bar input:focus{border-color:var(--bord-f);box-shadow:var(--ring)}
+
+/* ── TOGGLE ── */
+.togrow{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--bord)}
+.togrow:first-child{padding-top:0}
+.togrow:last-child{border-bottom:none}
+.togi{flex:1}
+.tog-title{font-size:14px;font-weight:600;color:var(--txt)}
+.tog-desc{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.45}
+.togsw{display:flex;align-items:center;flex-shrink:0;cursor:pointer}
+.togsw input{display:none}
+.togtr{width:42px;height:24px;border-radius:12px;background:var(--gray-m);position:relative;transition:background .2s}
+.togsw input:checked+.togtr{background:var(--v)}
+.togtr::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.togsw input:checked+.togtr::after{transform:translateX(18px)}
+
+/* ── REQUEST BADGE ── */
+.req-badge{display:inline-flex;align-items:center;gap:4px;background:var(--amber-s);border:1px solid #fcd34d;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700;color:var(--amber);margin-left:8px}
+.req-badge.pulse{animation:pulse-badge 1.8s ease-in-out infinite}
+@keyframes pulse-badge{0%,100%{box-shadow:0 0 0 0 rgba(217,119,6,.4)}50%{box-shadow:0 0 0 6px rgba(217,119,6,0)}}
+
+/* ── STATUS CHIPS ── */
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px}
+.chip-pending{background:var(--amber-s);color:var(--amber);border:1px solid #fcd34d}
+.chip-approved{background:var(--green-s);color:var(--green);border:1px solid #86efac}
+.chip-denied{background:var(--red-s);color:var(--red);border:1px solid #fca5a5}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:36px 20px;color:var(--hint)}
+.empty-state .ei{font-size:36px;display:block;margin-bottom:10px}
+.empty-state p{font-size:14px;color:var(--muted)}
+
+/* ── ERROR / SUCCESS BARS ── */
+.bar{border-radius:9px;padding:9px 14px;font-size:13px;font-weight:500;margin-bottom:14px;display:none}
+.bar.on{display:block}
+.bar-err{background:var(--red-s);border:1.5px solid #fca5a5;color:var(--red)}
+.bar-ok{background:var(--green-s);border:1.5px solid #86efac;color:var(--green)}
+
+/* ── MODAL ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(10,8,30,.5);backdrop-filter:blur(4px);z-index:2000;align-items:center;justify-content:center;padding:20px}
+.overlay.on{display:flex}
+.modal{background:var(--surf);border-radius:var(--r);box-shadow:0 20px 60px rgba(0,0,0,.22);width:100%;max-width:560px;max-height:88vh;display:flex;flex-direction:column;border:1px solid var(--bord)}
+.modal-hd{padding:20px 22px 16px;border-bottom:1px solid var(--bord);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-hd h3{font-size:16px;font-weight:700;color:var(--txt)}
+.modal-close{width:28px;height:28px;border-radius:50%;border:none;background:var(--gray);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.modal-close:hover{background:var(--bord)}
+.modal-bd{flex:1;overflow-y:auto;padding:18px 22px}
+.modal-ft{padding:14px 22px;border-top:1px solid var(--bord);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
+
+/* ── REQUEST CARD ── */
+.req-card{background:var(--gray);border:1.5px solid var(--bord);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.req-card:last-child{margin-bottom:0}
+.req-email{font-size:14px;font-weight:700;color:var(--txt);margin-bottom:2px}
+.req-name{font-size:12px;color:var(--muted);margin-bottom:6px}
+.req-msg{font-size:13px;color:var(--muted);font-style:italic;background:var(--surf);border-radius:8px;padding:8px 10px;margin-bottom:10px;border:1px solid var(--bord)}
+.req-msg:empty{display:none}
+.req-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.req-date{font-size:11px;color:var(--hint);margin-left:auto}
+
+/* ── MESSAGE TEMPLATE ── */
+.tmpl-select{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.tmpl-btn{font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:6px;border:1.5px solid var(--bord);background:var(--gray);color:var(--muted);cursor:pointer;transition:all .15s;font-family:var(--font)}
+.tmpl-btn.on,.tmpl-btn:hover{border-color:var(--v);background:var(--v-s);color:var(--v)}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(6px);background:var(--txt);color:#fff;font-size:13.5px;font-weight:500;padding:8px 20px;border-radius:999px;box-shadow:0 4px 18px rgba(0,0,0,.2);opacity:0;transition:opacity .2s,transform .2s;z-index:9999;pointer-events:none;white-space:nowrap}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── PROGRESS ── */
+.prog-bar{height:4px;background:var(--v-s);border-radius:2px;margin-bottom:14px;display:none}
+.prog-bar.on{display:block}
+.prog-fill{height:100%;background:var(--v);border-radius:2px;transition:width .3s}
+
+/* ── RESPONSIVE ── */
+@media(max-width:560px){
+  .shell{padding:16px 12px 100px;margin-top:14%}
+  .card-hd,.card-bd{padding:16px}
+  .vtable th,.vtable td{padding:8px 6px}
+  .req-date{display:none}
+}
+</style>
+</head>
+<body>
+
+<div id="top-band" class="top-band"></div>
+
+<div class="shell">
+
+  <!-- Header -->
+  <div class="pg-hd">
+    <div class="queue-badge" id="queueBadge">⏳ Loading queue…</div>
+    <h1>Listed visitors</h1>
+    <p>Manage who is authorised to book this queue. Add visitors by email, upload a CSV, or handle access requests.</p>
+  </div>
+
+  <!-- Error/success bars -->
+  <div class="bar bar-err" id="barErr"></div>
+  <div class="bar bar-ok"  id="barOk"></div>
+
+  <!-- ══ ADD VISITORS CARD ══════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-hd">
+      <h2>➕ Add visitors</h2>
+      <p>Authorise visitors individually, paste multiple emails, or upload a CSV file.</p>
+    </div>
+    <div class="card-bd">
+      <div class="tabs">
+        <button class="tab on" data-tab="single">Single email</button>
+        <button class="tab"    data-tab="bulk">Multiple emails</button>
+        <button class="tab"    data-tab="csv">CSV upload</button>
+      </div>
+
+      <!-- Single -->
+      <div class="tab-pane on" id="pane-single">
+        <div class="f">
+          <label class="lbl" for="f-email">Email address</label>
+          <input type="email" id="f-email" placeholder="visitor@example.com" autocomplete="off">
+        </div>
+        <div class="f">
+          <label class="lbl" for="f-note">Note (optional)</label>
+          <input type="text" id="f-note" placeholder="e.g. VIP guest, referred by…">
+          <p class="hint">Visible only to you in this list.</p>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-p" id="btnAddSingle">Add visitor</button>
+        </div>
+      </div>
+
+      <!-- Bulk -->
+      <div class="tab-pane" id="pane-bulk">
+        <div class="f">
+          <label class="lbl" for="f-bulk">Email addresses</label>
+          <textarea id="f-bulk" placeholder="One email per line, or comma-separated:&#10;alice@example.com&#10;bob@example.com, carol@example.com"></textarea>
+          <p class="hint">Paste any number of addresses. Duplicates and invalid formats are skipped automatically.</p>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-p" id="btnAddBulk">Add all valid emails</button>
+          <span id="bulkPreview" style="font-size:12px;color:var(--muted);align-self:center"></span>
+        </div>
+      </div>
+
+      <!-- CSV -->
+      <div class="tab-pane" id="pane-csv">
+        <label class="upload-zone" id="csvZone">
+          <input type="file" id="csvFile" accept=".csv,text/csv">
+          <div class="upload-icon">📄</div>
+          <div class="upload-lbl">Drop your CSV file here or click to browse</div>
+          <div class="upload-sub">Column named <code>email</code> required. Optional: <code>note</code></div>
+        </label>
+        <div id="csvPreviewWrap" style="display:none;margin-top:14px">
+          <div style="font-size:13px;font-weight:600;color:var(--txt);margin-bottom:6px">
+            Preview — <span id="csvCount">0</span> valid addresses found
+          </div>
+          <div id="csvPreviewList" style="font-size:12px;color:var(--muted);max-height:80px;overflow-y:auto;background:var(--gray);border-radius:8px;padding:8px 10px;border:1px solid var(--bord)"></div>
+        </div>
+        <div class="prog-bar" id="csvProgress"><div class="prog-fill" id="csvFill" style="width:0%"></div></div>
+        <div class="btn-row">
+          <button class="btn btn-p" id="btnImportCsv" disabled>Import CSV</button>
+          <button class="btn btn-s" id="btnDownloadTemplate">⬇ Download template</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ VISITOR LIST CARD ══════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-hd">
+      <h2>
+        👥 Authorised visitors
+        <span id="visitorCount" style="font-size:12px;font-weight:400;color:var(--muted)"></span>
+      </h2>
+    </div>
+    <div class="card-bd">
+      <div class="search-bar">
+        <input type="text" id="searchVisitors" placeholder="Search by email…">
+        <button class="btn btn-s" id="btnExportCsv">⬇ Export list</button>
+        <button class="btn btn-s" id="btnRefreshList">↻ Refresh</button>
+      </div>
+      <div id="visitorTableWrap">
+        <div class="empty-state"><span class="ei">👁</span><p>Loading…</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ACCESS REQUESTS CARD ═══════════════════════════════════ -->
+  <div class="card">
+    <div class="card-hd">
+      <h2>
+        🔐 Access request workflow
+        <span class="req-badge pulse" id="pendingBadge" style="display:none">0 pending</span>
+      </h2>
+      <p>Allow visitors to request access. You approve or deny from here.</p>
+    </div>
+    <div class="card-bd">
+
+      <div class="togrow">
+        <div class="togi">
+          <div class="tog-title">Enable access request workflow</div>
+          <div class="tog-desc">
+            Visitors who aren't on your list can submit a request to be added.
+            A notification pops up here when new requests arrive.
+          </div>
+        </div>
+        <label class="togsw">
+          <input type="checkbox" id="togAccessReq">
+          <span class="togtr"></span>
+        </label>
+      </div>
+
+      <div id="reqWorkflowSection" style="display:none;margin-top:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div style="font-size:13px;color:var(--muted)">
+            <span id="reqSummary">No pending requests.</span>
+          </div>
+          <button class="btn btn-s" id="btnShowRequests">
+            📋 Manage requests
+          </button>
+        </div>
+
+        <!-- Inline popup-style indicator -->
+        <div id="reqPopupIndicator" style="display:none;margin-top:12px;background:var(--amber-s);border:1.5px solid #fcd34d;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:20px">🔔</span>
+          <div style="flex:1">
+            <div style="font-size:13.5px;font-weight:700;color:#92400e">New access requests waiting</div>
+            <div style="font-size:12px;color:#92400e;margin-top:2px" id="reqPopupSub"></div>
+          </div>
+          <button class="btn btn-p btn-sm" onclick="openRequestsModal()">Review now</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.shell -->
+
+<!-- ══ REQUESTS MODAL ═══════════════════════════════════════════ -->
+<div class="overlay" id="reqOverlay" onclick="if(event.target===this)closeModal('reqOverlay')">
+  <div class="modal">
+    <div class="modal-hd">
+      <h3>Access requests</h3>
+      <button class="modal-close" onclick="closeModal('reqOverlay')">✕</button>
+    </div>
+    <div class="modal-bd" id="reqModalBody">
+      <div class="empty-state"><span class="ei">⏳</span><p>Loading…</p></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-s" onclick="closeModal('reqOverlay')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DECIDE MODAL (approve/deny one request) ══════════════════ -->
+<div class="overlay" id="decideOverlay" onclick="if(event.target===this)closeModal('decideOverlay')">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-hd">
+      <h3 id="decideTitle">Approve request</h3>
+      <button class="modal-close" onclick="closeModal('decideOverlay')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div id="decideInfo" style="background:var(--gray);border-radius:9px;padding:12px 14px;margin-bottom:16px;font-size:13.5px"></div>
+
+      <div class="f">
+        <label class="lbl">Message to visitor <span style="font-size:11px;color:var(--hint);font-weight:400">(sent via In-app notification)</span></label>
+        <div class="tmpl-select" id="tmplBtns"></div>
+        <textarea id="decideMsg" rows="4" placeholder="Your message…"></textarea>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-s" onclick="closeModal('decideOverlay')">Cancel</button>
+      <button class="btn btn-r" id="btnDeny"   onclick="submitDecision('denied')">✕ Deny</button>
+      <button class="btn btn-g" id="btnApprove" onclick="submitDecision('approved')">✓ Approve</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+<script>
+'use strict';
+
+/* ── Config ── */
+const QUEUE_ID = new URLSearchParams(window.location.search).get('queue');
+const API      = `/api/intime/queues/${encodeURIComponent(QUEUE_ID)}`;
+
+/* ── State ── */
+let allVisitors   = [];
+let allRequests   = [];
+let csvParsed     = [];
+let currentReqId  = null;
+let reqPollTimer  = null;
+
+/* ── FAB / Drawer ── */
+document.addEventListener('DOMContentLoaded', () => {
+  if (!QUEUE_ID) { showErr('No queue ID provided in URL.'); return; }
+
+  if (window.Drawer?.mount) window.Drawer.mount({ mode:'host' });
+  if (window.FAB?.mount) window.FAB.mount({
+    useTopBand: true, useBottomBand: true,
+    home:  { title:'Home',       label:'🏠', onClick: () => window.Drawer?.open?.() },
+    config:{ title:'Page style', label:'⚙️', href:'/pages/visitor/settings.html#host' },
+    onBack:{ title:'Back',       label:'‹',  onClick: () => history.back() },
+  });
+
+  bootPage();
+});
+
+/* ══ BOOT ═══════════════════════════════════════════════════════ */
+async function bootPage(){
+  await loadQueueInfo();
+  await loadVisitors();
+  await loadRequests();
+  wireUI();
+  startReqPoll();
+}
+
+/* ── Load queue info ── */
+async function loadQueueInfo(){
+  try {
+    const data = await apiFetch(API);
+    const q    = data.queue || data;
+    document.getElementById('queueBadge').textContent =
+      `🎫 ${q.name || 'Queue #'+QUEUE_ID}`;
+    document.title = `Visitors — ${q.name || 'Queue'} — In-Time`;
+    /* Sync access_req toggle */
+    document.getElementById('togAccessReq').checked = !!q.access_req;
+    toggleReqSection(!!q.access_req);
+  } catch(e){
+    showErr('Could not load queue: ' + e.message);
+  }
+}
+
+/* ── Load visitors ── */
+async function loadVisitors(){
+  try {
+    const data = await apiFetch(API + '/visitors');
+    allVisitors = data.visitors || [];
+    renderVisitors();
+  } catch(e){
+    document.getElementById('visitorTableWrap').innerHTML =
+      `<div class="empty-state"><span class="ei">⚠️</span><p>${e.message}</p></div>`;
+  }
+}
+
+/* ── Render visitor table ── */
+function renderVisitors(){
+  const q   = document.getElementById('searchVisitors').value.trim().toLowerCase();
+  const list = q
+    ? allVisitors.filter(v => v.email.toLowerCase().includes(q))
+    : allVisitors;
+
+  document.getElementById('visitorCount').textContent =
+    `— ${allVisitors.length} total`;
+
+  if (!list.length){
+    document.getElementById('visitorTableWrap').innerHTML =
+      allVisitors.length
+        ? `<div class="empty-state"><span class="ei">🔍</span><p>No results for "${esc(q)}"</p></div>`
+        : `<div class="empty-state"><span class="ei">👥</span><p>No visitors added yet.<br>Use the section above to add the first one.</p></div>`;
+    return;
+  }
+
+  document.getElementById('visitorTableWrap').innerHTML = `
+    <div class="vtable-wrap">
+      <table class="vtable">
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Note</th>
+            <th>Added</th>
+            <th class="act-cell"></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${list.map(v => `
+            <tr>
+              <td class="email-cell">${esc(v.email)}</td>
+              <td class="note-cell">${esc(v.note || '—')}</td>
+              <td class="date-cell">${fmtDate(v.created_at)}</td>
+              <td class="act-cell">
+                <button class="btn btn-r btn-sm" title="Remove visitor"
+                  onclick="removeVisitor('${esc(v.email)}')">✕</button>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+/* ── Remove visitor ── */
+async function removeVisitor(email){
+  if (!confirm(`Remove ${email} from the allowlist?`)) return;
+  try {
+    await apiFetch(API + '/visitors', {
+      method: 'DELETE',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    allVisitors = allVisitors.filter(v => v.email !== email);
+    renderVisitors();
+    toast('Visitor removed.');
+  } catch(e){ toast('Error: ' + e.message); }
+}
+
+/* ── Add visitors (single) ── */
+document.getElementById('btnAddSingle').addEventListener('click', async () => {
+  const email = document.getElementById('f-email').value.trim();
+  const note  = document.getElementById('f-note').value.trim();
+  if (!email){ showErr('Please enter an email address.'); return; }
+  if (!isEmail(email)){ showErr('Invalid email address.'); return; }
+  clearBars();
+  try {
+    const d = await apiFetch(API + '/visitors', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ emails:[email], note }),
+    });
+    document.getElementById('f-email').value = '';
+    document.getElementById('f-note').value  = '';
+    showOk(`✓ ${email} added to the allowlist.`);
+    await loadVisitors();
+  } catch(e){ showErr(e.message); }
+});
+
+/* ── Add visitors (bulk) ── */
+document.getElementById('btnAddBulk').addEventListener('click', async () => {
+  const raw = document.getElementById('f-bulk').value;
+  const emails = parseEmails(raw);
+  if (!emails.length){ showErr('No valid email addresses found.'); return; }
+  clearBars();
+  try {
+    const d = await apiFetch(API + '/visitors', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ emails }),
+    });
+    document.getElementById('f-bulk').value = '';
+    document.getElementById('bulkPreview').textContent = '';
+    showOk(`✓ ${d.added} added, ${d.skipped} skipped (already on list or invalid).`);
+    await loadVisitors();
+  } catch(e){ showErr(e.message); }
+});
+
+/* Live preview bulk count */
+document.getElementById('f-bulk').addEventListener('input', () => {
+  const n = parseEmails(document.getElementById('f-bulk').value).length;
+  document.getElementById('bulkPreview').textContent =
+    n ? `${n} valid address${n>1?'es':''}` : '';
+});
+
+/* ── CSV upload & parse ── */
+const csvZone = document.getElementById('csvZone');
+const csvFile = document.getElementById('csvFile');
+
+csvZone.addEventListener('dragover', e => { e.preventDefault(); csvZone.classList.add('drag'); });
+csvZone.addEventListener('dragleave', () => csvZone.classList.remove('drag'));
+csvZone.addEventListener('drop', e => {
+  e.preventDefault(); csvZone.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) { csvFile.files; handleCsvFile(f); }
+});
+csvFile.addEventListener('change', () => {
+  if (csvFile.files[0]) handleCsvFile(csvFile.files[0]);
+});
+
+function handleCsvFile(file){
+  const reader = new FileReader();
+  reader.onload = e => {
+    const rows = parseCsv(e.target.result);
+    csvParsed = rows.map(r => ({
+      email: String(r.email||r.Email||r.EMAIL||'').trim().toLowerCase(),
+      note:  String(r.note||r.Note||r.NOTE||'').trim(),
+    })).filter(r => isEmail(r.email));
+
+    document.getElementById('csvCount').textContent = csvParsed.length;
+    document.getElementById('csvPreviewList').innerHTML =
+      csvParsed.slice(0,12).map(r => esc(r.email)).join('<br>') +
+      (csvParsed.length > 12 ? `<br><em>…and ${csvParsed.length-12} more</em>` : '');
+    document.getElementById('csvPreviewWrap').style.display = csvParsed.length ? '' : 'none';
+    document.getElementById('btnImportCsv').disabled = !csvParsed.length;
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('btnImportCsv').addEventListener('click', async () => {
+  if (!csvParsed.length) return;
+  const CHUNK = 100;
+  let added=0, skipped=0;
+  const bar  = document.getElementById('csvProgress');
+  const fill = document.getElementById('csvFill');
+  bar.classList.add('on');
+  clearBars();
+  try {
+    for (let i=0; i<csvParsed.length; i+=CHUNK){
+      const chunk = csvParsed.slice(i, i+CHUNK);
+      const d = await apiFetch(API + '/visitors', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({
+          emails: chunk.map(r=>r.email),
+          note:   chunk[0]?.note || null,
+        }),
+      });
+      added   += d.added   || 0;
+      skipped += d.skipped || 0;
+      fill.style.width = Math.round((i+CHUNK)/csvParsed.length*100) + '%';
+    }
+    fill.style.width = '100%';
+    csvParsed = [];
+    csvFile.value = '';
+    document.getElementById('csvPreviewWrap').style.display = 'none';
+    document.getElementById('btnImportCsv').disabled = true;
+    setTimeout(()=>bar.classList.remove('on'),600);
+    showOk(`✓ CSV imported — ${added} added, ${skipped} skipped.`);
+    await loadVisitors();
+  } catch(e){
+    bar.classList.remove('on');
+    showErr('Import failed: ' + e.message);
+  }
+});
+
+/* ── Download CSV template ── */
+document.getElementById('btnDownloadTemplate').addEventListener('click', () => {
+  const csv = 'email,note\nalice@example.com,VIP guest\nbob@example.com,\n';
+  dlCsv('visitor_template.csv', csv);
+});
+
+/* ── Export visitor list ── */
+document.getElementById('btnExportCsv').addEventListener('click', () => {
+  if (!allVisitors.length){ toast('Nothing to export.'); return; }
+  const rows = ['email,note,added_at'];
+  allVisitors.forEach(v => rows.push(`${v.email},"${(v.note||'').replace(/"/g,'""')}",${v.created_at||''}`));
+  dlCsv(`visitors_queue_${QUEUE_ID}_${new Date().toISOString().slice(0,10)}.csv`, rows.join('\n'));
+  toast('✓ List exported.');
+});
+
+/* ── Search ── */
+document.getElementById('searchVisitors').addEventListener('input', renderVisitors);
+document.getElementById('btnRefreshList').addEventListener('click', loadVisitors);
+
+/* ══ ACCESS REQUESTS ════════════════════════════════════════════ */
+
+async function loadRequests(){
+  try {
+    const data = await apiFetch(API + '/access-requests?status=pending');
+    allRequests = data.requests || [];
+    updateRequestUI();
+  } catch(e){ console.warn('loadRequests:', e.message); }
+}
+
+function updateRequestUI(){
+  const n = allRequests.length;
+  const badge = document.getElementById('pendingBadge');
+  const popup = document.getElementById('reqPopupIndicator');
+  const sum   = document.getElementById('reqSummary');
+  const sub   = document.getElementById('reqPopupSub');
+
+  badge.textContent = `${n} pending`;
+  badge.style.display = n ? '' : 'none';
+
+  if (n) {
+    popup.style.display = 'flex';
+    sub.textContent  = `${n} visitor${n>1?'s':''} waiting for approval.`;
+    sum.textContent  = `${n} pending request${n>1?'s':''} — review and approve or deny.`;
+  } else {
+    popup.style.display = 'none';
+    sum.textContent = 'No pending requests.';
+  }
+}
+
+/* Poll for new requests every 30 s while access_req is on */
+function startReqPoll(){
+  clearInterval(reqPollTimer);
+  reqPollTimer = setInterval(() => {
+    if (document.getElementById('togAccessReq').checked) loadRequests();
+  }, 30000);
+}
+
+/* Toggle access_req on queue */
+document.getElementById('togAccessReq').addEventListener('change', async function(){
+  const on = this.checked;
+  try {
+    await apiFetch(API, {
+      method: 'PATCH',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ access_req: on }),
+    });
+    toggleReqSection(on);
+    toast(on ? 'Access request workflow enabled.' : 'Access request workflow disabled.');
+    if (on) loadRequests();
+  } catch(e){
+    this.checked = !on;
+    toast('Error: ' + e.message);
+  }
+});
+
+function toggleReqSection(on){
+  document.getElementById('reqWorkflowSection').style.display = on ? '' : 'none';
+}
+
+/* Open requests modal */
+window.openRequestsModal = async function(){
+  document.getElementById('reqOverlay').classList.add('on');
+  renderRequestsModal();
+};
+document.getElementById('btnShowRequests').addEventListener('click', openRequestsModal);
+
+function renderRequestsModal(){
+  const body = document.getElementById('reqModalBody');
+  if (!allRequests.length){
+    body.innerHTML = `<div class="empty-state"><span class="ei">✅</span><p>No pending requests right now.</p></div>`;
+    return;
+  }
+  body.innerHTML = allRequests.map(r => `
+    <div class="req-card" id="rcard-${r.id}">
+      <div class="req-email">${esc(r.email)}</div>
+      ${r.display_name ? `<div class="req-name">${esc(r.display_name)}</div>` : ''}
+      ${r.message ? `<div class="req-msg">"${esc(r.message)}"</div>` : ''}
+      <div class="req-actions">
+        <button class="btn btn-g btn-sm" onclick="openDecide(${r.id},'approved')">✓ Approve</button>
+        <button class="btn btn-r btn-sm" onclick="openDecide(${r.id},'denied')">✕ Deny</button>
+        <span class="req-date">${fmtDate(r.created_at)}</span>
+      </div>
+    </div>`).join('');
+}
+
+/* Open decide modal */
+const TEMPLATES = {
+  approved: [
+    { label:'Standard approval',   text: (email) => `Hi,\n\nYour request to join our queue has been approved. You can now book your spot.\n\nWelcome aboard!` },
+    { label:'Personal welcome',    text: (email) => `Hi,\n\nGreat news — we've reviewed your request and you're now on our approved visitors list. Looking forward to seeing you soon!` },
+  ],
+  denied: [
+    { label:'Standard denial',     text: (email) => `Hi,\n\nThank you for your interest. Unfortunately we are unable to approve your access request at this time.\n\nWe appreciate your understanding.` },
+    { label:'Capacity reached',    text: (email) => `Hi,\n\nWe have reviewed your request. Unfortunately our queue is currently at capacity and we cannot accept new visitors.\n\nPlease try again later.` },
+  ],
+};
+
+window.openDecide = function(reqId, decision){
+  currentReqId = reqId;
+  const req    = allRequests.find(r => r.id === reqId);
+  if (!req) return;
+
+  document.getElementById('decideTitle').textContent =
+    decision === 'approved' ? '✓ Approve request' : '✕ Deny request';
+  document.getElementById('decideInfo').innerHTML =
+    `<strong>${esc(req.email)}</strong>${req.display_name?' · '+esc(req.display_name):''}<br>
+     ${req.message ? `<em style="color:var(--muted)">"${esc(req.message)}"</em>` : ''}`;
+
+  /* wire templates */
+  const tmpls = TEMPLATES[decision] || TEMPLATES.approved;
+  document.getElementById('tmplBtns').innerHTML = tmpls.map((t,i) =>
+    `<button class="tmpl-btn${i===0?' on':''}" onclick="applyTemplate(this,'${decision}',${i})">${esc(t.label)}</button>`
+  ).join('');
+  document.getElementById('decideMsg').value = tmpls[0].text(req.email);
+
+  /* style action buttons */
+  document.getElementById('btnApprove').style.display = decision==='approved' ? '' : 'none';
+  document.getElementById('btnDeny').style.display    = decision==='denied'   ? '' : 'none';
+
+  document.getElementById('reqOverlay').classList.remove('on');
+  document.getElementById('decideOverlay').classList.add('on');
+};
+
+window.applyTemplate = function(btn, decision, idx){
+  document.querySelectorAll('#tmplBtns .tmpl-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const req = allRequests.find(r => r.id === currentReqId);
+  document.getElementById('decideMsg').value =
+    TEMPLATES[decision][idx].text(req?.email||'');
+};
+
+window.submitDecision = async function(decision){
+  if (!currentReqId) return;
+  const msg = document.getElementById('decideMsg').value.trim();
+  try {
+    await apiFetch(`/api/intime/access-requests/${currentReqId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ decision, host_note: msg }),
+    });
+    allRequests = allRequests.filter(r => r.id !== currentReqId);
+    currentReqId = null;
+    document.getElementById('decideOverlay').classList.remove('on');
+    document.getElementById('reqOverlay').classList.add('on');
+    renderRequestsModal();
+    updateRequestUI();
+    if (decision==='approved') await loadVisitors();
+    toast(decision==='approved' ? '✓ Request approved and visitor added.' : '✕ Request denied.');
+  } catch(e){ toast('Error: ' + e.message); }
+};
+
+/* ══ TABS ═══════════════════════════════════════════════════════ */
+function wireUI(){
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const id = tab.dataset.tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('on'));
+      tab.classList.add('on');
+      document.getElementById('pane-'+id).classList.add('on');
+      clearBars();
+    });
+  });
+}
+
+/* ══ HELPERS ════════════════════════════════════════════════════ */
+function closeModal(id){ document.getElementById(id).classList.remove('on'); }
+
+function isEmail(s){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s); }
+
+function parseEmails(raw){
+  return raw.split(/[\n,;]+/)
+    .map(s => s.trim().toLowerCase())
+    .filter(isEmail)
+    .filter((e,i,a) => a.indexOf(e)===i); // dedupe
+}
+
+function parseCsv(text){
+  const lines = text.split(/\r?\n/).filter(l=>l.trim());
+  if (!lines.length) return [];
+  const sep   = lines[0].includes(';') ? ';' : ',';
+  const hdrs  = lines[0].split(sep).map(h=>h.trim().toLowerCase().replace(/['"]/g,''));
+  return lines.slice(1).map(line => {
+    const vals = line.split(sep).map(v=>v.trim().replace(/^["']|["']$/g,''));
+    const obj  = {};
+    hdrs.forEach((h,i) => { obj[h] = vals[i]||''; });
+    return obj;
+  }).filter(r => r.email);
+}
+
+function dlCsv(filename, content){
+  const a = document.createElement('a');
+  a.href  = 'data:text/csv;charset=utf-8,' + encodeURIComponent(content);
+  a.download = filename;
+  a.click();
+}
+
+function fmtDate(iso){
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}); }
+  catch{ return iso; }
+}
+
+function esc(s){ const d=document.createElement('div'); d.textContent=String(s??''); return d.innerHTML; }
+
+function showErr(msg){ const e=document.getElementById('barErr'); e.textContent=msg; e.classList.add('on'); }
+function showOk(msg) { const e=document.getElementById('barOk');  e.textContent=msg; e.classList.add('on'); }
+function clearBars() { document.getElementById('barErr').classList.remove('on'); document.getElementById('barOk').classList.remove('on'); }
+
+let _toastTimer;
+function toast(msg, ms=2600){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('on');
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>el.classList.remove('on'),ms);
+}
+
+async function apiFetch(url, opts={}){
+  const res = await fetch(url, { credentials:'same-origin', ...opts });
+  const ct  = res.headers.get('content-type')||'';
+  if (!ct.includes('application/json')){
+    const txt = await res.text().catch(()=>'');
+    throw new Error(`HTTP ${res.status} — expected JSON. ${txt.slice(0,80)}`);
+  }
+  const data = await res.json().catch(()=>null);
+  if (!res.ok) throw new Error((data&&data.error)||`HTTP ${res.status}`);
+  if (data?.ok===false) throw new Error(data.error||'API error');
+  return data ?? { ok:true };
+}
+</script>
+</body>
+</html>

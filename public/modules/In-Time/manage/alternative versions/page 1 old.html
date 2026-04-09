@@ -1,0 +1,2147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>In-Time — Create Virtual Queue</title>
+
+  <!-- Shared styles -->
+  <link rel="stylesheet" href="/css/style.css"/>
+  <link rel="stylesheet" href="/css/pages/main.css"/>
+  <link rel="stylesheet" href="/css/pages/create.css"/>
+
+  <!-- Leaflet for map -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    crossorigin=""
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    crossorigin=""
+    defer
+  ></script>
+
+  <style>
+    /* ===== In-Time specific wizard styling (generic wizard styles are in /css/pages/create.css) ===== */
+
+    .map-toggle-row {
+      /* no longer used, kept if other pages rely on this class */
+      display: none;
+    }
+
+/* Address row with search button */
+.address-row label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.address-search-group {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.address-search-group input {
+  flex: 1 1 auto;
+}
+
+.address-search-group button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  border-radius: 999px;
+  padding: 5px 10px;
+
+}
+
+/* Map always visible */
+#mapWrapper {
+  margin-top: 8px;
+  display: block;
+}
+
+#locationMap {
+  width: 100%;
+  height: 260px;
+  border-radius: 14px;
+  border: 1px solid #ccc;
+}
+
+/* GPS toggle + fields */
+.coords-toggle-row {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+#advancedCoords {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+#advancedCoords label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 140px;
+}
+
+#advancedCoords input {
+  width: 100%;
+}
+
+    .chip-btn {
+      /* not used anymore on this page */
+      display: none;
+    }
+
+    #advancedCoords {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    #advancedCoords label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1 1 140px;
+    }
+
+    #advancedCoords input {
+      width: 100%;
+    }
+
+    .day-hours-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0px;
+      font-size: 0.75rem;
+    }
+
+    .day-hours-table th,
+    .day-hours-table td {
+      border: 1px solid #e0e0e0;
+      padding: 0px 0px;
+      text-align: left;
+    }
+
+    .day-hours-table th {
+      background: #f7f7f7;
+      color: #333;
+    }
+
+    .day-toggle {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .day-toggle input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+    }
+
+    .day-row.disabled td:nth-child(n+3) {
+      opacity: 0.3;
+    }
+
+    .day-row.disabled td:nth-child(n+3) input {
+      pointer-events: none;
+    }
+
+    .off-duty-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .off-duty-row {
+      padding: 6px;
+      border-radius: 8px;
+      background: #fafafa;
+      border: 1px solid #ddd;
+    }
+
+    .off-duty-main {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .off-duty-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .off-duty-extra {
+      display: none;
+      margin-top: 6px;
+      border-top: 1px dashed #ccc;
+      padding-top: 6px;
+    }
+
+    .off-duty-row button {
+      border-radius: 999px;
+      border: none;
+      font-size: 0.78rem;
+      cursor: pointer;
+      background: #eeeeee;
+      color: #333;
+      padding: 4px 10px;
+    }
+
+    .mode-row {
+      display: flex;
+      gap: 16px;
+      align-items: stretch;
+      flex-wrap: wrap;
+    }
+
+    .mode-options {
+      flex: 1 1;
+    }
+
+    .mode-info {
+      flex: 1 1 260px;
+      border-radius: 14px;
+      border: 1px solid #ddd;
+      background: #f7f7f7;
+      padding: 10px 12px;
+      font-size: 0.82rem;
+      color: #333;
+    }
+
+    .option-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    .option-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.86rem;
+      color: #333;
+    }
+
+    .option-row small {
+      color: #777;
+      font-size: 0.78rem;
+    }
+
+    .calendar-sync-providers {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .calendar-chip {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid #ccc;
+      background: #f5f5f5;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #333;
+    }
+
+    .calendar-chip.connected {
+      border-color: #43a047;
+      background: #e8f5e9;
+    }
+
+    /* ===== Mixed patterns card styling ===== */
+
+    .mixed-pattern-row {
+      margin-bottom: 8px;
+    }
+
+    .mixed-inner {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: stretch;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #ddd;
+      background: #fafafa;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+
+    .mixed-name-block {
+      flex: 1 1 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .mixed-right {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 8px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .mixed-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .mixed-label {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: #555;
+    }
+
+    .mixed-pattern-row input[type="text"],
+    .mixed-pattern-row input[type="number"] {
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 0.85rem;
+      background: #fff;
+      min-width: 0;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .mixed-pattern-row input[type="text"]:focus,
+    .mixed-pattern-row input[type="number"]:focus {
+      outline: none;
+      border-color: #1e88e5;
+      box-shadow: 0 0 0 2px rgba(30,136,229,0.15);
+    }
+
+    .mixed-pattern-row .mixed-remove-btn {
+      align-self: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      line-height: 1;
+    }
+
+    @media (max-width: 640px) {
+      .mixed-inner {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .mixed-right {
+        justify-content: flex-start;
+      }
+      .mode-row {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+
+<body class="wizard-page has-top-band has-bottom-band">
+  <!-- This header will be moved into the top-band by fab.js -->
+  <header class="site">
+    <div class="title">Create a new Virtual Queue</div>
+    <div class="subtitle">Configure your queue: Basic Information & Virtual Queue type and other options.</div>
+  </header>
+
+  <main class="container">
+    <section class="wizard-main-box">
+      <div class="wizard-inner">
+        <div class="wizard-tabs">
+          <button type="button" class="wizard-tab active" data-step="1">
+            Basic information
+          </button>
+          <button type="button" class="wizard-tab" data-step="2" disabled>
+            Virtual Queue type and additional options
+          </button>
+        </div>
+
+        <form id="queueForm">
+          <!-- ========== STEP 1 ========== -->
+          <div class="wizard-panel active" data-step="1">
+<!-- Location -->
+<div class="segment">
+  <h2>Location</h2>
+  <p class="help">
+    You can type an address or pick a point on the map. The address and GPS coordinates will stay in sync.
+    <span class="inline-badge">Required</span>
+  </p>
+
+  <div class="row address-row">
+    <label for="addressInput">Address / place</label>
+    <div class="address-search-group">
+      <input
+        type="text"
+        id="addressInput"
+        name="address_search"
+        placeholder="Start typing an address or place name"
+      >
+      <button type="button" class="btn btn-secondary" id="addressSearchBtn">
+        Search
+      </button>
+    </div>
+  </div>
+
+  <div id="mapWrapper">
+    <div id="locationMap"></div>
+    <p class="help" style="margin-top:6px;">
+      Click on the map to adjust the location.
+      Selected: <span id="coordsPreview">None</span>
+    </p>
+  </div>
+
+  <!-- Toggle + hidden GPS fields -->
+  <div class="row coords-toggle-row">
+    <button type="button" class="btn btn-secondary btn-ghost" id="toggleCoordsBtn">
+      Show GPS coordinates
+    </button>
+  </div>
+
+  <div id="advancedCoords" class="row" style="display:none;">
+    <label>Latitude
+      <input type="number" step="0.000001" id="latitude" name="latitude">
+    </label>
+    <label>Longitude
+      <input type="number" step="0.000001" id="longitude" name="longitude">
+    </label>
+  </div>
+</div>
+
+
+            <!-- Operating days + hours + break -->
+            <div class="segment">
+              <h2>Operating days &amp; hours</h2>
+              <p class="help">
+                For each operating day, set opening and closing times. Optionally add a break interval.
+                <span class="inline-badge">At least one active day required</span>
+              </p>
+
+              <table class="day-hours-table">
+                <thead>
+                <tr>
+                  <th style="width:60px; text-align:center;">On / off</th>
+                  <th style="width:120px;">Day</th>
+                  <th>Start</th>
+                  <th>End</th>
+                  <th>Break from</th>
+                  <th>Break until</th>
+                </tr>
+                </thead>
+                <tbody id="dayHoursBody"></tbody>
+              </table>
+            </div>
+
+            <!-- Off-duty periods -->
+            <div class="segment">
+              <h2>Off-duty periods</h2>
+              <p class="help">
+                Add holidays, seasonal closure, or special days off.
+                Use “More detail” to specify time of day as well.
+              </p>
+
+              <div class="off-duty-list" id="offDutyList"></div>
+
+              <button type="button" class="btn btn-secondary" id="addOffDutyBtn">
+                + Add off-duty period
+              </button>
+            </div>
+
+            <div id="step1Error" class="text-danger" style="display:none;"></div>
+
+            <div class="wizard-footer">
+              <div></div>
+              <button type="button" class="btn btn-primary" id="btnStep1Next">
+                Save &amp; continue →
+              </button>
+            </div>
+          </div>
+
+          <!-- ========== STEP 2 (unchanged except for scroll behavior) ========== -->
+          <div class="wizard-panel" data-step="2">
+
+            <!-- Name my Virtual Queue (TOP) -->
+            <div class="segment">
+              <h2>Name my Virtual Queue</h2>
+              <p class="help">
+                Leave empty to auto-generate “My Virtual Queue 1”, “My Virtual Queue 2”, etc.
+              </p>
+
+              <div class="segment-with-info">
+                <div class="segment-main">
+                  <div class="row">
+                    <label for="queueName">Queue name</label>
+                    <input type="text" id="queueName" name="queueName"
+                           placeholder="My Virtual Queue 1">
+                  </div>
+                </div>
+                <aside class="segment-info">A clear name (e.g. “Main Entrance — Weekdays”) makes it easier to manage multiple queues later.</aside>
+              </div>
+            </div>
+
+            <!-- Queue configuration mode -->
+            <div class="segment">
+              <h2>Queue configuration mode</h2>
+              <p class="help">
+                Select whether you want to start from a standard template or configure everything manually.
+              </p>
+
+              <div class="segment-with-info">
+                <div class="segment-main">
+                  <div class="mode-row">
+                    <div class="mode-options">
+                      <div class="option-group">
+                        <label class="option-row">
+                          <input type="radio" name="queueMode" value="standard" checked>
+                          <span>Standard Virtual Queues - <small>Start from a preset (recommended)</small></span>
+                        </label>
+                        <label class="option-row">
+                          <input type="radio" name="queueMode" value="manual">
+                          <span>Manual settings - <small>Fully custom configuration</small></span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <aside class="segment-info" id="modeInfoBox">
+                  <strong>Standard mode:</strong>
+                  Choose from curated templates such as museums, restaurants, clinics, or guided tours.
+                  All fields are pre-filled but stay completely editable.
+                  <br><br>
+                  <strong>Manual settings:</strong>Start with a blank configuration and build your queue from scratch.</aside>
+              </div>
+            </div>
+
+            <!-- Standard presets -->
+            <div class="segment" id="standardPresetSegment">
+              <h2>Standard Virtual Queues</h2>
+              <p class="help">Choose a template that best matches your activity.</p>
+
+              <div class="segment-with-info column-layout" id="presetWrapper">
+                <div class="segment-main">
+                  <div class="row">
+                    <label for="standardPreset">Standard virtual queues</label>
+                    <select id="standardPreset" name="standardPreset">
+                      <option value="">— Loading presets… —</option>
+                    </select>
+                  </div>
+                </div>
+
+                <aside class="segment-info full-width" id="standardPresetDescription">Select a preset to see its description and underlying parameters.</aside>
+              </div>
+            </div>
+
+            <!-- Logic type -->
+            <div class="segment">
+              <h2>Logic type</h2>
+              <p class="help">These options are always visible. In “Standard” mode they follow your preset;in “Manual” mode you can edit them.</p>
+
+              <div class="segment-with-info">
+                <div class="segment-main">
+                  <div class="option-group">
+                    <label class="option-row">
+                      <input type="radio" name="logicType" value="live" checked>
+                      <span>Live-flow only - <small>(first arrived, first served)</small></span>
+                    </label>
+                    <label class="option-row">
+                      <input type="radio" name="logicType" value="advance">
+                      <span>In advance only - <small>(calendar of bookable time slots)</small></span>
+                    </label>
+                    <label class="option-row">
+                      <input type="radio" name="logicType" value="mixed">
+                      <span>Mixed - <small>(live-flow + fixed appointments)</small></span>
+                    </label>
+                  </div>
+                </div>
+                <aside class="segment-info" id="logicInfoBox">Pure “first come, first served” logic. Ideal for walk-in traffic and continuous flows.</aside>
+              </div>
+            </div>
+
+            <!-- Volume per time-slot (used for advance only) -->
+            <div class="segment" id="volumeSegment">
+              <h2>Volume per time-slot</h2>
+
+              <div class="segment-with-info">
+                <div class="segment-main">
+                  <div class="option-group">
+                    <label class="option-row">
+                      <input type="radio" name="slotCapacityMode" value="single" checked>
+                      <span>One at a time</span>
+                    </label>
+                    <label class="option-row">
+                      <input type="radio" name="slotCapacityMode" value="multiple">
+                      <span>More than one at a time</span>
+                    </label>
+                  </div>
+
+                  <div class="row" id="multiCapacityRow" style="margin-top:6px; display:none;">
+                    <label>Maximum simultaneous visitors per booking</label>
+                    <input type="number" min="2" max="5" step="1"
+                           name="maxParallel" value="2">
+                  </div>
+                </div>
+                <aside class="segment-info" id="volumeInfoBox">Use “one at a time” for appointments like medical visits. Use “more than one at a time” for flows like museum entries, where several visitors can enter per time-slot.</aside>
+              </div>
+            </div>
+
+            <!-- Standard time-slot duration -->
+            <div class="segment" id="durationSegment">
+              <h2>Standard time-slot duration</h2>
+              <p class="help" id="durationHelp">
+                Optional but recommended when you want estimated entry times.
+              </p>
+
+              <div class="segment-with-info">
+                <div class="segment-main">
+                  <!-- Live / Mixed: yes/no + numeric -->
+                  <div class="option-group" id="liveDurationOptions">
+                    <label class="option-row">
+                      <input type="radio" name="hasStandardDuration" value="yes">
+                      <span>Yes, I want to provide a standard estimation</span>
+                    </label>
+                    <label class="option-row">
+                      <input type="radio" name="hasStandardDuration" value="no" checked>
+                      <span>No, I don’t want to provide an estimation</span>
+                    </label>
+                  </div>
+
+                  <div class="row" id="standardDurationRow" style="margin-top:6px; display:none;">
+                    <label>Standard time-slot duration (minutes)</label>
+                    <input type="number" name="slotDurationMinutes" min="1" max="480" step="1" value="15">
+                  </div>
+
+                  <!-- In advance only: dropdown 15..45 -->
+                  <div class="row" id="advanceDurationRow" style="margin-top:6px; display:none;">
+                    <label>Standard time-slot duration</label>
+                    <select id="slotDurationAdvanceSelect">
+                      <option value="">— Select —</option>
+                      <option value="15">15 minutes</option>
+                      <option value="20">20 minutes</option>
+                      <option value="25">25 minutes</option>
+                      <option value="30">30 minutes</option>
+                      <option value="35">35 minutes</option>
+                      <option value="40">40 minutes</option>
+                      <option value="45">45 minutes</option>
+                    </select>
+                  </div>
+                </div>
+                <aside class="segment-info" id="durationInfoBox">The duration of a “standard” slot is used to forecast waiting times and to spread bookings more evenly across the day.</aside>
+              </div>
+            </div>
+
+            <!-- Estimated entry time -->
+            <div class="segment" id="estimatedEntrySegment">
+              <h2>Display estimated entry time</h2>
+
+              <div class="segment-with-info">
+                <div class="segment-main">
+                  <div class="option-group">
+                    <label class="option-row">
+                      <input type="radio" name="showEstimatedEntry" value="yes" checked>
+                      <span>Yes, show estimated entry time to visitors</span>
+                    </label>
+                    <label class="option-row">
+                      <input type="radio" name="showEstimatedEntry" value="no">
+                      <span>No, do not display the estimation</span>
+                    </label>
+                  </div>
+                </div>
+                <aside class="segment-info" id="estimationInfoBox">Estimated entry time is calculated as:
+                  <em>last entry time + (pending tickets × standard time-slot)</em>.Showing it makes visitors feel more in control, but it’s still an estimate.</aside>
+              </div>
+            </div>
+
+            <!-- Allowed bookings -->
+            <div class="segment" id="allowedBookingsSegment">
+              <h2>Allowed bookings</h2>
+
+              <div class="segment-with-info">
+                <div class="segment-main">
+                  <div class="option-group" id="allowedBookingsOptions">
+                    <label class="option-row">
+                      <input type="radio" name="bookingAccess" value="anonymous">
+                      <span>Anonymous</span>
+                      <small>Anyone with the link / QR can book.</small>
+                    </label>
+                    <label class="option-row">
+                      <input type="radio" name="bookingAccess" value="registered" checked>
+                      <span>Only registered</span>
+                      <small>Visitor profile required.</small>
+                    </label>
+                    <label class="option-row" id="bookingAccessListedRow">
+                      <input type="radio" name="bookingAccess" value="listed">
+                      <span>Only from my list</span>
+                      <small>Only visitors in your personal allow-list.</small>
+                    </label>
+                  </div>
+
+                  <button type="button" class="btn btn-secondary" id="editAllowedListBtn" style="margin-top:8px; display:none;">
+                    Edit allowed visitors list…
+                  </button>
+                  <div id="allowedListSummary" class="allowed-summary" style="display:none;"></div>
+                </div>
+                <aside class="segment-info" id="allowedInfoBox">For “Only from my list”, you’ll be able to upload or edit a list of allowed visitor emails. This can also be managed later from “Manage my Virtual Queues”.</aside>
+              </div>
+            </div>
+
+            <!-- Calendar sync -->
+            <div class="segment" id="calendarSyncSegment">
+              <h2>Synchronize with my calendar</h2>
+              <p class="help">
+                Connect your personal calendar so that your busy times become
+                “unavailable” slots in this queue’s calendar.
+              </p>
+
+              <div class="segment-with-info">
+                <div class="segment-main">
+                  <div class="calendar-sync-providers">
+                    <button type="button" class="calendar-chip" data-provider="google">
+                      <span>📅 Google Calendar</span>
+                      <span class="inline-badge">Connect</span>
+                    </button>
+                    <button type="button" class="calendar-chip" data-provider="microsoft">
+                      <span>📅 Outlook / Microsoft 365</span>
+                      <span class="inline-badge">Connect</span>
+                    </button>
+                    <button type="button" class="calendar-chip" data-provider="other">
+                      <span>📅 Other (CalDAV / iCal)</span>
+                      <span class="inline-badge">Connect</span>
+                    </button>
+                  </div>
+
+                  <input type="hidden" name="calendar_google_connected" id="calGoogleConnected" value="0">
+                  <input type="hidden" name="calendar_ms_connected" id="calMsConnected" value="0">
+                  <input type="hidden" name="calendar_other_connected" id="calOtherConnected" value="0">
+                </div>
+                <aside class="segment-info" id="calendarInfoBox">When connected, In-Time will periodically read your “busy” time slots and automatically block them in the queue calendar, preventing double booking.</aside>
+              </div>
+            </div>
+
+            <!-- Mixed patterns -->
+            <div class="segment" id="mixedPatternsSegment" style="display:none;">
+              <h2>Standard slots for Mixed mode</h2>
+              <p class="help">
+                Define up to 10 “standard slot types” combining a name, volume and duration.
+                These will be used in Mixed queues to combine live-flow with fixed appointments.
+              </p>
+              <div class="segment-with-info">
+                <div class="segment-main">
+                  <div id="mixedPatternsList"></div>
+                  <button type="button" class="btn btn-secondary" id="addMixedPatternBtn" style="margin-top:8px;">
+                    + Add standard slot
+                  </button>
+                </div>
+                <aside class="segment-info">Examples:
+                  <br>Quick visit: 2 persons / 20 min
+                  <br>Guided tour: 10 persons / 90 min
+                  <br><br>Important:
+                  <br>When a fixed appointment is active, the live flow for this queue is temporarily put on hold for the duration of the appointment and resumes once the meeting is over. Visitors will be informed when the virtual live flow is paused and when it resumes after the appointment is marked as finished or its end-time is reached.</aside>
+              </div>
+            </div>
+
+            <div id="step2Error" class="text-danger" style="display:none;"></div>
+
+            <div class="wizard-footer">
+              <button type="button" class="btn btn-secondary" data-prev-step="1">
+                ← Previous
+              </button>
+              <button type="button" class="btn btn-primary" id="btnCreateQueue">
+                ✔ Create new Virtual Queue
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <!-- Allowed visitors modal -->
+  <div class="modal-overlay" id="allowedListModal">
+    <div class="modal-dialog">
+      <h3>Allowed visitors list</h3>
+      <p>
+        Paste or type one email per line. Only these visitors will be able to book this queue
+        when “Only from my list” is selected.
+      </p>
+      <textarea id="allowedListTextarea" placeholder="example1@example.com&#10;example2@example.com"></textarea>
+      <div id="allowedListModalError" class="modal-error" style="display:none;"></div>
+      <div class="modal-footer">
+        <button type="button" class="modal-btn-secondary" id="allowedListCancelBtn">Cancel</button>
+        <button type="button" class="modal-btn-primary" id="allowedListSaveBtn">Save list</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shared chrome: drawer + FAB -->
+  <script src="/js/drawer.js"></script>
+  <script src="/js/fab.js"></script>
+
+  <!-- Main wizard logic as ES module -->
+  <script type="module">
+    import { setupCalendarSync, getCalendarSyncState } from '/modules/In-Time/manage/calendar-sync.js';
+
+    // ========== GLOBAL STATE ==========
+
+    let currentStep = 1;
+    let allowedVisitorsEmails = []; // used when bookingAccess = 'listed'
+    let queuePresetMap = {};        // id -> preset object from base.json
+
+    let locationMap, locationMarker, mapInitialized = false;
+    let geocodeTimeoutId = null;
+
+    const NOMINATIM_BASE = 'https://nominatim.openstreetmap.org';
+
+    // ===== Navigation helpers reused by FAB + Drawer =====
+    function goHostHome() {
+      window.location.href = '/pages/host/dashboard.html';
+    }
+
+    function goHostSettings() {
+      window.location.href = '/pages/host/settings.html';
+    }
+
+    function goBackFromManage() {
+      if (history.length > 1) {
+        history.back();
+      } else {
+        window.location.href = '/pages/host/dashboard.html';
+      }
+    }
+
+    async function performLogout() {
+      try {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (err) {
+        console.error('Logout failed (non-blocking):', err);
+      } finally {
+        try {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('user_profile');
+        } catch {}
+        window.location.href = '/pages/auth/login.html';
+      }
+    }
+
+    // ========== WIZARD NAVIGATION ==========
+
+    function setStep(step) {
+      currentStep = step;
+
+      document.querySelectorAll('.wizard-panel').forEach(p => {
+        p.classList.toggle('active', Number(p.dataset.step) === step);
+      });
+
+      document.querySelectorAll('.wizard-tab').forEach(t => {
+        const s = Number(t.dataset.step);
+        t.classList.toggle('active', s === step);
+        t.disabled = s > currentStep;
+      });
+
+      // Keep scroll at the top when changing steps
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+        const main = document.querySelector('main.container');
+        if (main) main.scrollTop = 0;
+      });
+    }
+
+    document.querySelectorAll('.wizard-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const step = Number(tab.dataset.step);
+        if (!tab.disabled) setStep(step);
+      });
+    });
+
+    document.querySelectorAll('[data-prev-step]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setStep(Number(btn.dataset.prevStep));
+      });
+    });
+
+    // ========== TAB 1: MAP + DAYS/HOURS + OFF-DUTY ==========
+
+    const weekdays = [
+      { key: 'mon', label: 'Monday',    defaultOn: true },
+      { key: 'tue', label: 'Tuesday',   defaultOn: true },
+      { key: 'wed', label: 'Wednesday', defaultOn: true },
+      { key: 'thu', label: 'Thursday',  defaultOn: true },
+      { key: 'fri', label: 'Friday',    defaultOn: true },
+      { key: 'sat', label: 'Saturday',  defaultOn: false },
+      { key: 'sun', label: 'Sunday',    defaultOn: false }
+    ];
+
+    function renderDayHours() {
+      const tbody = document.getElementById('dayHoursBody');
+      tbody.innerHTML = '';
+      weekdays.forEach(day => {
+        const tr = document.createElement('tr');
+        tr.className = 'day-row';
+        if (!day.defaultOn) tr.classList.add('disabled');
+        tr.dataset.dayKey = day.key;
+        tr.innerHTML = `
+          <td class="day-toggle">
+            <input type="checkbox" class="dayToggleInput" data-day="${day.key}" ${day.defaultOn ? 'checked' : ''}>
+          </td>
+          <td>${day.label}</td>
+          <td><input type="time" name="hours_${day.key}_start" value="09:00"></td>
+          <td><input type="time" name="hours_${day.key}_end" value="17:00"></td>
+          <td><input type="time" name="hours_${day.key}_break_start"></td>
+          <td><input type="time" name="hours_${day.key}_break_end"></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.querySelectorAll('.dayToggleInput').forEach(input => {
+        applyDayToggle(input);
+        input.addEventListener('change', () => applyDayToggle(input));
+      });
+    }
+
+    function applyDayToggle(input) {
+      const dayKey = input.dataset.day;
+      const row = document.querySelector(`.day-row[data-day-key="${dayKey}"]`);
+      const enabled = input.checked;
+      row.classList.toggle('disabled', !enabled);
+
+      row.querySelectorAll('td:nth-child(n+3) input').forEach(el => {
+        el.disabled = !enabled;
+      });
+    }
+
+    function addOffDutyRow() {
+      const container = document.getElementById('offDutyList');
+      const row = document.createElement('div');
+      row.className = 'off-duty-row';
+      row.innerHTML = `
+        <div class="off-duty-main">
+          <div class="off-duty-actions">
+            <label>From
+              <input type="date" name="off_from_date[]">
+            </label>
+            <label>To
+              <input type="date" name="off_to_date[]">
+            </label>
+            <button type="button" class="moreDetailBtn">+ Details</button>
+            <button type="button" class="removeOffDutyBtn">- Remove</button>
+          </div>
+        </div>
+        <div class="off-duty-extra">
+          <div class="row">
+            <label>Start time
+              <input type="time" name="off_from_time[]">
+            </label>
+            <label>End time
+              <input type="time" name="off_to_time[]">
+            </label>
+          </div>
+        </div>
+      `;
+      container.appendChild(row);
+
+      row.querySelector('.removeOffDutyBtn').addEventListener('click', () => row.remove());
+      row.querySelector('.moreDetailBtn').addEventListener('click', (e) => {
+        const extra = row.querySelector('.off-duty-extra');
+        const open = extra.style.display !== 'none';
+        extra.style.display = open ? 'none' : 'block';
+        e.target.textContent = open ? 'More detail' : 'Less detail';
+      });
+    }
+
+    // ===== MAP + GEO / REVERSE GEO =====
+
+    function initMap() {
+      if (mapInitialized) return;
+      mapInitialized = true;
+
+      locationMap = L.map('locationMap').setView([50.0755, 14.4378], 13); // Prague default
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19
+      }).addTo(locationMap);
+
+      locationMap.on('click', function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        setCoordinates(lat, lng);
+        reverseGeocode(lat, lng);
+      });
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            locationMap.setView([lat, lng], 15);
+            setCoordinates(lat, lng);
+            reverseGeocode(lat, lng);
+          },
+          () => {}
+        );
+      }
+
+      setTimeout(() => locationMap.invalidateSize(), 50);
+    }
+
+    function setCoordinates(lat, lng) {
+      if (!locationMap) return;
+
+      if (!locationMarker) {
+        locationMarker = L.marker([lat, lng]).addTo(locationMap);
+      } else {
+        locationMarker.setLatLng([lat, lng]);
+      }
+
+      const latEl = document.getElementById('latitude');
+      const lngEl = document.getElementById('longitude');
+      latEl.value = lat.toFixed(6);
+      lngEl.value = lng.toFixed(6);
+      document.getElementById('coordsPreview').textContent =
+        lat.toFixed(5) + ', ' + lng.toFixed(5);
+    }
+
+    async function geocodeAddress(query) {
+      if (!query || query.length < 3) return;
+      try {
+        const url = `${NOMINATIM_BASE}/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+        const res = await fetch(url, {
+          headers: {
+            // Browsers may ignore this header, but for backend you should set a custom UA
+            'Accept': 'application/json'
+          }
+        });
+        if (!res.ok) {
+          console.warn('Geocoding failed:', res.status);
+          return;
+        }
+        const data = await res.json();
+        if (!data || !data.length) {
+          console.warn('No geocoding results for query:', query);
+          return;
+        }
+        const best = data[0];
+        const lat = parseFloat(best.lat);
+        const lng = parseFloat(best.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+        if (!locationMap) initMap();
+        locationMap.setView([lat, lng], 15);
+        setCoordinates(lat, lng);
+
+        const addressInput = document.getElementById('addressInput');
+        if (addressInput && best.display_name) {
+          addressInput.value = best.display_name;
+        }
+      } catch (e) {
+        console.error('Error during geocoding:', e);
+      }
+    }
+
+    async function reverseGeocode(lat, lng) {
+      try {
+        const url = `${NOMINATIM_BASE}/reverse?format=json&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`;
+        const res = await fetch(url, {
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        if (!res.ok) {
+          console.warn('Reverse geocoding failed:', res.status);
+          return;
+        }
+        const data = await res.json();
+        if (!data || !data.display_name) return;
+        const addressInput = document.getElementById('addressInput');
+        if (addressInput) {
+          addressInput.value = data.display_name;
+        }
+      } catch (e) {
+        console.error('Error during reverse geocoding:', e);
+      }
+    }
+
+    // ===== LOCATION INPUT WIRING =====
+
+function wireLocationInputs() {
+  const addressInput   = document.getElementById('addressInput');
+  const searchBtn      = document.getElementById('addressSearchBtn');
+  const advancedCoords = document.getElementById('advancedCoords');
+  const toggleCoordsBtn = document.getElementById('toggleCoordsBtn');
+
+  // --- Address search via button + Enter ---
+  if (addressInput) {
+    // Use Enter to trigger the search
+    addressInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const q = addressInput.value.trim();
+        geocodeAddress(q);
+      }
+    });
+  }
+
+  if (searchBtn && addressInput) {
+    searchBtn.addEventListener('click', () => {
+      const q = addressInput.value.trim();
+      geocodeAddress(q);
+    });
+  }
+
+  // --- Show / hide GPS coordinates ---
+  if (toggleCoordsBtn && advancedCoords) {
+    toggleCoordsBtn.addEventListener('click', () => {
+      const isHidden = advancedCoords.style.display === 'none' || !advancedCoords.style.display;
+      advancedCoords.style.display = isHidden ? 'flex' : 'none';
+      toggleCoordsBtn.textContent = isHidden ? 'Hide GPS coordinates' : 'Show GPS coordinates';
+    });
+  }
+
+  // --- Manual GPS edit updates map + address ---
+  if (advancedCoords) {
+    advancedCoords.addEventListener('input', () => {
+      const lat = parseFloat(document.getElementById('latitude').value);
+      const lng = parseFloat(document.getElementById('longitude').value);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        if (!locationMap) initMap();
+        locationMap.setView([lat, lng], 15);
+        setCoordinates(lat, lng);
+        reverseGeocode(lat, lng);
+      }
+    });
+  }
+}
+
+
+    function validateStep1() {
+      const err = document.getElementById('step1Error');
+      err.style.display = 'none';
+      err.textContent = '';
+
+      const address = document.getElementById('addressInput').value.trim();
+      const lat = document.getElementById('latitude').value.trim();
+      const lng = document.getElementById('longitude').value.trim();
+
+      if (!address && (!lat || !lng)) {
+        err.textContent = 'Please provide at least an address or valid GPS coordinates.';
+        err.style.display = 'block';
+        return false;
+      }
+
+      const toggles = Array.from(document.querySelectorAll('.dayToggleInput'));
+      const activeDays = toggles.filter(t => t.checked);
+      if (activeDays.length === 0) {
+        err.textContent = 'Please activate at least one operating day.';
+        err.style.display = 'block';
+        return false;
+      }
+
+      for (const t of activeDays) {
+        const day = t.dataset.day;
+        const row = document.querySelector(`.day-row[data-day-key="${day}"]`);
+        const start = row.querySelector(`input[name="hours_${day}_start"]`).value;
+        const end   = row.querySelector(`input[name="hours_${day}_end"]`).value;
+        const bStart = row.querySelector(`input[name="hours_${day}_break_start"]`).value;
+        const bEnd   = row.querySelector(`input[name="hours_${day}_break_end"]`).value;
+
+        if (!start || !end) {
+          err.textContent = `Please set start and end time for ${day.toUpperCase()}.`;
+          err.style.display = 'block';
+          return false;
+        }
+        if (start >= end) {
+          err.textContent = `End time must be after start time for ${day.toUpperCase()}.`;
+          err.style.display = 'block';
+          return false;
+        }
+        if ((bStart && !bEnd) || (!bStart && bEnd)) {
+          err.textContent = `If you set a break for ${day.toUpperCase()}, both "Break from" and "Break until" must be filled.`;
+          err.style.display = 'block';
+          return false;
+        }
+        if (bStart && bEnd && (bStart >= bEnd)) {
+          err.textContent = `Break "until" must be after "from" for ${day.toUpperCase()}.`;
+          err.style.display = 'block';
+          return false;
+        }
+      }
+
+      const offRows = document.querySelectorAll('.off-duty-row');
+      for (const row of offRows) {
+        const fromDate = row.querySelector('input[name="off_from_date[]"]').value;
+        const toDate   = row.querySelector('input[name="off_to_date[]"]').value;
+        const fromTime = row.querySelector('input[name="off_from_time[]"]').value;
+        const toTime   = row.querySelector('input[name="off_to_time[]"]').value;
+
+        if ((fromDate && !toDate) || (!fromDate && toDate)) {
+          err.textContent = 'Each off-duty period must have both start and end date.';
+          err.style.display = 'block';
+          return false;
+        }
+        if ((fromTime && !toTime) || (!fromTime && toTime)) {
+          err.textContent = 'If you specify times for an off-duty period, both start and end time are required.';
+          err.style.display = 'block';
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    document.getElementById('btnStep1Next').addEventListener('click', () => {
+      if (!validateStep1()) return;
+      setStep(2);
+    });
+
+    // ========== TAB 2: MODES, PRESETS, INFO BOXES + OPTIONS ==========
+    // (rest of your logic is same as before, just kept intact)
+
+    function updateModeInfo() {
+      const mode = document.querySelector('input[name="queueMode"]:checked').value;
+      const box = document.getElementById('modeInfoBox');
+      if (mode === 'standard') {
+        box.textContent =
+          'Standard mode lets you start from ready-made templates (museum, doctor, etc.). All settings below are pre-filled but remain fully editable.';
+      } else {
+        box.textContent =
+          'Manual mode starts from a blank configuration. You define all logic, capacity and duration settings yourself.';
+      }
+    }
+
+    // presetManualDefaults assumed defined elsewhere if you need it
+    function applyPresetToManualFields(presetKey) {
+      if (typeof presetManualDefaults === 'undefined') return;
+      const defaults = presetManualDefaults[presetKey];
+      if (!defaults) return;
+      const logicRadio = document.querySelector(`input[name="logicType"][value="${defaults.logicType}"]`);
+      if (logicRadio) logicRadio.checked = true;
+
+      const capRadio = document.querySelector(`input[name="slotCapacityMode"][value="${defaults.slotCapacityMode}"]`);
+      if (capRadio) capRadio.checked = true;
+      document.getElementById('multiCapacityRow').style.display =
+        defaults.slotCapacityMode === 'multiple' ? 'block' : 'none';
+      document.querySelector('input[name="maxParallel"]').value = Math.min(5, defaults.maxParallel);
+
+      const hasDurRadio = document.querySelector(`input[name="hasStandardDuration"][value="${defaults.hasStandardDuration}"]`);
+      if (hasDurRadio) hasDurRadio.checked = true;
+      document.getElementById('standardDurationRow').style.display =
+        defaults.hasStandardDuration === 'yes' ? 'flex' : 'none';
+      document.querySelector('input[name="slotDurationMinutes"]').value = defaults.slotDurationMinutes;
+
+      updateLogicDependentUI();
+    }
+
+    document.getElementById('standardPreset').addEventListener('change', function() {
+      const descBox = document.getElementById('standardPresetDescription');
+      const key = this.value;
+
+      if (!key) {
+        descBox.textContent ='Select a preset to see its description and underlying parameters.';
+        return;
+      }
+
+      const preset = queuePresetMap[key];
+      if (!preset) {
+        descBox.textContent = 'Preset not found in configuration.';
+        return;
+      }
+
+      descBox.textContent = preset.description || '';
+
+      const mode = document.querySelector('input[name="queueMode"]:checked').value;
+      if (mode === 'standard') {
+        applyPresetDefaults(preset);
+      }
+    });
+
+    function applyPresetDefaults(preset) {
+      const d = preset.defaults || {};
+
+      const queueInput = document.getElementById('queueName');
+      if (queueInput && d.queueName) {
+        queueInput.setAttribute('placeholder', d.queueName);
+      }
+
+      if (d.logicType) {
+        const logicRadio = document.querySelector(`input[name="logicType"][value="${d.logicType}"]`);
+        if (logicRadio) logicRadio.checked = true;
+      }
+
+      if (d.slotCapacityMode) {
+        const capRadio = document.querySelector(`input[name="slotCapacityMode"][value="${d.slotCapacityMode}"]`);
+        if (capRadio) capRadio.checked = true;
+
+        const multiRow = document.getElementById('multiCapacityRow');
+        if (multiRow) {
+          multiRow.style.display = (d.slotCapacityMode === 'multiple') ? 'block' : 'none';
+        }
+      }
+
+      if (typeof d.maxParallel === 'number') {
+        const maxInput = document.querySelector('input[name="maxParallel"]');
+        if (maxInput) {
+          const clamped = Math.min(5, Math.max(1, d.maxParallel));
+          maxInput.value = clamped;
+        }
+      }
+
+      const logic = d.logicType || document.querySelector('input[name="logicType"]:checked')?.value || 'live';
+
+      if (logic === 'advance') {
+        const sel = document.getElementById('slotDurationAdvanceSelect');
+        if (sel && d.slotDurationMinutes) {
+          const value = String(d.slotDurationMinutes);
+          if ([15,20,25,30,35,40,45].map(String).includes(value)) {
+            sel.value = value;
+          } else {
+            sel.value = '';
+          }
+        }
+      } else {
+        if (d.hasStandardDuration) {
+          const radio = document.querySelector(`input[name="hasStandardDuration"][value="${d.hasStandardDuration}"]`);
+          if (radio) radio.checked = true;
+        }
+        const durRow = document.getElementById('standardDurationRow');
+        if (durRow) {
+          durRow.style.display = (d.hasStandardDuration === 'yes') ? 'flex' : 'none';
+        }
+        if (typeof d.slotDurationMinutes === 'number') {
+          const durInput = document.querySelector('input[name="slotDurationMinutes"]');
+          if (durInput) durInput.value = d.slotDurationMinutes;
+        }
+      }
+
+      if (d.bookingAccess) {
+        const radio = document.querySelector(`input[name="bookingAccess"][value="${d.bookingAccess}"]`);
+        if (radio) radio.checked = true;
+      }
+
+      if (typeof d.showEstimatedEntry === 'boolean') {
+        const val = d.showEstimatedEntry ? 'yes' : 'no';
+        const radio = document.querySelector(`input[name="showEstimatedEntry"][value="${val}"]`);
+        if (radio) radio.checked = true;
+      }
+
+      function setCalChip(provider, on) {
+        const chip = document.querySelector(`.calendar-chip[data-provider="${provider}"]`);
+        const hiddenId =
+          provider === 'google'   ? 'calGoogleConnected' :
+          provider === 'microsoft'? 'calMsConnected' :
+          'calOtherConnected';
+
+        const hidden = document.getElementById(hiddenId);
+        if (chip) chip.classList.toggle('connected', !!on);
+        if (hidden) hidden.value = on ? '1' : '0';
+      }
+
+      setCalChip('google',   !!d.calendar_sync_google);
+      setCalChip('microsoft',!!d.calendar_sync_ms);
+      setCalChip('other',    !!d.calendar_sync_other);
+
+      updateLogicDependentUI();
+    }
+
+    document.querySelectorAll('input[name="queueMode"]').forEach(r => {
+      r.addEventListener('change', () => {
+        const mode = document.querySelector('input[name="queueMode"]:checked').value;
+        const standardSeg = document.getElementById('standardPresetSegment');
+        standardSeg.style.display = mode === 'standard' ? 'block' : 'none';
+        updateModeInfo();
+      });
+    });
+
+    document.querySelectorAll('input[name="slotCapacityMode"]').forEach(r => {
+      r.addEventListener('change', () => {
+        const val = document.querySelector('input[name="slotCapacityMode"]:checked').value;
+        document.getElementById('multiCapacityRow').style.display =
+          val === 'multiple' ? 'block' : 'none';
+        const box = document.getElementById('volumeInfoBox');
+        if (val === 'single') {
+          box.textContent =
+            'Exactly one visitor or group is processed at a time. Recommended for activities where attention must remain fully focused (e.g. medical).';
+        } else {
+          box.textContent =
+            'Several visitors/groups can be processed in parallel. Use this for continuous flows like exhibitions, attractions or open spaces.';
+        }
+      });
+    });
+
+    document.querySelectorAll('input[name="hasStandardDuration"]').forEach(r => {
+      r.addEventListener('change', () => {
+        const val = document.querySelector('input[name="hasStandardDuration"]:checked').value;
+        document.getElementById('standardDurationRow').style.display =
+          val === 'yes' ? 'flex' : 'none';
+        const box = document.getElementById('durationInfoBox');
+        if (val === 'yes') {
+          box.textContent =
+            'With a standard duration, In-Time can provide better estimated entry times and balance bookings over the day.';
+        } else {
+          box.textContent =
+            'Without a standard duration, the system still works but estimations will be more approximate and rely mainly on historical data.';
+        }
+        updateEstimatedEntryVisibility();
+      });
+    });
+
+    document.querySelectorAll('input[name="logicType"]').forEach(r => {
+      r.addEventListener('change', () => {
+        const val = document.querySelector('input[name="logicType"]:checked').value;
+        const box = document.getElementById('logicInfoBox');
+        if (val === 'live') {
+          box.innerHTML =
+            'Pure “first come, first served” logic. Ideal for walk-in traffic and continuous flows.';
+        } else if (val === 'advance') {
+          box.innerHTML =
+            'Visitors book specific time-slots in a calendar. Perfect for appointments and guided tours.';
+        } else {
+          box.innerHTML =
+            'Combines live-flow and fixed appointments. Use it when you want to reserve blocks of time while still handling walk-ins.';
+        }
+        updateLogicDependentUI();
+      });
+    });
+
+    function createMixedPatternRow(index) {
+      const row = document.createElement('div');
+      row.className = 'mixed-pattern-row';
+      row.innerHTML = `
+        <div class="mixed-inner">
+          <label class="mixed-name-block">
+            <span class="mixed-label">Standard slot ${index}
+              <button type="button"
+                      class="btn btn-secondary mixed-remove-btn"
+                      title="Remove this standard slot">✕</button>
+            </span>
+            <input type="text"
+                   class="mixed-name"
+                   value="Name ${index}"
+                   placeholder="Name ${index}">
+          </label>
+
+          <div class="mixed-right">
+            <label class="mixed-field">
+              <span class="mixed-label">Indiv./Booking</span>
+              <input type="number"
+                     class="mixed-volume"
+                     min="1" max="5" step="1" value="1">
+            </label>
+
+            <label class="mixed-field">
+              <span class="mixed-label">Duration (min)</span>
+              <input type="number"
+                     class="mixed-duration"
+                     min="5" max="240" step="5" value="30">
+            </label>
+          </div>
+        </div>
+      `;
+      row.querySelector('.mixed-remove-btn').addEventListener('click', () => {
+        row.remove();
+      });
+      return row;
+    }
+
+    function ensureAtLeastOneMixedPattern() {
+      const list = document.getElementById('mixedPatternsList');
+      const existing = list.querySelectorAll('.mixed-pattern-row').length;
+      if (existing === 0) {
+        const row = createMixedPatternRow(1);
+        list.appendChild(row);
+      }
+    }
+
+    document.getElementById('addMixedPatternBtn').addEventListener('click', () => {
+      const list = document.getElementById('mixedPatternsList');
+      const existing = list.querySelectorAll('.mixed-pattern-row').length;
+      if (existing >= 10) {
+        alert('You can define at most 10 standard slot types for a mixed queue.');
+        return;
+      }
+      const row = createMixedPatternRow(existing + 1);
+      list.appendChild(row);
+    });
+
+    function updateEstimatedEntryVisibility() {
+      const logic = document.querySelector('input[name="logicType"]:checked').value;
+      const estSeg = document.getElementById('estimatedEntrySegment');
+
+      if (!estSeg) return;
+
+      if (logic === 'live') {
+        const hasDur = document.querySelector('input[name="hasStandardDuration"]:checked')?.value || 'no';
+        estSeg.style.display = (hasDur === 'yes') ? 'block' : 'none';
+        if (hasDur === 'no') {
+          const noRadio = document.querySelector('input[name="showEstimatedEntry"][value="no"]');
+          if (noRadio) noRadio.checked = true;
+        }
+      } else if (logic === 'advance') {
+        estSeg.style.display = 'none';
+      } else if (logic === 'mixed') {
+        estSeg.style.display = 'block';
+      }
+    }
+
+    function updateAllowedBookingsUI() {
+      const logic = document.querySelector('input[name="logicType"]:checked').value;
+      const bookingAccess = document.querySelector('input[name="bookingAccess"]:checked')?.value || 'registered';
+      const listedRow   = document.getElementById('bookingAccessListedRow');
+      const editListBtn = document.getElementById('editAllowedListBtn');
+      const summary     = document.getElementById('allowedListSummary');
+
+      if (logic === 'advance') {
+        if (listedRow) listedRow.style.display = 'none';
+        if (bookingAccess === 'listed') {
+          const reg = document.querySelector('input[name="bookingAccess"][value="registered"]');
+          if (reg) reg.checked = true;
+        }
+        if (editListBtn) editListBtn.style.display = 'none';
+        if (summary) summary.style.display = 'none';
+      } else {
+        if (listedRow) listedRow.style.display = 'flex';
+        if (editListBtn) {
+          editListBtn.style.display = (bookingAccess === 'listed') ? 'inline-flex' : 'none';
+        }
+        if (summary) {
+          if (bookingAccess === 'listed') {
+            if (allowedVisitorsEmails.length) {
+              summary.textContent = `${allowedVisitorsEmails.length} visitor email(s) in the list.`;
+              summary.style.display = 'block';
+            } else {
+              summary.textContent = 'No visitor emails in the list yet.';
+              summary.style.display = 'block';
+            }
+          } else {
+            summary.style.display = 'none';
+          }
+        }
+      }
+    }
+
+    function updateLogicDependentUI() {
+      const logic = document.querySelector('input[name="logicType"]:checked').value;
+
+      const volumeSeg   = document.getElementById('volumeSegment');
+      const durationSeg = document.getElementById('durationSegment');
+      const liveDurOpts = document.getElementById('liveDurationOptions');
+      const stdDurRow   = document.getElementById('standardDurationRow');
+      const advDurRow   = document.getElementById('advanceDurationRow');
+      const durationHelp = document.getElementById('durationHelp');
+
+      const estSeg  = document.getElementById('estimatedEntrySegment');
+      const estBox  = document.getElementById('estimationInfoBox');
+
+      const listedRow       = document.getElementById('bookingAccessListedRow');
+      const editListBtn     = document.getElementById('editAllowedListBtn');
+      const allowedInfoBox  = document.getElementById('allowedInfoBox');
+
+      const calSeg   = document.getElementById('calendarSyncSegment');
+      const mixedSeg = document.getElementById('mixedPatternsSegment');
+
+      if (volumeSeg)   volumeSeg.style.display   = 'block';
+      if (durationSeg) durationSeg.style.display = 'block';
+      if (liveDurOpts) liveDurOpts.style.display = 'block';
+      if (stdDurRow)   stdDurRow.style.display   = 'none';
+      if (advDurRow)   advDurRow.style.display   = 'none';
+
+      if (estSeg) estSeg.style.display = 'block';
+      if (calSeg) calSeg.style.display = 'block';
+      if (mixedSeg) mixedSeg.style.display = 'none';
+
+      if (listedRow) listedRow.style.display = 'flex';
+      if (editListBtn) editListBtn.style.display = 'none';
+
+      if (durationHelp) {
+        durationHelp.textContent =
+          'Optional but recommended when you want estimated entry times.';
+      }
+      if (estBox) {
+        estBox.innerHTML =
+          'Estimated entry time is calculated as: ' +
+          '<em>last entry time + (pending tickets × standard time-slot)</em>. ' +
+          'Showing it makes visitors feel more in control, but it’s still an estimate.';
+      }
+      if (allowedInfoBox) {
+        allowedInfoBox.textContent =
+          'For “Only from my list”, you’ll be able to upload or edit a list of allowed ' +
+          'visitor emails. This can also be managed later from “Manage my Virtual Queues”.';
+      }
+
+      if (logic === 'live') {
+        if (volumeSeg) volumeSeg.style.display = 'none';
+
+        if (durationSeg) durationSeg.style.display = 'block';
+        if (liveDurOpts) liveDurOpts.style.display = 'block';
+        if (advDurRow)   advDurRow.style.display   = 'none';
+
+        if (durationHelp) {
+          durationHelp.textContent =
+            'Optional. If provided, we can display estimated entry times for the live queue.';
+        }
+
+        if (listedRow) listedRow.style.display = 'flex';
+        if (calSeg) calSeg.style.display = 'block';
+
+        if (estBox) {
+          estBox.innerHTML =
+            'Estimated entry time is calculated based on your standard slot duration ' +
+            'and the number of pending visitors. It helps visitors know roughly when it will be their turn.';
+        }
+
+      } else if (logic === 'advance') {
+        if (volumeSeg) volumeSeg.style.display = 'block';
+
+        if (durationSeg) durationSeg.style.display = 'block';
+        if (liveDurOpts) liveDurOpts.style.display = 'none';
+        if (advDurRow)   advDurRow.style.display   = 'flex';
+        if (durationHelp) {
+          durationHelp.textContent =
+            'Mandatory. Each bookable slot will use this duration (15–45 minutes).';
+        }
+
+        if (estSeg) estSeg.style.display = 'none';
+
+        if (listedRow) {
+          listedRow.style.display = 'none';
+          const current = document.querySelector('input[name="bookingAccess"]:checked');
+          if (current && current.value === 'listed') {
+            document.querySelector('input[name="bookingAccess"][value="registered"]').checked = true;
+          }
+        }
+        if (editListBtn) editListBtn.style.display = 'none';
+
+        if (calSeg) calSeg.style.display = 'none';
+
+      } else if (logic === 'mixed') {
+        if (volumeSeg) volumeSeg.style.display = 'none';
+        if (durationSeg) durationSeg.style.display = 'none';
+
+        if (mixedSeg) {
+          mixedSeg.style.display = 'block';
+          ensureAtLeastOneMixedPattern();
+        }
+
+        if (estSeg) estSeg.style.display = 'block';
+        if (estBox) {
+          estBox.innerHTML =
+            'In mixed mode, visitors will be informed when the virtual live flow is ' +
+            'active and when it is on hold due to fixed appointments. Estimated entry ' +
+            'times take into account ongoing appointments and resume the queue when they end.';
+        }
+
+        if (listedRow) listedRow.style.display = 'flex';
+        if (calSeg) calSeg.style.display = 'block';
+      }
+
+      updateEstimatedEntryVisibility();
+      updateAllowedBookingsUI();
+    }
+
+    document.querySelectorAll('input[name="bookingAccess"]').forEach(r => {
+      r.addEventListener('change', updateAllowedBookingsUI);
+    });
+
+    document.querySelectorAll('input[name="showEstimatedEntry"]').forEach(r => {
+      r.addEventListener('change', () => {
+        const val = document.querySelector('input[name="showEstimatedEntry"]:checked').value;
+        const box = document.getElementById('estimationInfoBox');
+        if (val === 'yes') {
+          box.innerHTML =
+            'Visitors will see a live estimate of when they are expected to enter. ' +
+            'This increases transparency, but make sure your parameters are realistic.';
+        } else {
+          box.textContent =
+            'Estimated entry times will not be shown to visitors. You still benefit internally from the calculation to manage the flow.';
+        }
+      });
+    });
+
+    // ========== ALLOWED VISITORS MODAL ==========
+
+    const allowedModal = document.getElementById('allowedListModal');
+    const allowedTextarea = document.getElementById('allowedListTextarea');
+    const allowedError = document.getElementById('allowedListModalError');
+    const allowedSummary = document.getElementById('allowedListSummary');
+
+    function openAllowedListModal() {
+      allowedError.style.display = 'none';
+      allowedError.textContent = '';
+      allowedTextarea.value = allowedVisitorsEmails.join('\n');
+      allowedModal.style.display = 'flex';
+    }
+
+    function closeAllowedListModal() {
+      allowedModal.style.display = 'none';
+    }
+
+    function parseAllowedListInput(text) {
+      const lines = text.split(/\r?\n/);
+      const emails = [];
+      const invalids = [];
+      const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+        if (!emailRegex.test(trimmed)) {
+          invalids.push(trimmed);
+        } else {
+          emails.push(trimmed.toLowerCase());
+        }
+      });
+
+      return { emails, invalids };
+    }
+
+    document.getElementById('editAllowedListBtn').addEventListener('click', () => {
+      openAllowedListModal();
+    });
+
+    document.getElementById('allowedListCancelBtn').addEventListener('click', () => {
+      closeAllowedListModal();
+    });
+
+    document.getElementById('allowedListSaveBtn').addEventListener('click', () => {
+      const { emails, invalids } = parseAllowedListInput(allowedTextarea.value || '');
+      if (invalids.length) {
+        allowedError.textContent =
+          'Some entries are not valid email addresses: ' + invalids.slice(0, 3).join(', ') +
+          (invalids.length > 3 ? '…' : '');
+        allowedError.display = 'block';
+        allowedError.style.display = 'block';
+        return;
+      }
+      allowedVisitorsEmails = emails;
+      if (allowedSummary) {
+        if (emails.length) {
+          allowedSummary.textContent = `${emails.length} visitor email(s) in the list.`;
+          allowedSummary.style.display = 'block';
+        } else {
+          allowedSummary.textContent = 'No visitor emails in the list yet.';
+          allowedSummary.style.display = 'block';
+        }
+      }
+      closeAllowedListModal();
+    });
+
+    allowedModal.addEventListener('click', (e) => {
+      if (e.target === allowedModal) {
+        closeAllowedListModal();
+      }
+    });
+
+    async function loadQueuePresetsFromBase() {
+      const select = document.getElementById('standardPreset');
+      if (!select) return;
+
+      select.innerHTML = '<option value="">— Loading presets… —</option>';
+
+      try {
+        const res = await fetch('/modules/In-Time/manage/base.json', {
+          headers: { 'Accept': 'application/json' }
+        });
+
+        if (!res.ok) {
+          console.error('Failed to load base.json:', res.status);
+          select.innerHTML = '<option value="">— No presets available —</option>';
+          return;
+        }
+
+        const cfg = await res.json();
+        const presets = Array.isArray(cfg.queuePresets) ? cfg.queuePresets : [];
+
+        if (!presets.length) {
+          console.warn('base.json contains no queuePresets[]');
+          select.innerHTML = '<option value="">— No presets defined —</option>';
+          return;
+        }
+
+        queuePresetMap = {};
+        select.innerHTML = '<option value="">— Select a preset —</option>';
+
+        presets.forEach(p => {
+          if (!p.id) return;
+          queuePresetMap[p.id] = p;
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.label || p.id;
+          select.appendChild(opt);
+        });
+      } catch (e) {
+        console.error('Error loading queue presets from base.json:', e);
+        select.innerHTML = '<option value="">— Error loading presets —</option>';
+      }
+    }
+
+    function collectOperatingDays() {
+      const result = [];
+      document.querySelectorAll('.day-row').forEach(row => {
+        const dayKey = row.dataset.dayKey;
+        const enabled = row.querySelector('.dayToggleInput').checked;
+        if (!enabled) return;
+        const start = row.querySelector(`input[name="hours_${dayKey}_start"]`).value;
+        const end   = row.querySelector(`input[name="hours_${dayKey}_end"]`).value;
+        const bStart = row.querySelector(`input[name="hours_${dayKey}_break_start"]`).value;
+        const bEnd   = row.querySelector(`input[name="hours_${dayKey}_break_end"]`).value;
+        result.push({
+          day: dayKey,
+          open: start,
+          close: end,
+          break_start: bStart || null,
+          break_end: bEnd || null
+        });
+      });
+      return result;
+    }
+
+    function collectOffDuty() {
+      const list = [];
+      document.querySelectorAll('.off-duty-row').forEach(row => {
+        const fromDate = row.querySelector('input[name="off_from_date[]"]').value;
+        const toDate   = row.querySelector('input[name="off_to_date[]"]').value;
+        const fromTime = row.querySelector('input[name="off_from_time[]"]').value;
+        const toTime   = row.querySelector('input[name="off_to_time[]"]').value;
+        if (!fromDate || !toDate) return;
+        list.push({
+          from_date: fromDate,
+          to_date:   toDate,
+          from_time: fromTime || null,
+          to_time:   toTime   || null
+        });
+      });
+      return list;
+    }
+
+    function collectMixedPatterns() {
+      const rows = document.querySelectorAll('.mixed-pattern-row');
+      const patterns = [];
+      rows.forEach(row => {
+        const name  = row.querySelector('.mixed-name').value.trim();
+        const vol   = Number(row.querySelector('.mixed-volume').value);
+        const dur   = Number(row.querySelector('.mixed-duration').value);
+        if (!name) return;
+        if (!Number.isFinite(vol) || vol < 1 || vol > 5) return;
+        if (!Number.isFinite(dur) || dur < 5 || dur > 240) return;
+        patterns.push({
+          name,
+          volume: vol,
+          duration_minutes: dur
+        });
+      });
+      return patterns;
+    }
+
+    function validateStep2() {
+      const err = document.getElementById('step2Error');
+      err.style.display = 'none';
+      err.textContent = '';
+
+      const mode = document.querySelector('input[name="queueMode"]:checked').value;
+      const logicType = document.querySelector('input[name="logicType"]:checked').value;
+
+      if (mode === 'standard') {
+        const preset = document.getElementById('standardPreset').value;
+        if (!preset) {
+          err.textContent = 'Please select one of the standard virtual queue presets.';
+          err.style.display = 'block';
+          return false;
+        }
+      } else {
+        const capMode = document.querySelector('input[name="slotCapacityMode"]:checked').value;
+        if (logicType === 'advance') {
+          if (capMode === 'multiple') {
+            const maxPar = Number(document.querySelector('input[name="maxParallel"]').value);
+            if (!maxPar || maxPar < 1 || maxPar > 5) {
+              err.textContent = 'Please set the maximum number of parallel visitors/groups (between 1 and 5).';
+              err.style.display = 'block';
+              return false;
+            }
+          }
+          const sel = document.getElementById('slotDurationAdvanceSelect');
+          if (!sel.value) {
+            err.textContent = 'Please select a standard time-slot duration between 15 and 45 minutes.';
+            err.style.display = 'block';
+            return false;
+          }
+        } else if (logicType === 'live') {
+          const hasDur = document.querySelector('input[name="hasStandardDuration"]:checked').value;
+          if (hasDur === 'yes') {
+            const dur = Number(document.querySelector('input[name="slotDurationMinutes"]').value);
+            if (!dur || dur <= 0 || dur > 480) {
+              err.textContent = 'Please provide a valid standard slot duration (1–480 minutes) or disable estimation.';
+              err.style.display = 'block';
+              return false;
+            }
+          }
+        } else if (logicType === 'mixed') {
+          const patterns = collectMixedPatterns();
+          if (!patterns.length) {
+            err.textContent = 'In mixed mode, please define at least one standard slot type (name, volume, duration).';
+            err.style.display = 'block';
+            return false;
+          }
+        }
+      }
+
+      const bookingAccess = document.querySelector('input[name="bookingAccess"]:checked').value;
+      if ((logicType === 'live' || logicType === 'mixed') &&
+          bookingAccess === 'listed' &&
+          allowedVisitorsEmails.length === 0) {
+        err.textContent = 'You selected “Only from my list” but the allowed visitors list is empty. Please add at least one email or choose another option.';
+        err.style.display = 'block';
+        return false;
+      }
+
+      return true;
+    }
+
+    document.getElementById('btnCreateQueue').addEventListener('click', () => {
+      const err = document.getElementById('step2Error');
+      err.style.display = 'none';
+      err.textContent = '';
+
+      if (!validateStep1() || !validateStep2()) {
+        return;
+      }
+
+      const address   = document.getElementById('addressInput').value.trim();
+      const latitude  = document.getElementById('latitude').value.trim();
+      const longitude = document.getElementById('longitude').value.trim();
+
+      const queueInput = document.getElementById('queueName');
+      let queueName = queueInput.value.trim();
+
+      if (!queueName) {
+        const placeholder = (queueInput.getAttribute('placeholder') || '').trim();
+        queueName = placeholder || null;
+      }
+
+      const logicType = document.querySelector('input[name="logicType"]:checked').value;
+
+      const bookingAccess = document.querySelector('input[name="bookingAccess"]:checked').value;
+      const anonBookingAllowed   = (bookingAccess === 'anonymous');
+      const requiresLogin        = (bookingAccess !== 'anonymous');
+      const requiresWhitelist    = (bookingAccess === 'listed');
+
+      let waveCapacity = null;
+      let timePerSlotMinutes = null;
+      let showEstimate = false;
+      let mixedPatterns = [];
+
+      if (logicType === 'live') {
+        const hasDur = document.querySelector('input[name="hasStandardDuration"]:checked').value;
+        if (hasDur === 'yes') {
+          const dur = Number(document.querySelector('input[name="slotDurationMinutes"]').value);
+          if (Number.isFinite(dur) && dur > 0 && dur <= 480) {
+            timePerSlotMinutes = dur;
+          }
+        }
+        const showEstRadio = document.querySelector('input[name="showEstimatedEntry"]:checked');
+        showEstimate = !!(showEstRadio && showEstRadio.value === 'yes' && timePerSlotMinutes);
+      } else if (logicType === 'advance') {
+        const capMode = document.querySelector('input[name="slotCapacityMode"]:checked').value;
+        if (capMode === 'single') {
+          waveCapacity = 1;
+        } else {
+          const maxPar = Number(document.querySelector('input[name="maxParallel"]').value);
+          waveCapacity = Math.min(5, Math.max(1, maxPar || 1));
+        }
+        const sel = document.getElementById('slotDurationAdvanceSelect');
+        timePerSlotMinutes = Number(sel.value);
+        showEstimate = true;
+      } else if (logicType === 'mixed') {
+        mixedPatterns = collectMixedPatterns();
+        const showEstRadio = document.querySelector('input[name="showEstimatedEntry"]:checked');
+        showEstimate = !!(showEstRadio && showEstRadio.value === 'yes');
+      }
+
+      const calendarRoot = document.getElementById('calendarSyncSegment');
+      const calState = getCalendarSyncState(calendarRoot);
+      const calGoogle = calState.google;
+      const calMs     = calState.microsoft;
+      const calOther  = calState.other;
+
+      const payload = {
+        name: queueName,
+        location: address || null,
+        gps_lat: latitude  ? Number(latitude)  : null,
+        gps_lng: longitude ? Number(longitude) : null,
+
+        queue_mode: logicType,
+
+        anon_booking_allowed: anonBookingAllowed,
+        requires_login: requiresLogin,
+        requires_whitelist: requiresWhitelist,
+
+        wave_capacity: waveCapacity,
+        time_per_slot_minutes: timePerSlotMinutes,
+        show_estimate: showEstimate,
+
+        mixed_patterns: mixedPatterns.length ? mixedPatterns : [],
+
+        operating_days: collectOperatingDays(),
+        off_duty_periods: collectOffDuty(),
+
+        calendar_sync_google: calGoogle,
+        calendar_sync_ms: calMs,
+        calendar_sync_other: calOther,
+
+        allowed_visitors_emails: requiresWhitelist ? allowedVisitorsEmails : []
+      };
+
+      fetch('/api/intime/queues', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+          if (!ok || !data || !data.ok) {
+            throw new Error((data && data.error) || 'Failed to create queue');
+          }
+          window.location.href = '/modules/In-Time/manage/page 2.html';
+        })
+        .catch(e => {
+          err.textContent = e.message || 'An error occurred while creating the queue. Please try again.';
+          err.style.display = 'block';
+          console.error(e);
+        });
+    });
+
+    // ========== INIT (wizard only) ==========
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderDayHours();
+      updateModeInfo();
+      addOffDutyRow();
+      updateLogicDependentUI();
+      loadQueuePresetsFromBase();
+
+      initMap();
+      wireLocationInputs();
+
+      const calendarRoot = document.getElementById('calendarSyncSegment');
+      setupCalendarSync(calendarRoot, {
+        google: false,
+        microsoft: false,
+        other: false
+      });
+    });
+
+    // Expose nav helpers so non-module FAB+Drawer script can use them
+    window.InTimeNav = {
+      goHostHome,
+      goHostSettings,
+      goBackFromManage,
+      performLogout
+    };
+  </script>
+
+  <!-- Small non-module script: mount Drawer + FAB bands -->
+  <!-- Small non-module script: mount Drawer + FAB bands -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      if (window.Drawer && typeof window.Drawer.mount === 'function') {
+        window.Drawer.mount({
+          mode: 'host',
+          onLogout: window.InTimeNav && window.InTimeNav.performLogout
+        });
+      }
+
+      if (window.FAB && typeof window.FAB.mount === 'function') {
+        window.FAB.mount({
+          useTopBand: true,
+          useBottomBand: true,
+
+          home: {
+            title: 'Home',
+            label: '🏠',
+            onClick: function () {
+              if (window.InTimeNav) window.InTimeNav.goHostHome();
+            }
+          },
+
+          config: {
+            title: 'Settings',
+            label: '⚙️',
+            onClick: function () {
+              if (window.InTimeNav) window.InTimeNav.goHostSettings();
+            }
+          },
+
+          onBack: function () {
+            if (window.InTimeNav) window.InTimeNav.goBackFromManage();
+          },
+        });
+      }
+    });
+  </script>
+
+  <!-- Geometry-based hard hide of bottom-right FAB button -->
+  <script>
+    // ======= HARD HIDE: bottom-right FAB button (geometry-based) =======
+    function hideBottomRightFabButton() {
+      const bandH = parseInt(
+        getComputedStyle(document.documentElement).getPropertyValue('--band-h')
+      ) || 68;
+
+      const vh = window.innerHeight;
+      const vw = window.innerWidth;
+
+      const candidates = Array.from(document.querySelectorAll('button, a'))
+        .filter(el => {
+          // 🔹 Do NOT touch any buttons in the wizard footer or modal footer
+          if (el.closest('.wizard-footer')) return false;
+          if (el.closest('.modal-footer')) return false;
+
+
+// 🔹 Do NOT touch buttons in the calendar verification overlay
+if (el.closest('#calendarVerificationOverlay')) return false;
+
+          const rect = el.getBoundingClientRect();
+          if (!rect.width || !rect.height) return false;
+
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+
+          const nearBottom = cy > vh - bandH - 80 && cy < vh;
+          const rightSide  = cx > vw * 0.6;
+
+          return nearBottom && rightSide;
+        });
+
+      candidates.forEach(el => {
+        el.style.display       = 'none';
+        el.style.visibility    = 'hidden';
+        el.style.pointerEvents = 'none';
+      });
+    }
+
+    // Initial run
+    hideBottomRightFabButton();
+
+    // Re-run when DOM changes (FAB injected/re-mounted)
+    const fabObserver = new MutationObserver(() => {
+      hideBottomRightFabButton();
+    });
+    fabObserver.observe(document.body, { childList: true, subtree: true });
+
+    // Re-run on resize/orientation changes
+    window.addEventListener('resize', hideBottomRightFabButton);
+  </script>
+</body>
+</html>

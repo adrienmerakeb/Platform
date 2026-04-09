@@ -1,0 +1,64 @@
+{
+  "appTitle": "WanderPal",
+  "langLabel": "Sprache",
+
+  "loginTitle": "Anmelden",
+  "registerTitle": "Registrieren",
+
+  "email": "E-Mail-Adresse",
+  "password": "Passwort",
+  "createPassword": "Passwort erstellen",
+  "namePlaceholder": "Name",
+  "companyName": "Firmenname",
+  "website": "Offizielle Website",
+
+  "remember": "Angemeldet bleiben",
+  "forgot": "Passwort vergessen?",
+  "forgotTitle": "Passwort zurücksetzen",
+  "forgotDesc": "Gib deine E-Mail ein, wir senden dir einen Link zum Zurücksetzen.",
+  "forgotCancel": "Abbrechen",
+  "forgotSend": "Senden",
+  "forgotSuccess": "Falls ein Konto existiert, haben wir einen Link gesendet.",
+  "forgotError": "Deine Anfrage konnte nicht verarbeitet werden.",
+
+  "loginBtn": "Anmelden",
+  "registerBtn": "Registrieren",
+  "or": "oder",
+  "noAccount": "Noch kein Konto?",
+  "signup": "Registrieren",
+  "haveAccount": "Schon ein Konto?",
+  "signin": "Anmelden",
+
+  "invalidCreds": "Ungültige Anmeldedaten",
+  "suspendedMsg": "Dieses Konto ist gesperrt. Bitte den Support kontaktieren.",
+
+  "networkError": "Netzwerkfehler",
+  "registerSuccess": "Konto erstellt. Du kannst dich jetzt anmelden.",
+  "registerFail": "Konto konnte nicht erstellt werden (E-Mail bereits verwendet?)",
+
+  "hostTitle": "Host",
+  "hostLogin": "Host — Anmeldung",
+  "hostRegister": "Host — Registrierung",
+  "hostForgotTitle": "Host-Passwort zurücksetzen",
+  "hostForgotDesc": "Du erhältst einen Link, wenn diese E-Mail als Host registriert ist.",
+
+  "partnerTitle": "Partner",
+  "partnerLogin": "Partner — Anmeldung",
+  "partnerRegister": "Partner — Registrierung",
+  "partnerForgotTitle": "Partner-Passwort zurücksetzen",
+  "partnerForgotDesc": "Du erhältst einen Link, wenn diese E-Mail als Partner registriert ist.",
+
+  "chooseSector": "Branche wählen",
+  "recommendedServices": "Empfohlene Dienste",
+
+  "museum": "Museum / Galerie / Denkmal",
+  "doctor": "Arzt / Klinik / Zahnarzt",
+  "salon": "Kosmetik / Spa / Friseur",
+  "event": "Event-Veranstalter / Location",
+  "restaurant": "Restaurant / Café / Bar",
+  "hotel": "Hotel / Pension / BnB",
+  "retail": "Laden / Einkaufszentrum",
+  "sports": "Sportzentrum / Fitnessstudio / Stadion",
+  "public": "Behörde / Bank / Post",
+  "other": "Sonstiges"
+}

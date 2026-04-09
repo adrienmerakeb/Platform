@@ -1,0 +1,64 @@
+{
+  "appTitle": "WanderPal",
+  "langLabel": "Langue",
+
+  "loginTitle": "Connexion",
+  "registerTitle": "Inscription",
+
+  "email": "Adresse e-mail",
+  "password": "Mot de passe",
+  "createPassword": "Créer un mot de passe",
+  "namePlaceholder": "Nom",
+  "companyName": "Nom de l’entreprise",
+  "website": "Site officiel",
+
+  "remember": "Se souvenir de moi",
+  "forgot": "Mot de passe oublié ?",
+  "forgotTitle": "Mot de passe oublié",
+  "forgotDesc": "Entrez votre adresse e-mail et nous vous enverrons un lien de réinitialisation.",
+  "forgotCancel": "Annuler",
+  "forgotSend": "Envoyer",
+  "forgotSuccess": "Si un compte existe, nous avons envoyé un lien de réinitialisation.",
+  "forgotError": "Nous n’avons pas pu traiter votre demande.",
+
+  "loginBtn": "Connexion",
+  "registerBtn": "Inscription",
+  "or": "ou",
+  "noAccount": "Pas de compte ?",
+  "signup": "Inscrivez-vous",
+  "haveAccount": "Déjà un compte ?",
+  "signin": "Connectez-vous",
+
+  "invalidCreds": "Identifiants invalides",
+  "suspendedMsg": "Ce compte est suspendu. Veuillez contacter le support.",
+
+  "networkError": "Erreur réseau",
+  "registerSuccess": "Compte créé. Vous pouvez vous connecter.",
+  "registerFail": "Impossible de créer le compte (e-mail déjà utilisé ?)",
+
+  "hostTitle": "Hôte",
+  "hostLogin": "Hôte — Connexion",
+  "hostRegister": "Hôte — Inscription",
+  "hostForgotTitle": "Réinitialiser le mot de passe Hôte",
+  "hostForgotDesc": "Vous recevrez un lien si cet e-mail est enregistré en tant qu’hôte.",
+
+  "partnerTitle": "Partenaire",
+  "partnerLogin": "Partenaire — Connexion",
+  "partnerRegister": "Partenaire — Inscription",
+  "partnerForgotTitle": "Réinitialiser le mot de passe Partenaire",
+  "partnerForgotDesc": "Vous recevrez un lien si cet e-mail est enregistré en tant que partenaire.",
+
+  "chooseSector": "Choisir un secteur",
+  "recommendedServices": "Services recommandés",
+
+  "museum": "Musée / Galerie / Monument",
+  "doctor": "Médecin / Clinique / Dentiste",
+  "salon": "Beauté / Spa / Coiffeur",
+  "event": "Organisateur d’événements / Lieu",
+  "restaurant": "Restaurant / Café / Bar",
+  "hotel": "Hôtel / Maison d’hôtes / BnB",
+  "retail": "Boutique / Magasin / Centre commercial",
+  "sports": "Centre sportif / Salle de sport / Stade",
+  "public": "Administration / Banque / Poste",
+  "other": "Autre"
+}

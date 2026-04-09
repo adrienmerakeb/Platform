@@ -1,0 +1,170 @@
+/* ========= Shared Manage Pages Layout (Guidings / In-Time / others) ========= */
+
+/* Layout when top + bottom bands are active */
+body.has-top-band.has-bottom-band main.container {
+  padding-top: 8vh;
+  padding-bottom: 8vh;
+}
+
+main.container {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+/* Header layout in FAB top band */
+.top-band header.site {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+header.site .title {
+  display: block;
+}
+
+header.site .subtitle {
+  margin-top: 2px;
+
+  padding: 2px;
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+/* 🔹 Single shared hero block */
+.manage-hero {
+  margin: 0px auto 0px;
+  padding: 16px 20px 18px;
+  border-radius: 20px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.3);
+  backdrop-filter: blur(14px);
+}
+
+.manage-hero h1 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  letter-spacing: .02em;
+}
+
+.manage-hero p {
+  margin: 0;
+  font-size: 0.7rem;
+  opacity: 0.9;
+}
+
+/* Shared cards grid */
+.manage-cards-grid {
+  margin: 12px auto 80px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+/* Shared card component */
+.manage-card {
+  border-radius: 18px;
+  padding: 14px 16px 16px;
+  background: #ffffff;
+  color: #1b1b1b;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.manage-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.manage-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  background: #e3f2fd;
+}
+
+.manage-card h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.manage-card p {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  color: #555;
+}
+
+.manage-card-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Shared CTA button style */
+.manage-btn {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: none;
+  font-size: 0.86rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.manage-btn-primary {
+  background: #1e88e5;
+  color: #fff;
+}
+
+
+
+/* ========= Generic "manage page" helper ========= */
+
+/* Any page that is a management workspace (guidings, queues, events, deals…) */
+body.manage-page {
+  /* Dark glassy workspace feel; tweak to your palette if needed */
+  background: var(--bg-base, #0b1015);
+  color: var(--text-base, #ffffff);
+}
+
+/* Ensure consistent layout & centering for manage pages */
+body.manage-page main.container {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+/* When FAB top + bottom bands are active on manage pages */
+body.manage-page.has-top-band.has-bottom-band main.container {
+  padding-top: 8vh;
+  padding-bottom: 8vh;
+}
+
+/* Mobile padding for manage pages */
+@media (max-width: 640px) {
+  body.manage-page main.container {
+    padding-inline: 12px;
+  }
+}
+
+
+
+
+
+/* Mobile tweaks */
+@media (max-width: 640px) {
+  .manage-hero {
+    margin: 4px auto 0px;
+    padding-inline: 14px;
+  }
+  .manage-cards-grid {
+    margin-bottom: 72px;
+  }
+}

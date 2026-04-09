@@ -1,0 +1,118 @@
+{
+  "main": "In-Time",
+  "page 1": "Create a Virtual Queue",
+  "page 2": "Manage my Virtual Queues",
+  "page 3": "Scan entries",
+  "Settings": "Settings",
+
+  "queuePresets": [
+    {
+      "id": "live_flow_basic",
+      "label": "Live-flow basic",
+      "description":              "Basic configuration:\n- Type:                              - First arrived first served -\n- Estimated Entry Time:    - Not displayed -\n- Allowed bookings:         - Registered individuals only -\n- Calendar sync:                - No -\n- Person per booking:      - 1 -\n- Ideal for:\n Doctor practice, small museum, crowded restaurant.",
+      "defaults": {
+        "queueName": "My virtual queue",
+        "logicType": "live",
+        "slotCapacityMode": "single",
+        "maxParallel": 5,
+        "hasStandardDuration": "no",
+        "slotDurationMinutes": 15,
+        "bookingAccess": "registered",
+        "showEstimatedEntry": false,
+        "calendar_sync_google": false,
+        "calendar_sync_ms": false,
+        "calendar_sync_other": false
+      }
+    },
+    {
+      "id": "live_flow_plus",
+      "label": "Live-flow +",
+      "description":              "Basic configuration:\n- Type:                              - First arrived first served -\n- Estimated Entry Time:    - Displayed -\n- Allowed bookings:         - From my limited list only -\n- Calendar sync:                - Yes -\n- Person per booking:      - 1 -\n- Ideal for:\n 1 patient at a time, fixed appointments, simple waiting room logic.",
+      "defaults": {
+        "queueName": "My virtual queue",
+        "logicType": "live",
+        "slotCapacityMode": "single",
+        "maxParallel": 1,
+        "hasStandardDuration": "yes",
+        "slotDurationMinutes": 15,
+        "bookingAccess": "listed",
+        "showEstimatedEntry": true,
+        "calendar_sync_google": true,
+        "calendar_sync_ms": true,
+        "calendar_sync_other": true
+      }
+    },
+    {
+      "id": "in_advance_basic",
+      "label": "In-advance basic",
+      "description":              "Basic configuration:\n- Type:                              - Booking scheduled (time & duration) -\n- Estimated Entry Time:    - Displayed -\n- Allowed bookings:         - Anyone using host's QR code -\n- Calendar sync:                - Unavailable -\n- Person per booking:       - 1 to 5 -\n- Duration per booking:   - 15min -\n- Ideal for:\n 1 patient at a time, fixed appointments, simple waiting room logic.",
+      "defaults": {
+        "queueName": "My virtual queue",
+        "logicType": "advance",
+        "slotCapacityMode": "multiple",
+        "maxParallel": 5,
+        "hasStandardDuration": "no",
+        "slotDurationMinutes": 15,
+        "bookingAccess": "anonymous",
+        "showEstimatedEntry": true,
+        "calendar_sync_google": false,
+        "calendar_sync_ms": false,
+        "calendar_sync_other": false
+      }
+    },
+    {
+      "id": "in_advance_plus",
+      "label": "In-advance +",
+      "description":              "Basic configuration:\n- Type:                              - Booking scheduled (time & duration) -\n- Estimated Entry Time:    - Displayed -\n- Allowed bookings:         - Registered individuals only -\n- Calendar sync:                - Unavailable -\n- Person per booking:       - 1 to 5 -\n- Duration per booking:   - 15min -\n- Ideal for:\n 1 patient at a time, fixed appointments, simple waiting room logic.",
+      "defaults": {
+        "queueName": "My virtual queue",
+        "logicType": "advance",
+        "slotCapacityMode": "multiple",
+        "maxParallel": 5,
+        "hasStandardDuration": "yes",
+        "slotDurationMinutes": 15,
+        "bookingAccess": "registered",
+        "showEstimatedEntry": true,
+        "calendar_sync_google": false,
+        "calendar_sync_ms": false,
+        "calendar_sync_other": false
+      }
+    },
+    {
+      "id": "mixed_basic",
+      "label": "Mixed basic",
+      "description":              "Basic configuration:\n- Type:                              - Mixed Live-flow + scheduled booking-\n- Estimated Entry Time:    - Not displayed -\n- Allowed bookings:         - Registered individuals only -\n- Calendar sync:                - No -\n- Person per booking:       - 1 to 5 -\n- Duration per booking:   - multiple -\n- Ideal for:\n 1 patient at a time, fixed appointments, simple waiting room logic.",
+      "defaults": {
+        "queueName": "My virtual queue",
+        "logicType": "mixed",
+        "slotCapacityMode": "single",
+        "maxParallel": 1,
+        "hasStandardDuration": "no",
+        "slotDurationMinutes": 15,
+        "bookingAccess": "anonymous",
+        "showEstimatedEntry": false,
+        "calendar_sync_google": false,
+        "calendar_sync_ms": false,
+        "calendar_sync_other": false
+      }
+    },
+    {
+      "id": "mixed_plus",
+      "label": "Mixed +",
+      "description":              "Basic configuration:\n- Type:                              - Mixed Live-flow + scheduled booking-\n- Estimated Entry Time:    - Displayed -\n- Allowed bookings:         - From my limited list only -\n- Calendar sync:                - yes -\n- Person per booking:       - 1 to 5 -\n- Duration per booking:   - multiple -\n- Ideal for:\n 1 patient at a time, fixed appointments, simple waiting room logic.",
+      "defaults": {
+        "queueName": "My virtual queue",
+        "logicType": "mixed",
+        "slotCapacityMode": "multiple",
+        "maxParallel": 5,
+        "hasStandardDuration": "yes",
+        "slotDurationMinutes": 20,
+        "bookingAccess": "registered",
+        "showEstimatedEntry": true,
+        "calendar_sync_google": true,
+        "calendar_sync_ms": true,
+        "calendar_sync_other": false
+      }
+    }
+  ]
+}

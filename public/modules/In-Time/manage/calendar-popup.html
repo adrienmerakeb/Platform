@@ -1,0 +1,79 @@
+// /modules/In-Time/manage/calendar-popup.js
+// Reusable popup that hosts calendar review inside an iframe.
+// Usage:
+//   const decision = await openCalendarReviewPopup('google');
+//   // decision => { provider:'google', enableForQueue:true/false } or null if closed
+
+export function openCalendarReviewPopup(provider) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('inTimeCalendarPopupOverlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'inTimeCalendarPopupOverlay';
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.background = 'rgba(0,0,0,0.45)';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.zIndex = '9999';
+
+    const dialog = document.createElement('div');
+    dialog.style.background = '#fff';
+    dialog.style.borderRadius = '18px';
+    dialog.style.maxWidth = '1080px';
+    dialog.style.width = '96%';
+    dialog.style.maxHeight = '92vh';
+    dialog.style.display = 'flex';
+    dialog.style.flexDirection = 'column';
+    dialog.style.padding = '0';
+    dialog.style.overflow = 'hidden';
+    dialog.style.boxShadow = '0 10px 30px rgba(0,0,0,0.25)';
+
+    const iframe = document.createElement('iframe');
+    iframe.title = 'Calendar review';
+    iframe.style.border = '0';
+    iframe.style.width = '100%';
+    iframe.style.height = '92vh';
+    iframe.style.maxHeight = '92vh';
+    iframe.src = `/modules/In-Time/manage/calendar-popup-frame.html?provider=${encodeURIComponent(provider)}`;
+
+    dialog.appendChild(iframe);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    function cleanup(result) {
+      window.removeEventListener('message', onMessage);
+      overlay.remove();
+      resolve(result ?? null);
+    }
+
+    function onMessage(ev) {
+      // Security: only accept same-origin messages
+      if (ev.origin !== window.location.origin) return;
+
+      const data = ev.data || {};
+      if (data.type !== 'INTIME_CALENDAR_REVIEW_DECISION') return;
+
+      // expected: { provider, enableForQueue }
+      cleanup({
+        provider: data.provider,
+        enableForQueue: !!data.enableForQueue
+      });
+    }
+
+    window.addEventListener('message', onMessage);
+
+    // Close when clicking the dark overlay (outside dialog)
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) cleanup(null);
+    });
+
+    // Escape key closes
+    const onKey = (e) => {
+      if (e.key === 'Escape') cleanup(null);
+    };
+    window.addEventListener('keydown', onKey, { once: true });
+  });
+}

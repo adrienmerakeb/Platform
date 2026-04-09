@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>My Bookings — In-Time</title>
+<link rel="stylesheet" href="/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --v:#7c3aed;--v-s:#ede9fc;--v-d:#6d28d9;
+  --green:#16a34a;--green-s:#f0fdf4;
+  --amber:#d97706;--amber-s:#fffbeb;
+  --red:#dc2626;--red-s:#fef2f2;
+  --blue:#2563eb;--blue-s:#eff6ff;
+  --txt:#1a1825;--muted:#6b6880;--hint:#9b98aa;
+  --surf:#fff;--bg:#f4f3f8;--bord:#e2e0ea;--bord-f:#7c3aed;
+  --gray:#f0eff5;--gray-m:#d4d2de;
+  --r:14px;--ri:9px;
+  --sh:0 2px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --ring:0 0 0 3px rgba(124,58,237,.18);
+  --font:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:var(--font);background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55}
+.shell{max-width:600px;margin:0 auto;padding:84px 18px 120px}
+
+/* ── Page header ─────────────────────────────────────────── */
+.pg-hd{margin-bottom:18px}
+.pg-hd h1{font-size:21px;font-weight:700;margin-bottom:3px}
+.pg-hd p{font-size:13.5px;color:var(--muted)}
+
+/* ── Filter tabs ─────────────────────────────────────────── */
+.tabs{display:flex;gap:6px;margin-bottom:18px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  flex-shrink:0;padding:7px 16px;border-radius:999px;
+  border:1.5px solid var(--bord);background:var(--surf);
+  font-family:var(--font);font-size:13px;font-weight:600;
+  color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.tab:hover{border-color:var(--v);color:var(--v);background:var(--v-s)}
+.tab.active{background:var(--v);color:#fff;border-color:var(--v-d);
+  box-shadow:0 2px 8px rgba(124,58,237,.25)}
+
+/* ── Booking card wrapper ────────────────────────────────── */
+.bcard-wrap{
+  position:relative;margin-bottom:12px;border-radius:var(--r);
+  overflow:hidden;
+}
+
+/* Revealed action zones — permanently behind the card */
+.swipe-left-reveal{
+  position:absolute;top:0;bottom:0;right:0;width:88px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:5px;background:var(--red);color:#fff;border-radius:var(--r);
+  cursor:pointer;
+}
+.swipe-right-reveal{
+  position:absolute;top:0;bottom:0;left:0;width:88px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:5px;background:var(--v);color:#fff;border-radius:var(--r);
+  cursor:pointer;
+}
+.sr-ico{font-size:20px}
+.sr-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+
+/* Card — slides to reveal zones, stays open when released past threshold */
+.bcard{
+  background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);
+  box-shadow:var(--sh);
+  border-left:4px solid var(--bord);
+  border-right:4px solid var(--bord);
+  position:relative;z-index:1;
+  transition:transform .22s cubic-bezier(.4,0,.2,1),box-shadow .2s;
+  user-select:none;touch-action:pan-y;
+  will-change:transform;
+}
+.bcard.upcoming{border-left-color:var(--v);border-right-color:var(--red)}
+.bcard.today{border-left-color:var(--green);border-right-color:var(--red)}
+.bcard.redeemed{border-left-color:var(--green);border-right-color:var(--bord)}
+.bcard.redeemed .bcard-main{opacity:.78}
+.bcard.cancelled{border-left-color:var(--red-s);border-right-color:var(--bord);opacity:.6}
+.bcard.expired{border-left-color:var(--gray-m);border-right-color:var(--bord);opacity:.55}
+.bcard.past   {border-left-color:var(--gray-m);border-right-color:var(--bord);opacity:.60}
+
+.bcard-main{padding:16px 18px 14px}
+
+/* top row */
+.bcard-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.bcard-name{font-size:15px;font-weight:700;color:var(--txt);flex:1;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bcard-badges{display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap}
+
+/* status pills */
+.spill{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:10.5px;font-weight:700;padding:3px 9px;
+  border-radius:20px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;
+}
+.spill.booked  {background:var(--v-s);color:var(--v);border:1px solid rgba(124,58,237,.25)}
+.spill.today   {background:var(--green-s);color:var(--green);border:1px solid #86efac}
+.spill.redeemed{background:var(--green-s);color:var(--green);border:1px solid #86efac}
+.spill.cancelled{background:var(--red-s);color:var(--red);border:1px solid #fca5a5}
+.spill.expired {background:var(--gray);color:var(--hint);border:1px solid var(--bord)}
+.spill.past   {background:var(--gray);color:var(--hint);border:1px solid var(--bord)}
+.spill.missed  {background:var(--red-s);color:var(--red);border:1px solid #fca5a5}
+.spill.calling {background:var(--green-s);color:var(--green);border:1px solid #86efac;animation:callpulse 1.2s infinite}
+@keyframes callpulse{0%,100%{opacity:1}50%{opacity:.65}}
+.spill-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+
+/* date chip */
+.date-chip{
+  flex-shrink:0;text-align:center;background:var(--gray);
+  border-radius:var(--ri);padding:4px 8px;min-width:46px;
+}
+.date-chip .dc-day{font-size:17px;font-weight:700;color:var(--txt);line-height:1}
+.date-chip .dc-mon{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted)}
+.date-chip.upcoming-today{background:var(--green-s)}
+.date-chip.upcoming-today .dc-day,.date-chip.upcoming-today .dc-mon{color:var(--green)}
+
+/* meta row */
+.bcard-meta{font-size:12.5px;color:var(--muted);margin-bottom:8px;
+  display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.meta-sep{opacity:.4}
+
+/* code row */
+.bcard-code{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:13px;font-weight:700;letter-spacing:.1em;
+  color:var(--v);background:var(--v-s);
+  border-radius:var(--ri);padding:5px 12px;margin-bottom:10px;
+  cursor:pointer;transition:all .15s;
+}
+.bcard-code:hover{background:var(--v);color:#fff}
+.bcard-code .copy-ico{font-size:12px;opacity:.7}
+
+/* action row — single centered details toggle */
+.bcard-actions{
+  display:flex;align-items:center;justify-content:center;
+  padding-top:10px;border-top:1px solid var(--bord);
+}
+.bca-details-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--font);font-size:12px;font-weight:600;color:var(--hint);
+  background:none;border:none;cursor:pointer;padding:4px 10px;
+  transition:color .15s;
+}
+.bca-details-btn:hover{color:var(--v)}
+.bca-details-btn img{width:18px;height:18px;opacity:.5;transition:opacity .15s}
+.bca-details-btn:hover img{opacity:1}
+
+/* ── Detail drawer ───────────────────────────────────────── */
+.bcard-drawer{
+  border-top:1px solid var(--bord);
+  max-height:0;overflow:hidden;
+  transition:max-height .35s cubic-bezier(.4,0,.2,1),opacity .25s;
+  opacity:0;background:var(--surf);
+}
+.bcard-drawer.open{max-height:900px;opacity:1}
+.drawer-inner{padding:16px 16px 18px;display:flex;flex-direction:column;align-items:center;gap:12px}
+/* QR — large, centered, prominent */
+.drawer-qr-block{
+  width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;
+  background:var(--gray);border-radius:var(--ri);padding:16px 12px 10px;
+  background-size:cover;background-position:center;background-repeat:no-repeat;
+  transition:background .3s ease;
+}
+.drawer-qr-block.has-wallpaper .drawer-qr-label{color:rgba(255,255,255,.85);text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.drawer-qr-block img{
+  width:220px;height:220px;display:block;
+  border-radius:8px;border:1px solid var(--bord);background:#fff;
+}
+.drawer-qr-block .qr-spinner{
+  width:220px;height:220px;display:flex;align-items:center;justify-content:center;
+  border-radius:8px;border:1px dashed var(--bord);background:#fff;
+  font-size:12px;color:var(--hint);
+}
+.drawer-qr-label{font-size:11px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.07em}
+/* Location row directly below QR */
+.drawer-location{
+  width:100%;text-align:center;font-size:13px;font-weight:600;
+  color:var(--muted);padding:2px 0;
+}
+.drawer-location a{color:var(--v);text-decoration:none;font-weight:700}
+.drawer-location a:hover{text-decoration:underline}
+/* Info rows */
+.drawer-info{width:100%;max-width:320px;margin:0 auto}
+.info-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:6px 4px;border-bottom:1px solid var(--bord);font-size:13px;
+}
+.info-row:last-child{border-bottom:none}
+.info-key{color:var(--muted);font-weight:500;font-size:12.5px}
+.info-val{font-weight:700;color:var(--txt);text-align:right;font-size:13px}
+
+/* ── Empty state ─────────────────────────────────────────── */
+.empty{
+  background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);
+  box-shadow:var(--sh);padding:40px 24px;text-align:center;
+}
+.empty-ico{font-size:40px;margin-bottom:12px}
+.empty-title{font-size:16px;font-weight:700;margin-bottom:6px}
+.empty-desc{font-size:13.5px;color:var(--muted);margin-bottom:18px;line-height:1.6}
+.empty-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--v);color:#fff;border:none;
+  padding:10px 22px;border-radius:var(--ri);
+  font-family:var(--font);font-size:14px;font-weight:700;
+  cursor:pointer;transition:background .15s;text-decoration:none;
+}
+.empty-btn:hover{background:var(--v-d)}
+
+/* ── Modals ──────────────────────────────────────────────── */
+.overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.45);z-index:100;
+  align-items:center;justify-content:center;padding:20px;
+}
+.overlay.on{display:flex}
+.mbox{
+  background:var(--surf);border-radius:var(--r);
+  box-shadow:0 20px 60px rgba(0,0,0,.25);
+  padding:26px 24px;max-width:360px;width:100%;
+}
+.mbox h3{font-size:17px;font-weight:700;margin-bottom:8px}
+.mbox p{font-size:13.5px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+.mft{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.mbtn{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--font);font-size:13.5px;font-weight:600;
+  padding:9px 20px;border-radius:var(--ri);border:none;cursor:pointer;transition:all .15s;
+}
+.mbtn.sec{background:var(--gray);color:var(--txt)}
+.mbtn.sec:hover{background:var(--bord)}
+.mbtn.danger{background:var(--red);color:#fff}
+.mbtn.danger:hover{background:#b91c1c}
+
+/* ── Skeleton ────────────────────────────────────────────── */
+.skel{
+  background:linear-gradient(90deg,var(--gray) 25%,var(--bord) 50%,var(--gray) 75%);
+  background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px;
+}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skel-card{
+  background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);
+  box-shadow:var(--sh);padding:16px 18px;margin-bottom:12px;
+}
+
+/* Toast */
+#toast{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);
+  background:rgba(26,24,37,.9);color:#fff;padding:8px 18px;border-radius:999px;
+  font-size:13px;font-weight:600;opacity:0;pointer-events:none;
+  transition:opacity .2s,transform .2s;z-index:200;white-space:nowrap;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── QR fullscreen overlay ───────────────────────────── */
+#qrOverlay{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.82);align-items:center;justify-content:center;flex-direction:column;gap:16px;padding:20px;}
+#qrOverlay.on{display:flex}
+#qrOverlay img{width:min(95vw,480px);height:min(95vw,480px);display:block;border-radius:14px;border:3px solid rgba(255,255,255,.15);background:#fff;cursor:default;}
+.qro-ref{font-size:20px;font-weight:700;letter-spacing:.12em;color:#fff;background:rgba(255,255,255,.12);border-radius:var(--ri);padding:9px 22px;text-align:center;}
+.qro-pos{font-size:14px;font-weight:700;color:rgba(255,255,255,.72);text-align:center}
+.qro-hint{font-size:12px;color:rgba(255,255,255,.4);text-align:center}
+
+/* ── Favourites ─────────────────────────────────────────── */
+.fav-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:14px;transition:all .18s;text-decoration:none;color:inherit;display:block}
+.fav-card:hover{border-color:var(--v);box-shadow:0 4px 20px rgba(124,58,237,.12);transform:translateY(-1px)}
+.fav-card-body{padding:16px 18px 14px}
+.fav-top{display:flex;gap:14px;align-items:flex-start}
+.fav-qr-wrap{flex-shrink:0;width:80px;height:80px;border-radius:var(--ri);border:1px solid var(--bord);background:var(--gray);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.fav-qr-wrap img{width:80px;height:80px;display:block;border-radius:var(--ri)}
+.fav-qr-placeholder{font-size:28px;line-height:1}
+.fav-info{flex:1;min-width:0}
+.fav-name{font-size:15px;font-weight:700;color:var(--txt);margin-bottom:2px}
+.fav-venue{font-size:13px;color:var(--muted);margin-bottom:5px}
+.fav-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.fav-loc{font-size:12px;color:var(--v);font-weight:600;text-decoration:none}
+.fav-loc:hover{text-decoration:underline}
+.fav-arch{font-size:10.5px;font-weight:700;background:var(--v-s);color:var(--v);border-radius:999px;padding:2px 8px}
+.fav-details{padding:10px 18px 14px;border-top:1px solid var(--bord);font-size:12.5px;color:var(--muted);line-height:1.6}
+.fav-detail-row{display:flex;gap:6px;margin-bottom:2px}
+.fav-dk{font-weight:600;color:var(--txt);min-width:90px;flex-shrink:0}
+.fav-book-btn{display:block;margin:12px 18px 12px;padding:10px;border:none;border-radius:var(--ri);background:var(--v);color:#fff;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;transition:background .15s}
+.fav-book-btn:hover{background:var(--v-d)}
+</style>
+</head>
+<body class="has-top-band has-bottom-band">
+<header class="site"><div class="title">My Bookings</div></header>
+
+
+<div class="shell">
+
+  <div class="pg-hd">
+    <h1>My bookings</h1>
+    <p>Swipe left to cancel · Swipe right for options</p>
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-filter="open">Open</button>
+    <button class="tab" data-filter="today">Today</button>
+    <button class="tab" data-filter="closed">Closed</button>
+    <button class="tab" data-filter="all">All</button>
+    <button class="tab" data-filter="favs">⭐ Favourites</button>
+  </div>
+
+  <!-- List -->
+  <div id="bookingList">
+    <!-- skeletons while loading -->
+    <div class="skel-card"><div class="skel" style="width:60%;height:14px;margin-bottom:8px"></div><div class="skel" style="width:40%;height:11px"></div></div>
+    <div class="skel-card"><div class="skel" style="width:70%;height:14px;margin-bottom:8px"></div><div class="skel" style="width:50%;height:11px"></div></div>
+  </div>
+
+</div><!-- /shell -->
+
+<!-- Cancel confirm modal -->
+<div class="overlay" id="cancelModal">
+  <div class="mbox">
+    <h3>Cancel this booking?</h3>
+    <p id="cancelModalText">This action cannot be undone. Your spot will be released.</p>
+    <div class="mft">
+      <button class="mbtn sec" onclick="closeCancelModal()">Keep it</button>
+      <button class="mbtn danger" id="cancelConfirmBtn" onclick="confirmCancel()">Yes, cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="qrOverlay" onclick="closeQrOverlay()"><img id="qroImg" src="" alt="QR" onclick="event.stopPropagation()"><div class="qro-ref" id="qroRef"></div><div class="qro-pos" id="qroPos" style="display:none"></div><div class="qro-hint">Tap anywhere to close</div></div>
+<div id="toast"></div>
+
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+<script>
+'use strict';
+
+/* ── State ──────────────────────────────────────────────── */
+let allBookings  = [];
+let activeFilter = 'open';
+let cancelTarget = null;
+const deviceId   = getDeviceId();
+const highlightId= new URLSearchParams(location.search).get('highlight');
+const initFilter = new URLSearchParams(location.search).get('filter');
+
+/* ── Helpers ────────────────────────────────────────────── */
+let _tt;
+function toast(msg,ms=2400){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),ms);}
+function esc(s){const d=document.createElement('div');d.textContent=String(s??'');return d.innerHTML;}
+function getDeviceId(){let id=localStorage.getItem('intime_device_id');if(!id){id=crypto.randomUUID();localStorage.setItem('intime_device_id',id);}return id;}
+function todayISO(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+
+function mapsUrl(txt,lat,lng){if(lat&&lng)return'https://www.google.com/maps?q='+encodeURIComponent(lat+','+lng);if(txt)return'https://www.google.com/maps/search/'+encodeURIComponent(txt);return null;}
+function dtCompact(iso){if(!iso)return'—';const d=new Date(iso+'T12:00:00');return String(d.getDate()).padStart(2,'0')+' '+d.toLocaleDateString('en',{month:'short'})+' '+d.getFullYear();}
+function toHHMM(min){return String(Math.floor(min/60)).padStart(2,'0')+':'+String(min%60).padStart(2,'0');}
+function fmtDate(iso){
+  if(!iso) return {day:'?',mon:'???',full:'Unknown'};
+  const d=new Date(iso+'T12:00:00');
+  return {
+    day:String(d.getDate()).padStart(2,'0'),
+    mon:d.toLocaleDateString('en',{month:'short'}),
+    full:d.toLocaleDateString('en',{weekday:'long',day:'numeric',month:'long',year:'numeric'}),
+  };
+}
+
+function statusLabel(status){
+  const map={BOOKED:'Booked',PAST:'Past',CALLING:'Calling 📣',MISSED:'Missed',REDEEMED:'Redeemed ✓',CANCELLED:'Cancelled',EXPIRED:'Expired',NO_SHOW:'No-show'};
+  return map[status]||status;
+}
+function getValidUseTime(b){
+  /* Returns Date of entry window end (entry time + 1h). Computed locally. */
+  const base = b.valid_use_day;
+  if(!base) return new Date(0);
+  if(b.start_min!=null){
+    const d=new Date(base+'T00:00:00');
+    d.setMinutes(d.getMinutes()+b.start_min+60);
+    return d;
+  }
+  return new Date(base+'T23:59:59');
+}
+function isPastBooking(b){
+  if(b.status!=='BOOKED') return false;
+  return new Date() > getValidUseTime(b);
+}
+function isMissedBooking(b){
+  /* Local missed check: BOOKED and now > entry_time + 1h */
+  return b.status==='BOOKED' && b.start_min!=null && new Date() > getValidUseTime(b);
+}
+function isCallingBooking(b,q){
+  /* Local calling check: BOOKED, today, appointment_time - lead_time has passed */
+  if(b.status==='CALLING') return true;
+  if(b.status!=='BOOKED'||!q||q.lead_time_mins==null||b.start_min==null) return false;
+  const nowMin=new Date().getHours()*60+new Date().getMinutes();
+  return b.valid_use_day===todayISO() && nowMin>=b.start_min-q.lead_time_mins;
+}
+function statusClass(b,today){
+  if(b.status==='REDEEMED') return 'redeemed';
+  if(b.status==='CANCELLED') return 'cancelled';
+  if(b.status==='EXPIRED'||b.status==='MISSED') return 'expired';
+  if(isMissedBooking(b)) return 'expired';
+  if(isPastBooking(b)) return 'past';
+  if(b.status==='CALLING') return 'today';
+  if(b.valid_use_day===today) return 'today';
+  return 'booked';
+}
+function pillClass(b,today){
+  if(b.status==='REDEEMED') return 'redeemed';
+  if(b.status==='CANCELLED') return 'cancelled';
+  if(b.status==='EXPIRED'||b.status==='MISSED') return 'expired';
+  if(isMissedBooking(b)) return 'missed';
+  if(isPastBooking(b)) return 'past';
+  if(b.status==='CALLING') return 'calling';
+  if(b.status==='BOOKED'&&b.valid_use_day===today) return 'today';
+  return 'booked';
+}
+
+/* ── Filter logic ───────────────────────────────────────── */
+function filterBookings(bookings, filter){
+  if(filter==='favs') return [];
+  const today = todayISO();
+  const isOpen = function(b){ return b.status==='BOOKED' && b.valid_use_day>=today; };
+  const isClosed = function(b){ return !isOpen(b); };
+  if(filter==='open')   return bookings.filter(isOpen);
+  if(filter==='today')  return bookings.filter(function(b){ return b.valid_use_day===today&&b.status==='BOOKED'; });
+  if(filter==='closed') return bookings.filter(isClosed);
+  // 'all' — open bookings first, then closed
+  const open   = bookings.filter(isOpen);
+  const closed = bookings.filter(isClosed);
+  return open.concat(closed);
+}
+
+/* ── Render list ─────────────────────────────────────────── */
+function renderList(){
+  const list=document.getElementById('bookingList');
+  const today=todayISO();
+  const items=filterBookings(allBookings, activeFilter);
+
+  if(activeFilter==='favs'){ renderFavorites(); return; }
+  if(!items.length){
+    const msgs={
+      open:'No open bookings. <a href="/modules/In-Time/use/page 2.html" style="color:var(--v)">Scan a queue to book →</a>',
+      today:'No bookings for today.',
+      past:'No closed bookings yet.',
+      all:'No bookings found.',
+    };
+    list.innerHTML=`
+      <div class="empty">
+        <div class="empty-ico">🎟</div>
+        <div class="empty-title">Nothing here</div>
+        <div class="empty-desc">${msgs[activeFilter]||''}</div>
+        <a class="empty-btn" href="/modules/In-Time/use/page 2.html">📷 Scan a queue</a>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML=items.map(b=>cardHTML(b,today)).join('');
+
+  /* Wire interactivity */
+  items.forEach(b=>wireCard(b));
+
+  /* Scroll to highlighted */
+  if(highlightId){
+    const el=document.getElementById(`bc-${highlightId}`);
+    if(el) setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'center'}),300);
+  }
+}
+
+function cardHTML(b, today){
+  const dt   = fmtDate(b.valid_use_day);
+  const sc   = statusClass(b,today);
+  const pc   = pillClass(b,today);
+  const code = b.short_code||b.human_ref||'—';
+  const isToday = b.valid_use_day===today;
+  const today2   = todayISO();
+  const isOpen   = b.status==='BOOKED' && b.valid_use_day >= today2 && !isPastBooking(b);
+  const isClosed = !isOpen;
+  const canAct   = isOpen;
+
+  const pillLabel = pc==='today'?'Today':statusLabel(b.status);
+
+  return `
+<div class="bcard-wrap" id="bcw-${b.booking_id}">
+  <!-- Left zone: Modify (swipe right, open bookings only) -->
+  ${canAct?`<div class="swipe-right-reveal" onclick="openModify('${b.booking_id}','${b.queue_id}')">
+    <span class="sr-ico">✏️</span>
+    <span class="sr-lbl">Modify</span>
+  </div>`:''}
+  <!-- Right zone: Cancel (open) or Delete (closed) -->
+  <div class="swipe-left-reveal" onclick="${canAct?`openCancel(${b.booking_id},'${esc(b.queue_name||'this queue')}')`:`openDelete(${b.booking_id})`}">
+    <span class="sr-ico">${canAct?'🗑':'🗑'}</span>
+    <span class="sr-lbl">${canAct?'Cancel':'Delete'}</span>
+  </div>
+  <div class="bcard ${sc}" id="bc-${b.booking_id}" data-id="${b.booking_id}" data-open="${canAct}">
+    <div class="bcard-main">
+
+      <div class="bcard-top">
+        <div class="bcard-name">${esc(b.queue_name||'Queue')}</div>
+        <div class="bcard-badges">
+          <span class="spill ${pc}">
+            ${canAct?'<span class="spill-dot"></span>':''}
+            ${esc(pillLabel)}
+          </span>
+        </div>
+      </div>
+
+      <div class="bcard-meta">
+        ${b.venue_name?`<span>${esc(b.venue_name)}</span><span class="meta-sep">·</span>`:''}
+        <span>${esc(dt.full)}</span>
+        ${b.party_size>1?`<span class="meta-sep">·</span><span>${b.party_size} people</span>`:''}
+        ${b.start_min!=null?`<span class="meta-sep">·</span><span style="color:var(--v);font-weight:600">⏰ ${toHHMM(b.start_min)}</span>`:''}
+      </div>
+      ${(pc==='calling')?`<div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:6px">📣 Calling — head to venue now</div>`:''}
+      ${(pc==='missed')?`<div style="font-size:12px;font-weight:600;color:var(--red);margin-bottom:6px">⏰ Missed — slot has passed</div>`:''}
+
+      <div class="bcard-actions" style="justify-content:space-between">
+        ${(b.token_id||b.booking_id)?`<a href="/modules/In-Time/use/page 4.html?${b.token_id?'token='+encodeURIComponent(b.token_id):'bid='+encodeURIComponent(b.booking_id)}&queueId=${encodeURIComponent(b.queue_id||'')}" style="font-size:12px;font-weight:600;color:var(--v);text-decoration:none;padding:4px 10px">Details →</a>`:'<span></span>'}
+        <button class="bca-details-btn" id="dBtn-${b.booking_id}" onclick="toggleDrawer('${b.booking_id}')">
+          <img id="dIco-${b.booking_id}" src="/icons/ion-png-black/md-double-arrow-down.png" alt="Details">
+        </button>
+      </div>
+
+    </div>
+
+    <!-- detail drawer — revealed by swipe-down / details button -->
+    <div class="bcard-drawer" id="bdr-${b.booking_id}">
+      <div class="drawer-inner">
+        <!-- QR prominent -->
+        <div class="drawer-qr-block${b.wallpaper_data?' has-wallpaper':''}" id="qr-${b.booking_id}" ${b.wallpaper_data?`style="background-image:linear-gradient(rgba(10,6,30,.52),rgba(10,6,30,.52)),url(${encodeURI(b.wallpaper_data)});"`:''}>
+          <div class="qr-spinner">Generating…</div>
+          <div class="drawer-qr-label">Show at entry</div>
+        </div>
+        <!-- Location directly below QR -->
+        ${(function(){var mu=mapsUrl(b.location_text,b.gps_lat,b.gps_lng);return b.location_text?`<div class="drawer-location">📍 `+(mu?`<a href="${mu}" target="_blank" rel="noopener">${esc(b.location_text)} ↗</a>`:esc(b.location_text))+`</div>`:'';})()}
+        <!-- Compact info rows -->
+        <div class="drawer-info">
+          <div class="info-row"><span class="info-key">Ref</span><span class="info-val">${esc(code)}</span></div>
+          <div class="info-row"><span class="info-key">Date</span><span class="info-val">${esc(dtCompact(b.valid_use_day))}</span></div>
+          ${b.party_size>1?`<div class="info-row"><span class="info-key">Party</span><span class="info-val">${b.party_size} people</span></div>`:''}
+          <div class="info-row"><span class="info-key">Status</span><span class="info-val">${esc(statusLabel(b.status))}</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.bcard -->
+</div><!-- /.bcard-wrap -->`;
+}
+
+/* ── Wire swipe + actions ────────────────────────────────── */
+function wireCard(b){
+  const card   = document.getElementById('bc-'+b.booking_id);
+  const wrap   = document.getElementById('bcw-'+b.booking_id);
+  if(!card) return;
+
+  const SNAP  = 88;   /* width of the action zones */
+  const VTHRESH = 40; /* px vertical swipe to open/close drawer */
+  let sx=0,sy=0,cx=0,cy=0,dir=null,active=false;
+  let snappedX = 0;   /* current resting translateX */
+
+  function ptOf(e){ return e.touches?e.touches[0]:e; }
+
+  function snapTo(x){
+    snappedX=x;
+    card.style.transition='transform .2s cubic-bezier(.4,0,.2,1)';
+    card.style.transform='translateX('+x+'px)';
+  }
+  function closeZones(){ snapTo(0); }
+
+  /* Close zones when tapping outside this card */
+  document.addEventListener('click',function(e){
+    if(snappedX!==0 && !wrap.contains(e.target)) closeZones();
+  },{capture:true});
+
+  function onStart(e){
+    const pt=ptOf(e);
+    sx=pt.clientX; sy=pt.clientY; cx=0; cy=0; dir=null; active=true;
+    card.style.transition='none';
+  }
+  function onMove(e){
+    if(!active) return;
+    const pt=ptOf(e);
+    cx=pt.clientX-sx; cy=pt.clientY-sy;
+    if(!dir){
+      if(Math.abs(cx)<4&&Math.abs(cy)<4) return;
+      dir=Math.abs(cx)>Math.abs(cy)?'h':'v';
+    }
+    if(dir==='h'){
+      if(e.cancelable) e.preventDefault();
+      /* clamp: only allow swipe in the direction that has an action */
+      const isOpenCard = card.dataset.open === 'true';
+      const maxR = isOpenCard ? SNAP : 0; /* right reveal (modify) only for open bookings */
+      const maxL = SNAP;                  /* left reveal (cancel/delete) always available */
+      const tx = Math.max(-maxL, Math.min(maxR, snappedX+cx));
+      card.style.transform='translateX('+tx+'px)';
+    }
+    if(dir==='v'){
+      /* vertical — let page scroll, but intercept if swiping up and drawer is open */
+    }
+  }
+  function onEnd(){
+    if(!active) return; active=false;
+    card.style.transition='transform .2s cubic-bezier(.4,0,.2,1)';
+    if(dir==='h'){
+      const total=snappedX+cx;
+      const isOpen = card.dataset.open === 'true';
+      if(total>SNAP*0.45 && isOpen) snapTo(SNAP);    /* right → modify (open only) */
+      else if(total<-SNAP*0.45)     snapTo(-SNAP);   /* left  → cancel/delete */
+      else                          snapTo(0);
+    } else if(dir==='v'){
+      if(cy>VTHRESH)       openDrawer(String(b.booking_id));   /* swipe down → open */
+      else if(cy<-VTHRESH) closeDrawer(String(b.booking_id));  /* swipe up  → close */
+    }
+  }
+
+  card.addEventListener('touchstart',onStart,{passive:true});
+  card.addEventListener('touchmove', onMove, {passive:false});
+  card.addEventListener('touchend',  onEnd,  {passive:true});
+  card.addEventListener('mousedown', function(e){ if(e.button!==0)return; onStart(e); });
+  window.addEventListener('mousemove',function(e){ if(active)onMove(e); });
+  window.addEventListener('mouseup',  function(e){ if(active)onEnd(); });
+}
+
+/* ── Drawer open / close / toggle ───────────────────────── */
+function setDrawerIcon(id, isOpen){
+  const ico=document.getElementById('dIco-'+id);
+  if(ico) ico.src='/icons/ion-png-black/'+(isOpen?'md-double-arrow-up.png':'md-double-arrow-down.png');
+}
+function openDrawer(id){
+  /* close all others first */
+  document.querySelectorAll('.bcard-drawer.open').forEach(function(d){
+    if(d.id!=='bdr-'+id){
+      d.classList.remove('open');
+      setDrawerIcon(d.id.replace('bdr-',''),false);
+    }
+  });
+  const drawer=document.getElementById('bdr-'+id);
+  if(!drawer||drawer.classList.contains('open')) return;
+  drawer.classList.add('open');
+  setDrawerIcon(id,true);
+  renderQR(id);
+}
+function closeDrawer(id){
+  const drawer=document.getElementById('bdr-'+id);
+  if(!drawer) return;
+  drawer.classList.remove('open');
+  setDrawerIcon(id,false);
+}
+function toggleDrawer(id){
+  const drawer=document.getElementById('bdr-'+id);
+  if(!drawer) return;
+  if(drawer.classList.contains('open')) closeDrawer(id);
+  else openDrawer(id);
+}
+/* Close drawer on outside tap */
+document.addEventListener('click',function(e){
+  document.querySelectorAll('.bcard-drawer.open').forEach(function(d){
+    const id=d.id.replace('bdr-','');
+    const wrap=document.getElementById('bcw-'+id);
+    if(wrap&&!wrap.contains(e.target)){ closeDrawer(id); }
+  });
+});
+
+/* ── QR generation — fetches from server, no client lib needed ── */
+function renderQR(bookingId){
+  const wrap=document.getElementById('qr-'+bookingId);
+  if(!wrap||wrap.dataset.rendered) return;
+  wrap.dataset.rendered='1';
+  const b=allBookings.find(function(x){ return String(x.booking_id)===String(bookingId); });
+  const spinner=wrap.querySelector('.qr-spinner');
+  function setErr(msg){ if(spinner) spinner.textContent=msg; }
+  if(!b||!b.token_id){ setErr('No QR data'); return; }
+  fetch('/api/intime/bookings/qr/'+encodeURIComponent(b.token_id),{credentials:'same-origin'})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(!d.ok||!d.image_base64){ setErr('QR unavailable'); return; }
+      const img=document.createElement('img');
+      img.src=d.image_base64; img.alt='Booking QR';
+      img.style.cursor='pointer'; img.title='Tap to enlarge';
+      img.addEventListener('click',function(e){ e.stopPropagation(); openQrOverlay(d.image_base64,b); });
+      if(spinner) spinner.replaceWith(img);
+      else wrap.insertBefore(img,wrap.querySelector('.drawer-qr-label'));
+    })
+    .catch(function(){ setErr('QR unavailable'); });
+}
+
+/* ── QR overlay ─────────────────────────────────────────── */
+function openQrOverlay(src,b){
+  document.getElementById('qroImg').src=src;
+  document.getElementById('qroRef').textContent=b.short_code||b.human_ref||'';
+  var posEl=document.getElementById('qroPos');
+  if(b.archetype==='D'&&b.booking_id){ posEl.textContent='Queue position #'+b.booking_id; posEl.style.display=''; }
+  else posEl.style.display='none';
+  document.getElementById('qrOverlay').classList.add('on');
+  document.body.style.overflow='hidden';
+}
+function closeQrOverlay(){
+  document.getElementById('qrOverlay').classList.remove('on');
+  document.body.style.overflow='';
+}
+
+
+/* ── Copy code ───────────────────────────────────────────── */
+function copyCode(code,e){
+  e?.stopPropagation();
+  navigator.clipboard.writeText(code)
+    .then(()=>toast('Code copied!'))
+    .catch(()=>toast(code));
+}
+
+/* ── Delete flow (closed bookings — removes from local list) ─ */
+function openDelete(bookingId){
+  allBookings=allBookings.filter(function(x){ return String(x.booking_id)!==String(bookingId); });
+  renderList();
+}
+
+/* ── Cancel flow ─────────────────────────────────────────── */
+function openCancel(bookingId, queueName){
+  cancelTarget=bookingId;
+  document.getElementById('cancelModalText').innerHTML=
+    `Cancel your booking at <strong>${esc(queueName)}</strong>? This cannot be undone.`;
+  document.getElementById('cancelModal').classList.add('on');
+}
+function closeCancelModal(){
+  document.getElementById('cancelModal').classList.remove('on');
+  cancelTarget=null;
+  document.getElementById('cancelConfirmBtn').textContent='Yes, cancel';
+}
+async function confirmCancel(){
+  if(!cancelTarget) return;
+  const btn=document.getElementById('cancelConfirmBtn');
+  btn.disabled=true; btn.textContent='Cancelling…';
+  try{
+    const r=await fetch('/api/intime/bookings/'+cancelTarget+'/cancel',{
+      method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({device_id:deviceId}),
+    });
+    const d=await r.json().catch(function(){ return {}; });
+    if(!r.ok&&!d.already) throw new Error(d.error||'HTTP '+r.status);
+    const b=allBookings.find(function(x){ return String(x.booking_id)===String(cancelTarget); });
+    if(b) b.status='CANCELLED';
+    toast('Booking cancelled.');
+    closeCancelModal();
+    renderList();
+  }catch(err){
+    toast('Could not cancel: '+err.message);
+    btn.disabled=false; btn.textContent='Yes, cancel';
+  }
+}
+
+/* ── Modify flow ─────────────────────────────────────────── */
+function openModify(bookingId, queueId){
+  /* Navigate to booking page for same queue; the old booking stays BOOKED
+     until the new one is confirmed, then we cancel the old one client-side  */
+  const url=new URL('/modules/In-Time/use/page 3-2.html', location.origin);
+  url.searchParams.set('queueId', queueId);
+  url.searchParams.set('modify',  bookingId);   /* hint for booking page */
+  location.href=url.toString();
+}
+
+/* ── Tab switching ───────────────────────────────────────── */
+document.getElementById('tabs').addEventListener('click', e=>{
+  const tab=e.target.closest('.tab');
+  if(!tab) return;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active');
+  activeFilter=tab.dataset.filter;
+  renderList();
+});
+
+
+/* ── Favourites (scanned queues) ────────────────────────── */
+const FAV_KEY = 'intime_fav_queues';
+function loadFavs(){ try{ return JSON.parse(localStorage.getItem(FAV_KEY)||'{}'); }catch(e){ return {}; } }
+function saveFav(b){
+  const favs = loadFavs();
+  if(!b.queue_id) return;
+  const existing = favs[b.queue_id] || {};
+  favs[b.queue_id] = Object.assign({}, existing, {
+    queue_id: b.queue_id,
+    name: b.queue_name||existing.name||'Queue',
+    venue_name: b.venue_name||existing.venue_name||'',
+    location_text: b.location_text||existing.location_text||'',
+    gps_lat: b.gps_lat||existing.gps_lat||null,
+    gps_lng: b.gps_lng||existing.gps_lng||null,
+    archetype: b.archetype||existing.archetype||'',
+    booking_formula: b.booking_formula||existing.booking_formula||'',
+    timezone: b.timezone||existing.timezone||'',
+    saved_at: Date.now(),
+    /* Extended fields saved by page_3 when queue is fully loaded */
+    schedule_json: existing.schedule_json||null,
+    recommendations: existing.recommendations||null,
+    reseller_url: existing.reseller_url||null,
+  });
+  try{ localStorage.setItem(FAV_KEY, JSON.stringify(favs)); }catch(e){}
+}
+const ARCH_LABEL = {A:'Resource booking',B:'Appointments',C:'Wave entry',D:'Continuous flow'};
+function favScheduleSummary(q){
+  try{
+    const s=typeof q.schedule_json==='string'?JSON.parse(q.schedule_json):q.schedule_json;
+    if(!s) return null;
+    /* Try to get default day hours */
+    const def=s.default||s.monday||Object.values(s)[0];
+    if(def&&def.open&&def.close) return def.open+' – '+def.close;
+  }catch(e){}
+  return null;
+}
+function renderFavorites(){
+  const list = document.getElementById('bookingList');
+  const favs = Object.values(loadFavs()).sort((a,b)=>b.saved_at-a.saved_at);
+  if(!favs.length){
+    list.innerHTML=`<div class="empty"><div class="empty-ico">⭐</div><div class="empty-title">No favourites yet</div><div class="empty-desc">Queues you've booked will appear here as quick links.</div><a class="empty-btn" href="/modules/In-Time/use/page 2.html">📷 Scan a queue</a></div>`;
+    return;
+  }
+  list.innerHTML = favs.map(q=>{
+    const mu = mapsUrl(q.location_text,q.gps_lat,q.gps_lng);
+    const bookUrl = '/modules/In-Time/use/page 3.html?queueId='+encodeURIComponent(q.queue_id);
+    const qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=80x80&data='+encodeURIComponent(location.origin+'/modules/In-Time/use/page 3.html?queueId='+q.queue_id);
+    const hours = favScheduleSummary(q);
+    const archLabel = ARCH_LABEL[q.archetype]||q.archetype||'';
+    return `<div class="fav-card">
+      <div class="fav-card-body">
+        <div class="fav-top">
+          <div class="fav-qr-wrap">
+            <img src="${qrSrc}" alt="Queue QR" loading="lazy" onerror="this.style.display='none';this.parentElement.innerHTML='<span class=\"fav-qr-placeholder\">📷</span>'">
+          </div>
+          <div class="fav-info">
+            <div class="fav-name">${esc(q.name)}</div>
+            ${q.venue_name?`<div class="fav-venue">${esc(q.venue_name)}</div>`:''}
+            <div class="fav-meta">
+              ${q.location_text?(mu?`<a class="fav-loc" href="${mu}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 ${esc(q.location_text)} ↗</a>`:`<span class="fav-loc">📍 ${esc(q.location_text)}</span>`):''}
+              ${archLabel?`<span class="fav-arch">${esc(archLabel)}</span>`:''}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="fav-details">
+        ${hours?`<div class="fav-detail-row"><span class="fav-dk">⏰ Hours</span><span>${esc(hours)}</span></div>`:''}
+        ${q.recommendations?`<div class="fav-detail-row"><span class="fav-dk">💬 Tips</span><span>${esc(q.recommendations)}</span></div>`:'<div class="fav-detail-row" style="color:var(--hint);font-style:italic">No host notes yet</div>'}
+        ${q.reseller_url?`<div class="fav-detail-row"><span class="fav-dk">🎟 Tickets</span><a href="${esc(q.reseller_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--v)">Official reseller ↗</a></div>`:''}
+      </div>
+      <a class="fav-book-btn" href="${bookUrl}">📅 Book again</a>
+    </div>`;
+  }).join('');
+}
+
+/* ── Load bookings ───────────────────────────────────────── */
+async function loadBookings(){
+  try{
+    const r=await fetch(`/api/intime/bookings/mine?device_id=${encodeURIComponent(deviceId)}`,{
+      credentials:'same-origin',headers:{Accept:'application/json'}
+    });
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok) throw new Error(d.error||`HTTP ${r.status}`);
+    allBookings=d.bookings||[];
+    /* Save queue info to favourites */
+    allBookings.forEach(b=>saveFav(b));
+
+    /* Apply filter from URL if present */
+    if(initFilter&&['open','today','closed','all'].includes(initFilter)){
+      activeFilter=initFilter;
+      document.querySelectorAll('.tab').forEach(t=>{
+        t.classList.toggle('active', t.dataset.filter===initFilter);
+      });
+    }
+
+    renderList();
+  }catch(err){
+    document.getElementById('bookingList').innerHTML=`
+      <div class="empty">
+        <div class="empty-ico">⚠️</div>
+        <div class="empty-title">Could not load bookings</div>
+        <div class="empty-desc">${esc(err.message)}</div>
+        <button class="empty-btn" onclick="loadBookings()">Try again</button>
+      </div>`;
+  }
+}
+
+/* ── Boot ───────────────────────────────────────────────── */
+loadBookings();
+
+if(window.Drawer?.mount) Drawer.mount({mode:'visitor'});
+if(window.FAB?.mount) FAB.mount({
+  useTopBand:true,useBottomBand:true,
+  home:  {label:'🏠',title:'Home',onClick:()=>Drawer?.open?.()},
+  config:{label:'🏠',title:'Home',href:'/modules/In-Time/use/main.html'},
+  onBack:()=>{ history.length>1?history.back():(location.href='/modules/In-Time/use/main.html'); },
+});
+</script>
+</body>
+</html>

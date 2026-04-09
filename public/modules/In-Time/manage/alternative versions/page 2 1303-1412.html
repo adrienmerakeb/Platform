@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>My Queues — In-Time</title>
+<link rel="stylesheet" href="/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+/* ─── TOKENS — exact page_1 parity ───────────────────────── */
+:root{
+  --v:#7c3aed;--v-s:#ede9fc;--v-d:#6d28d9;
+  --blue:#2563eb;--blue-s:#eff6ff;
+  --green:#16a34a;--green-s:#f0fdf4;
+  --amber:#d97706;--amber-s:#fffbeb;
+  --red:#dc2626;--red-s:#fef2f2;
+  --txt:#1a1825;--muted:#6b6880;--hint:#9b98aa;
+  --surf:#fff;--bg:#f4f3f8;--bord:#e2e0ea;--bord-f:#7c3aed;
+  --gray:#f0eff5;--gray-m:#d4d2de;
+  --r:14px;--ri:9px;
+  --sh:0 2px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --ring:0 0 0 3px rgba(124,58,237,.18);
+  --font:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:var(--font);background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55}
+
+/* ─── SHELL ──────────────────────────────────────────────── */
+.shell{max-width:680px;margin:0 auto;padding:24px 20px 120px}
+
+/* ─── PAGE HEADER ────────────────────────────────────────── */
+.pg-hd{margin-bottom:20px}
+.pg-hd h1{font-size:22px;font-weight:700;color:var(--txt);margin-bottom:4px}
+.pg-hd p{font-size:13.5px;color:var(--muted)}
+
+/* ─── TOOLBAR ────────────────────────────────────────────── */
+.toolbar{
+  background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);
+  box-shadow:var(--sh);padding:14px 16px;margin-bottom:14px;
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px;
+}
+.tb-group{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tb-group label{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
+.tb-input{
+  padding:7px 11px;border:1.5px solid var(--bord);border-radius:var(--ri);
+  font-family:var(--font);font-size:13px;color:var(--txt);background:var(--surf);
+  outline:none;transition:border-color .18s,box-shadow .18s;
+}
+.tb-input:focus{border-color:var(--bord-f);box-shadow:var(--ring)}
+.tb-sel{
+  padding:7px 30px 7px 11px;border:1.5px solid var(--bord);border-radius:var(--ri);
+  font-family:var(--font);font-size:13px;color:var(--txt);background:var(--surf);
+  cursor:pointer;outline:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b6880' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;
+  transition:border-color .18s,box-shadow .18s;
+}
+.tb-sel:focus{border-color:var(--bord-f);box-shadow:var(--ring)}
+.tb-right{margin-left:auto;display:flex;gap:8px;flex-shrink:0}
+.tb-btn{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--font);font-size:13px;font-weight:600;
+  padding:7px 14px;border-radius:var(--ri);border:1.5px solid var(--bord);
+  cursor:pointer;transition:all .18s;background:var(--gray);color:var(--txt);white-space:nowrap;
+}
+.tb-btn:hover{background:var(--bord)}
+.tb-btn.primary{background:var(--v);color:#fff;border-color:var(--v-d);box-shadow:0 2px 8px rgba(124,58,237,.25)}
+.tb-btn.primary:hover{background:var(--v-d)}
+
+/* ─── LIST META ──────────────────────────────────────────── */
+.list-meta{font-size:12px;color:var(--hint);margin-bottom:10px;padding:0 2px;display:flex;justify-content:space-between}
+
+/* ─── ERROR BAR ──────────────────────────────────────────── */
+.errbar{background:var(--red-s);border:1.5px solid #fca5a5;border-radius:8px;padding:9px 13px;font-size:13px;color:var(--red);font-weight:500;margin-bottom:14px;display:none}
+.errbar.on{display:block}
+
+/* ─── QUEUE CARD ─────────────────────────────────────────── */
+.qcard{
+  background:var(--surf);border-radius:var(--r);
+  box-shadow:var(--sh);border:1px solid var(--bord);
+  border-left:4px solid var(--arch-color,var(--bord));
+  overflow:hidden;margin-bottom:14px;
+  transition:box-shadow .2s,border-color .2s;
+}
+.qcard:hover{box-shadow:0 4px 24px rgba(0,0,0,.10),0 1px 4px rgba(0,0,0,.07)}
+
+.qcard-main{padding:18px 20px 16px 18px}
+
+/* top row */
+.qcard-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:7px;flex-wrap:wrap}
+.qcard-name{font-size:16px;font-weight:700;color:var(--txt);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.qcard-badges{display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap}
+
+/* arch pill */
+.arch-pill{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:20px;border:1.5px solid currentColor;white-space:nowrap}
+.arch-pill.A{color:#0891b2;background:#ecfeff}
+.arch-pill.B{color:var(--v);background:var(--v-s)}
+.arch-pill.C{color:var(--amber);background:var(--amber-s)}
+.arch-pill.D{color:var(--green);background:var(--green-s)}
+
+/* Draft queue card */
+.qcard.draft{border-style:dashed;border-left-style:solid;opacity:.9}
+.status-pill.draft{background:var(--amber-s);color:var(--amber)}
+.resume-btn{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--font);font-size:13px;font-weight:700;
+  padding:7px 16px;border-radius:var(--ri);border:1.5px solid var(--amber);
+  cursor:pointer;transition:all .18s;background:var(--amber-s);color:var(--amber);
+  white-space:nowrap;
+}
+.resume-btn:hover{background:var(--amber);color:#fff}
+
+
+/* status pill */
+.status-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+.status-pill.active{background:var(--green-s);color:var(--green);border:1px solid #86efac}
+.status-pill.inactive{background:var(--red-s);color:var(--red);border:1px solid #fca5a5}
+.status-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+
+/* sub / venue row */
+.qcard-sub{font-size:13px;color:var(--muted);margin-bottom:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qcard-sub strong{color:var(--txt);font-weight:600}
+
+/* tags */
+.qcard-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.qtag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px}
+.qtag.live  {background:var(--green-s);color:var(--green);border:1px solid #86efac}
+.qtag.adv   {background:var(--blue-s);color:var(--blue);border:1px solid #bfdbfe}
+.qtag.mixed {background:var(--amber-s);color:var(--amber);border:1px solid #fcd34d}
+.qtag.neutral{background:var(--gray);color:var(--muted);border:1px solid var(--bord)}
+
+/* action bar */
+.qcard-actions{
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+  padding-top:14px;border-top:1px solid var(--bord);
+}
+.qca-btn{
+  display:inline-flex;align-items:center;gap:4px;
+  font-family:var(--font);font-size:12.5px;font-weight:600;
+  padding:6px 13px;border-radius:var(--ri);border:1.5px solid var(--bord);
+  cursor:pointer;transition:all .18s;background:var(--gray);color:var(--txt);
+  white-space:nowrap;text-decoration:none;
+}
+.qca-btn:hover{background:var(--v-s);border-color:var(--v);color:var(--v);transform:translateY(-1px)}
+.qca-btn.warn{background:var(--amber-s);border-color:#fcd34d;color:var(--amber)}
+.qca-btn.warn:hover{background:#fef3c7;transform:translateY(-1px)}
+.qca-btn.danger{background:var(--red-s);border-color:#fca5a5;color:var(--red)}
+.qca-btn.danger:hover{background:#fee2e2;border-color:var(--red);transform:translateY(-1px)}
+.qca-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* active toggle */
+.togsw{display:flex;align-items:center;cursor:pointer}
+.togsw input{display:none}
+.togtr{width:38px;height:22px;border-radius:11px;background:var(--gray-m);position:relative;transition:background .2s}
+.togsw input:checked+.togtr{background:var(--green)}
+.togtr::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.togsw input:checked+.togtr::after{transform:translateX(16px)}
+
+/* ─── EDIT DRAWER ─────────────────────────────────────────── */
+.qcard-drawer{
+  border-top:1px solid var(--bord);
+  max-height:0;overflow:hidden;
+  transition:max-height .32s cubic-bezier(.4,0,.2,1),opacity .22s ease;
+  opacity:0;
+}
+.qcard-drawer.open{max-height:500px;opacity:1}
+.drawer-inner{background:var(--gray);padding:16px 20px 18px 18px}
+.drawer-label{
+  font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.07em;color:var(--hint);margin-bottom:10px;
+}
+.drawer-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(148px,1fr));
+  gap:8px;
+}
+.dsec{
+  display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+  padding:10px 12px;border-radius:10px;border:1.5px solid var(--bord);
+  background:var(--surf);cursor:pointer;transition:all .18s;text-decoration:none;
+  font-family:var(--font);
+}
+.dsec:hover{border-color:var(--v);background:var(--v-s);transform:translateY(-1px);box-shadow:0 2px 8px rgba(124,58,237,.10)}
+.dsec-icon{font-size:18px;line-height:1;margin-bottom:3px}
+.dsec-name{font-size:12.5px;font-weight:600;color:var(--txt)}
+.dsec-hint{font-size:11px;color:var(--hint);line-height:1.3;margin-top:1px}
+
+/* drawer toggle button */
+.dtoggle{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--font);font-size:12.5px;font-weight:600;
+  color:var(--v);background:none;border:none;cursor:pointer;
+  padding:6px 13px;border-radius:var(--ri);
+  transition:background .18s;white-space:nowrap;
+}
+.dtoggle:hover{background:var(--v-s)}
+.dtoggle .arr{display:inline-block;transition:transform .28s cubic-bezier(.4,0,.2,1);font-style:normal;font-size:10px;margin-left:1px}
+.dtoggle.open .arr{transform:rotate(180deg)}
+
+/* ─── EMPTY STATE ────────────────────────────────────────── */
+.empty{
+  text-align:center;padding:52px 24px;background:var(--surf);
+  border-radius:var(--r);border:1.5px dashed var(--bord);box-shadow:var(--sh);
+}
+.empty-icon{font-size:36px;display:block;margin-bottom:12px}
+.empty-title{font-size:16px;font-weight:700;color:var(--txt);margin-bottom:6px}
+.empty-desc{font-size:13.5px;color:var(--muted)}
+
+/* ─── MODALS ─────────────────────────────────────────────── */
+.overlay{position:fixed;inset:0;background:rgba(10,8,30,.5);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:3000}
+.mbox{max-width:420px;width:92vw;background:var(--surf);border-radius:var(--r);box-shadow:0 20px 60px rgba(0,0,0,.2);padding:24px 26px 20px;border:1px solid var(--bord)}
+.mbox h3{font-size:16px;font-weight:700;color:var(--txt);margin-bottom:8px}
+.mbox p{font-size:13.5px;color:var(--muted);line-height:1.55;margin-bottom:4px}
+.merr{margin-top:8px;font-size:13px;color:var(--red);display:none}
+.mft{margin-top:18px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.mbtn{display:inline-flex;align-items:center;justify-content:center;gap:5px;font-family:var(--font);font-size:13.5px;font-weight:600;padding:9px 20px;border-radius:var(--ri);border:none;cursor:pointer;transition:all .18s}
+.mbtn.sec{background:var(--gray);color:var(--txt);border:1.5px solid var(--bord)}
+.mbtn.sec:hover{background:var(--bord)}
+.mbtn.danger{background:var(--red);color:#fff}
+.mbtn.danger:hover{background:#b91c1c}
+
+/* ─── TOAST ──────────────────────────────────────────────── */
+#toast{
+  position:fixed;bottom:86px;left:50%;transform:translateX(-50%) translateY(10px);
+  background:var(--txt);color:#fff;font-size:13.5px;font-weight:500;
+  padding:9px 20px;border-radius:999px;box-shadow:0 4px 18px rgba(0,0,0,.2);
+  opacity:0;transition:opacity .2s,transform .2s;z-index:9999;pointer-events:none;white-space:nowrap;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<div id="top-band" class="top-band"></div>
+
+<div class="shell">
+
+  <div class="pg-hd">
+    <h1>My virtual queues</h1>
+    <p>Manage, configure and monitor all your queues.</p>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <div class="tb-group">
+      <label for="searchInput">Search</label>
+      <input id="searchInput" class="tb-input" type="search" placeholder="Name or venue…" style="min-width:160px">
+    </div>
+    <div class="tb-group">
+      <label for="statusSel">Status</label>
+      <select id="statusSel" class="tb-sel">
+        <option value="all">All</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+    </div>
+    <div class="tb-group">
+      <label for="modeSel">Mode</label>
+      <select id="modeSel" class="tb-sel">
+        <option value="all">All modes</option>
+        <option value="LIVE_ONLY">Live-flow</option>
+        <option value="ADVANCE_ONLY">In advance</option>
+        <option value="MIXED">Mixed</option>
+      </select>
+    </div>
+    <div class="tb-group">
+      <label for="archSel">Type</label>
+      <select id="archSel" class="tb-sel">
+        <option value="all">All types</option>
+        <option value="A">A — Resource</option>
+        <option value="B">B — Individual</option>
+        <option value="C">C — Wave</option>
+        <option value="D">D — Continuous</option>
+      </select>
+    </div>
+    <div class="tb-right">
+      <button class="tb-btn" id="refreshBtn" type="button">↻ Refresh</button>
+      <button class="tb-btn primary" id="newQueueBtn" type="button">＋ New queue</button>
+    </div>
+  </div>
+
+  <div id="errbar" class="errbar"></div>
+
+  <div class="list-meta">
+    <span id="countLabel">Loading…</span>
+    <span id="refreshLabel"></span>
+  </div>
+
+  <div id="queueList"></div>
+
+</div><!-- /.shell -->
+
+<!-- DELETE MODAL -->
+<div class="overlay" id="deleteModal">
+  <div class="mbox">
+    <h3>Delete this queue?</h3>
+    <p id="delText"></p>
+    <div class="merr" id="delErr"></div>
+    <div class="mft">
+      <button class="mbtn sec" id="delCancelBtn">Cancel</button>
+      <button class="mbtn danger" id="delConfirmBtn">Delete permanently</button>
+    </div>
+  </div>
+</div>
+
+<!-- QR MODAL -->
+<div class="overlay" id="qrModal">
+  <div class="mbox" style="max-width:340px;text-align:center">
+    <h3>Queue QR code</h3>
+    <p id="qrModalLabel" style="font-size:13px;color:var(--muted);margin-bottom:10px"></p>
+    <img id="qrImg" src="" alt="QR code" style="max-width:220px;width:100%;border-radius:10px;border:1px solid var(--bord);margin:0 auto 8px;display:block">
+    <p style="font-size:12px;color:var(--hint)">Scan with a phone to open the visitor page.</p>
+    <div class="mft" style="justify-content:center">
+      <button class="mbtn sec" id="qrCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+
+<script type="module">
+
+/* ═══════════════════════════════════
+   CONSTANTS
+══════════════════════════════════════ */
+const EDIT_PAGE = '/modules/In-Time/manage/page 1.html';
+const EDIT_PAGE_12 = '/modules/In-Time/manage/page 1-2.html';
+
+const ARCH_LABEL = { A:'Resource', B:'Individual', C:'Wave', D:'Continuous' };
+const ARCH_COLOR = { A:'#0891b2', B:'#7c3aed', C:'#d97706', D:'#16a34a' };
+
+const FORMULA_LABEL = { LIVE_ONLY:'Live-flow', ADVANCE_ONLY:'In advance', MIXED:'Mixed' };
+const FORMULA_TAG   = { LIVE_ONLY:'live', ADVANCE_ONLY:'adv', MIXED:'mixed' };
+
+const SECTIONS = [
+  { step:'s0',   icon:'📋', name:'Basic info',      hint:'Name, venue, location, schedule' },
+  { step:'s1',   icon:'🏗',  name:'Queue type',      hint:'Archetype A / B / C / D' },
+  { step:'s2a',  icon:'📆', name:'Booking mode',    hint:'Live, advance, or mixed' },
+  { step:'s2b',  icon:'⚙️', name:'Capacity',        hint:'Slots, waves, flow limits' },
+  { step:'s3',   icon:'👥', name:'Access',          hint:'Public, registered, whitelist' },
+  { step:'s4',   icon:'🎫', name:'Admission',       hint:'Scan, calling, fallback' },
+  { step:'s5',   icon:'⏱',  name:'Time info',       hint:'Wait estimates, early alerts' },
+  { step:'s6',   icon:'🔔', name:'Notifications',   hint:'Channels, sender' },
+  { step:'s7',   icon:'✅', name:'Verification',    hint:'Extra fields, payment' },
+  { step:'s8',   icon:'📅', name:'Calendar',        hint:'Sync, provider, horizon' },
+  { step:'s_op', icon:'👤', name:'Operators',       hint:'Team members & permissions' },
+  { step:'s9',   icon:'🎨', name:'Look & feel',     hint:'Theme, wallpaper' },
+];
+
+/* ═══════════════════════════════════
+   STATE
+══════════════════════════════════════ */
+let allQueues = [];
+const filters = { search:'', status:'all', formula:'all', arch:'all' };
+let deleteTargetId = null;
+
+/* ═══════════════════════════════════
+   HELPERS
+══════════════════════════════════════ */
+function esc(s){
+  const d = document.createElement('div');
+  d.textContent = String(s ?? '');
+  return d.innerHTML;
+}
+
+function editUrl(id, step){
+  return `${EDIT_PAGE_12}?edit=${encodeURIComponent(id)}&step=${encodeURIComponent(step || 's0')}`;
+}
+function copyQUrl(id){
+  return `${EDIT_PAGE}?copy=${encodeURIComponent(id)}`;
+}
+
+let _toastTimer;
+function toast(msg, ms = 2400){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+}
+
+function setErr(msg){
+  const el = document.getElementById('errbar');
+  el.textContent = msg || '';
+  el.classList.toggle('on', !!msg);
+}
+
+async function apiFetch(url, opts = {}){
+  const res  = await fetch(url, { credentials:'same-origin', ...opts });
+  const ct   = res.headers.get('content-type') || '';
+  if (!ct.includes('application/json')){
+    const txt = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status} — expected JSON. ${txt.slice(0,100)}`);
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok)           throw new Error((data && data.error) || `HTTP ${res.status}`);
+  if (data?.ok === false) throw new Error(data.error || 'API error');
+  return data ?? { ok:true };
+}
+
+/* ═══════════════════════════════════
+   RENDER
+══════════════════════════════════════ */
+function renderQueues(){
+  const list = document.getElementById('queueList');
+
+  let items = allQueues.slice();
+
+  if (filters.search){
+    const t = filters.search.toLowerCase();
+    items = items.filter(q =>
+      (q.name||'').toLowerCase().includes(t) ||
+      (q.venue_name||'').toLowerCase().includes(t)
+    );
+  }
+  if (filters.status  === 'active')   items = items.filter(q =>  !!q.is_active);
+  if (filters.status  === 'inactive') items = items.filter(q => !q.is_active);
+  if (filters.formula !== 'all')      items = items.filter(q => q.booking_formula === filters.formula);
+  if (filters.arch    !== 'all')      items = items.filter(q => q.archetype       === filters.arch);
+
+  document.getElementById('countLabel').textContent =
+    `${items.length} of ${allQueues.length} queue${allQueues.length !== 1 ? 's' : ''}`;
+
+  if (!items.length){
+    list.innerHTML = `
+      <div class="empty">
+        <span class="empty-icon">📭</span>
+        <div class="empty-title">${allQueues.length ? 'No queues match the filters.' : 'No queues yet.'}</div>
+        <div class="empty-desc">${allQueues.length ? 'Try adjusting the filters above.' : 'Create your first virtual queue to get started.'}</div>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = items.map(cardHTML).join('');
+  items.forEach(q => wireCard(q.id));
+}
+
+function cardHTML(q){
+  const arch    = q.archetype || '';
+  const formula = q.booking_formula || 'LIVE_ONLY';
+  const active  = !!q.is_active;
+  const color   = ARCH_COLOR[arch] || '#e2e0ea';
+
+  /* location string */
+  let loc = '';
+  if (q.location_text) loc = q.location_text;
+  else if (q.location_geo?.lat || q.location_geo?.lng)
+    loc = `${(q.location_geo.lat||0).toFixed(4)}, ${(q.location_geo.lng||0).toFixed(4)}`;
+
+  /* sub line */
+  const subParts = [];
+  if (q.venue_name)      subParts.push(`<strong>${esc(q.venue_name)}</strong>`);
+  if (loc)               subParts.push(`📍 ${esc(loc)}`);
+  if (q.internal_label)  subParts.push(`<span style="color:var(--hint)">[${esc(q.internal_label)}]</span>`);
+  const sub = subParts.join(' &nbsp;·&nbsp; ');
+
+  /* tags */
+  const fTag   = FORMULA_TAG[formula] || 'neutral';
+  const fLabel = FORMULA_LABEL[formula] || formula;
+  const tags = [
+    `<span class="qtag ${fTag}">${fLabel}</span>`,
+    q.timezone        ? `<span class="qtag neutral">🕐 ${esc(q.timezone)}</span>`       : '',
+    q.admission_mode  ? `<span class="qtag neutral">🎫 ${esc(q.admission_mode)}</span>` : '',
+  ].filter(Boolean).join('');
+
+  /* drawer sections */
+  const sections = SECTIONS.map(s => `
+    <a class="dsec" href="${editUrl(q.id, s.step)}" title="Edit: ${s.name}">
+      <span class="dsec-icon">${s.icon}</span>
+      <span class="dsec-name">${s.name}</span>
+      <span class="dsec-hint">${s.hint}</span>
+    </a>`).join('');
+
+  return `
+<div class="qcard ${q.status==='draft'?'draft':''}" id="qc-${q.id}" style="--arch-color:${color}">
+  <div class="qcard-main">
+
+    <div class="qcard-top">
+      <div class="qcard-name">${esc(q.name || 'Unnamed queue')}</div>
+      <div class="qcard-badges">
+        ${arch ? `<span class="arch-pill ${arch}">${arch} — ${ARCH_LABEL[arch]||arch}</span>` : ''}
+        <span class="status-pill ${q.status==='draft'?'draft':active?'active':'inactive'}">
+          ${q.status!=='draft'?'<span class="status-dot"></span>':''}
+          ${q.status==='draft'?'⏳ Draft':active?'Active':'Inactive'}
+        </span>
+      </div>
+    </div>
+
+    ${sub ? `<div class="qcard-sub">${sub}</div>` : ''}
+
+    <div class="qcard-tags">${tags}</div>
+
+    <div class="qcard-actions">
+
+      <!-- drawer toggle (non-draft only) -->
+      ${q.status!=='draft' ? `<button class="dtoggle" id="dtog-${q.id}" type="button" data-id="${q.id}">✏️ Edit <span class="arr">▾</span></button>` : ''}
+
+      <!-- resume (drafts only) -->
+      ${q.status==='draft' ? `
+      <a class="resume-btn" href="${EDIT_PAGE}?edit=${encodeURIComponent(q.id)}&draft=true&step=${encodeURIComponent(q.draft_step||'s0')}" title="Resume queue setup">
+        ▶ Resume setup
+      </a>` : ''}
+
+      <!-- duplicate (non-draft only) -->
+      ${q.status!=='draft' ? `
+      <a class="qca-btn warn" href="${copyQUrl(q.id)}" title="Duplicate — name and identity fields will be blank">
+        ⧉ Duplicate
+      </a>` : ''}
+
+      <!-- operational buttons (non-draft only) -->
+      ${q.status!=='draft' ? `
+      <button class="qca-btn" type="button" data-id="${q.id}" data-action="scan" title="Open scan page for this queue">
+        📷 Scan
+      </button>
+      <button class="qca-btn" type="button" data-id="${q.id}" data-action="qr" title="View QR code">
+        📱 QR code
+      </button>
+      ${q.identity_policy === 'LISTED' ? `<button class="qca-btn" type="button" data-id="${q.id}" data-action="allowlist" title="Manage allowed visitors list">👥 Allowlist</button>` : ''}
+      ${q.cal_sync ? `<button class="qca-btn" type="button" data-id="${q.id}" data-action="calsync" title="Calendar sync settings">🔄 Cal sync</button>` : ''}
+      ${q.cal_sync ? `<button class="qca-btn" type="button" data-id="${q.id}" data-action="calview" title="View calendar">📅 Calendar</button>` : ''}
+      ` : ''}
+
+      <div class="qca-right">
+
+        <!-- active toggle -->
+        <label class="togsw" title="${active?'Deactivate':'Activate'}">
+          <input type="checkbox" class="atog" data-id="${q.id}" ${active?'checked':''}>
+          <span class="togtr"></span>
+        </label>
+
+        <!-- copy visitor link -->
+        <button class="qca-btn" type="button" data-id="${q.id}" title="Copy visitor link" data-action="copylink">
+          🔗 Link
+        </button>
+
+        <!-- delete -->
+        <button class="qca-btn danger" type="button"
+          data-id="${q.id}" data-name="${esc(q.name||'')}" data-action="delete">
+          🗑 Delete
+        </button>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- hidden drawer -->
+  <div class="qcard-drawer" id="qdr-${q.id}">
+    <div class="drawer-inner">
+      <div class="drawer-label">Jump to a wizard section to edit</div>
+      <div class="drawer-grid">${sections}</div>
+    </div>
+  </div>
+
+</div>`;
+}
+
+/* ═══════════════════════════════════
+   WIRE CARD
+══════════════════════════════════════ */
+function wireCard(id){
+  const card = document.getElementById(`qc-${id}`);
+  if (!card) return;
+
+  /* drawer toggle */
+  const dtog = document.getElementById(`dtog-${id}`);
+  dtog?.addEventListener('click', () => toggleDrawer(id));
+
+  /* active toggle */
+  const atog = card.querySelector('.atog');
+  atog?.addEventListener('change', () => handleToggle(id, atog.checked));
+
+  /* delegated action buttons */
+  card.addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const bid    = btn.dataset.id;
+    if (action === 'delete')    openDeleteModal(bid, btn.dataset.name);
+    if (action === 'copylink')  doCopyLink(bid);
+    if (action === 'qr')        openQrModal(bid);
+    if (action === 'scan')      openScanPage(bid);
+    if (action === 'allowlist') openAllowlistStub(bid);
+    if (action === 'calsync')   openCalSyncStub(bid);
+    if (action === 'calview')   openCalViewStub(bid);
+  });
+}
+
+/* ═══════════════════════════════════
+   DRAWER
+══════════════════════════════════════ */
+function toggleDrawer(id){
+  const drawer = document.getElementById(`qdr-${id}`);
+  const btn    = document.getElementById(`dtog-${id}`);
+  if (!drawer) return;
+  const open = !drawer.classList.contains('open');
+  drawer.classList.toggle('open', open);
+  btn?.classList.toggle('open', open);
+}
+
+/* ═══════════════════════════════════
+   ACTIVE TOGGLE
+══════════════════════════════════════ */
+async function handleToggle(id, newActive){
+  const card  = document.getElementById(`qc-${id}`);
+  const pill  = card?.querySelector('.status-pill');
+  const atog  = card?.querySelector('.atog');
+
+  function applyVisual(a){
+    if (pill){
+      pill.className = `status-pill ${a?'active':'inactive'}`;
+      pill.innerHTML = `<span class="status-dot"></span>${a?'Active':'Inactive'}`;
+    }
+  }
+  applyVisual(newActive);
+
+  try {
+    await apiFetch(`/api/intime/queues/${encodeURIComponent(id)}/status`, {
+      method  : 'PATCH',
+      headers : { 'Content-Type':'application/json', Accept:'application/json' },
+      body    : JSON.stringify({ is_active: !!newActive }),
+    });
+    const q = allQueues.find(q => String(q.id) === String(id));
+    if (q) q.is_active = !!newActive;
+    toast(newActive ? 'Queue activated.' : 'Queue deactivated.');
+  } catch (err) {
+    applyVisual(!newActive);
+    if (atog) atog.checked = !newActive;
+    toast('Error: ' + err.message);
+  }
+}
+
+/* ═══════════════════════════════════
+   COPY VISITOR LINK
+══════════════════════════════════════ */
+function doCopyLink(id){
+  const url = `${location.origin}/modules/In-Time/book/index.html?queue=${id}`;
+  navigator.clipboard.writeText(url)
+    .then(() => toast('Visitor link copied!'))
+    .catch(() => prompt('Copy this link:', url));
+}
+
+/* ── Scan page ──────────────────────────────────────────── */
+function openScanPage(id){
+  window.location.href = `/modules/In-Time/scan/page 3.html?queue=${encodeURIComponent(id)}`;
+}
+
+/* ── QR modal ───────────────────────────────────────────── */
+function openQrModal(id){
+  const q     = allQueues.find(q => String(q.id) === String(id));
+  const label = q ? (q.name || 'Queue') : id;
+  document.getElementById('qrModalLabel').textContent = label;
+  document.getElementById('qrImg').src = `/api/intime/queues/${encodeURIComponent(id)}/qr?ts=${Date.now()}`;
+  document.getElementById('qrModal').style.display = 'flex';
+}
+document.getElementById('qrCloseBtn').addEventListener('click', () => {
+  document.getElementById('qrModal').style.display = 'none';
+  document.getElementById('qrImg').src = '';
+});
+document.getElementById('qrModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('qrModal')){
+    document.getElementById('qrModal').style.display = 'none';
+    document.getElementById('qrImg').src = '';
+  }
+});
+
+/* ── Allowlist (stub — shows edit-page navigation) ──────── */
+function openAllowlistStub(id){
+  window.location.href = `${EDIT_PAGE_12}?edit=${encodeURIComponent(id)}&step=s3`;
+}
+
+/* ── Calendar sync (stub — navigates to s8 in edit) ──────── */
+function openCalSyncStub(id){
+  window.location.href = `${EDIT_PAGE_12}?edit=${encodeURIComponent(id)}&step=s8`;
+}
+
+/* ── Calendar view (stub) ────────────────────────────────── */
+function openCalViewStub(id){
+  toast('Calendar view — coming soon.');
+}
+
+/* ═══════════════════════════════════
+   DELETE MODAL
+══════════════════════════════════════ */
+function openDeleteModal(id, name){
+  deleteTargetId = id;
+  document.getElementById('delText').innerHTML =
+    `Permanently delete <strong>${esc(name || 'this queue')}</strong>? This cannot be undone.`;
+  document.getElementById('delErr').style.display = 'none';
+  document.getElementById('deleteModal').style.display = 'flex';
+}
+function closeDeleteModal(){
+  document.getElementById('deleteModal').style.display = 'none';
+  deleteTargetId = null;
+}
+document.getElementById('delCancelBtn').addEventListener('click', closeDeleteModal);
+document.getElementById('deleteModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('deleteModal')) closeDeleteModal();
+});
+document.getElementById('delConfirmBtn').addEventListener('click', async () => {
+  if (!deleteTargetId) return closeDeleteModal();
+  const errEl = document.getElementById('delErr');
+  errEl.style.display = 'none';
+  try {
+    await apiFetch(`/api/intime/queues/${encodeURIComponent(deleteTargetId)}`, {
+      method  : 'DELETE',
+      headers : { Accept:'application/json' },
+    });
+    allQueues = allQueues.filter(q => String(q.id) !== String(deleteTargetId));
+    renderQueues();
+    closeDeleteModal();
+    toast('Queue deleted.');
+  } catch (err) {
+    errEl.textContent    = err.message || 'Delete failed.';
+    errEl.style.display  = 'block';
+  }
+});
+
+/* ═══════════════════════════════════
+   LOAD QUEUES
+══════════════════════════════════════ */
+async function loadQueues(){
+  document.getElementById('countLabel').textContent = 'Loading…';
+  setErr('');
+  try {
+    const data = await apiFetch('/api/intime/queues', {
+      method  : 'GET',
+      headers : { Accept:'application/json' },
+    });
+    allQueues = Array.isArray(data?.queues) ? data.queues : (Array.isArray(data) ? data : []);
+    renderQueues();
+    document.getElementById('refreshLabel').textContent =
+      'Updated ' + new Date().toLocaleTimeString();
+  } catch (err) {
+    document.getElementById('countLabel').textContent = 'Error loading.';
+    setErr(err.message || 'Could not load queues.');
+  }
+}
+
+/* ═══════════════════════════════════
+   FILTERS
+══════════════════════════════════════ */
+document.getElementById('searchInput').addEventListener('input', e => { filters.search  = e.target.value.trim(); renderQueues(); });
+document.getElementById('statusSel').addEventListener('change',  e => { filters.status  = e.target.value;        renderQueues(); });
+document.getElementById('modeSel').addEventListener('change',    e => { filters.formula = e.target.value;        renderQueues(); });
+document.getElementById('archSel').addEventListener('change',    e => { filters.arch    = e.target.value;        renderQueues(); });
+document.getElementById('refreshBtn').addEventListener('click',  () => loadQueues());
+document.getElementById('newQueueBtn').addEventListener('click', () => window.location.href = EDIT_PAGE);
+
+/* ═══════════════════════════════════
+   BOOT
+══════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.Drawer?.mount) window.Drawer.mount({ mode:'host' });
+  if (window.FAB?.mount)    window.FAB.mount({
+    useTopBand:true, useBottomBand:true,
+    home:  { title:'Home',     label:'🏠', onClick: () => window.Drawer?.open?.() },
+    config:{ title:'Settings', label:'⚙️', href:'/pages/visitor/settings.html#host' },
+    onBack: () => history.length > 1 ? history.back() : location.href = '/pages/host/dashboard.html',
+  });
+  loadQueues();
+});
+
+</script>
+</body>
+</html>

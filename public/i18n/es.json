@@ -1,0 +1,64 @@
+{
+  "appTitle": "WanderPal",
+  "langLabel": "Idioma",
+
+  "loginTitle": "Iniciar sesión",
+  "registerTitle": "Registrarse",
+
+  "email": "Correo electrónico",
+  "password": "Contraseña",
+  "createPassword": "Crear una contraseña",
+  "namePlaceholder": "Nombre",
+  "companyName": "Nombre de la empresa",
+  "website": "Sitio oficial",
+
+  "remember": "Recordarme",
+  "forgot": "¿Olvidaste tu contraseña?",
+  "forgotTitle": "Restablecer contraseña",
+  "forgotDesc": "Introduce tu correo y te enviaremos un enlace para restablecerla.",
+  "forgotCancel": "Cancelar",
+  "forgotSend": "Enviar",
+  "forgotSuccess": "Si existe una cuenta, hemos enviado un enlace de restablecimiento.",
+  "forgotError": "No pudimos procesar tu solicitud.",
+
+  "loginBtn": "Iniciar sesión",
+  "registerBtn": "Registrarse",
+  "or": "o",
+  "noAccount": "¿No tienes cuenta?",
+  "signup": "Regístrate",
+  "haveAccount": "¿Ya tienes cuenta?",
+  "signin": "Inicia sesión",
+
+  "invalidCreds": "Credenciales inválidas",
+  "suspendedMsg": "Esta cuenta está suspendida. Contacta al soporte.",
+
+  "networkError": "Error de red",
+  "registerSuccess": "Cuenta creada. Ya puedes iniciar sesión.",
+  "registerFail": "No se pudo crear la cuenta (¿correo ya en uso?)",
+
+  "hostTitle": "Anfitrión",
+  "hostLogin": "Anfitrión — Inicio de sesión",
+  "hostRegister": "Anfitrión — Registro",
+  "hostForgotTitle": "Restablecer contraseña de Anfitrión",
+  "hostForgotDesc": "Recibirás un enlace si este correo está registrado como anfitrión.",
+
+  "partnerTitle": "Socio",
+  "partnerLogin": "Socio — Inicio de sesión",
+  "partnerRegister": "Socio — Registro",
+  "partnerForgotTitle": "Restablecer contraseña de Socio",
+  "partnerForgotDesc": "Recibirás un enlace si este correo está registrado como socio.",
+
+  "chooseSector": "Elegir sector",
+  "recommendedServices": "Servicios recomendados",
+
+  "museum": "Museo / Galería / Monumento",
+  "doctor": "Médico / Clínica / Dentista",
+  "salon": "Belleza / Spa / Peluquería",
+  "event": "Organizador de eventos / Recinto",
+  "restaurant": "Restaurante / Café / Bar",
+  "hotel": "Hotel / Pensión / BnB",
+  "retail": "Tienda / Centro comercial",
+  "sports": "Centro deportivo / Gimnasio / Estadio",
+  "public": "Administración pública / Banco / Correos",
+  "other": "Otro"
+}

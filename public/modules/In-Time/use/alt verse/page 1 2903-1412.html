@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>My Bookings — In-Time</title>
+<link rel="stylesheet" href="/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<!-- QR generation client-side -->
+<script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+<style>
+:root{
+  --v:#7c3aed;--v-s:#ede9fc;--v-d:#6d28d9;
+  --green:#16a34a;--green-s:#f0fdf4;
+  --amber:#d97706;--amber-s:#fffbeb;
+  --red:#dc2626;--red-s:#fef2f2;
+  --blue:#2563eb;--blue-s:#eff6ff;
+  --txt:#1a1825;--muted:#6b6880;--hint:#9b98aa;
+  --surf:#fff;--bg:#f4f3f8;--bord:#e2e0ea;--bord-f:#7c3aed;
+  --gray:#f0eff5;--gray-m:#d4d2de;
+  --r:14px;--ri:9px;
+  --sh:0 2px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --ring:0 0 0 3px rgba(124,58,237,.18);
+  --font:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:var(--font);background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55}
+.shell{max-width:600px;margin:0 auto;padding:84px 18px 120px}
+
+/* ── Page header ─────────────────────────────────────────── */
+.pg-hd{margin-bottom:18px}
+.pg-hd h1{font-size:21px;font-weight:700;margin-bottom:3px}
+.pg-hd p{font-size:13.5px;color:var(--muted)}
+
+/* ── Filter tabs ─────────────────────────────────────────── */
+.tabs{display:flex;gap:6px;margin-bottom:18px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  flex-shrink:0;padding:7px 16px;border-radius:999px;
+  border:1.5px solid var(--bord);background:var(--surf);
+  font-family:var(--font);font-size:13px;font-weight:600;
+  color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.tab:hover{border-color:var(--v);color:var(--v);background:var(--v-s)}
+.tab.active{background:var(--v);color:#fff;border-color:var(--v-d);
+  box-shadow:0 2px 8px rgba(124,58,237,.25)}
+
+/* ── Booking card wrapper (swipe container) ─────────────── */
+.bcard-wrap{
+  position:relative;margin-bottom:12px;border-radius:var(--r);
+  overflow:hidden;
+}
+
+/* Swipe reveal layers — behind the card */
+.swipe-left-reveal{
+  position:absolute;top:0;bottom:0;right:0;
+  display:flex;align-items:center;justify-content:flex-end;
+  padding:0 22px;gap:8px;font-size:13px;font-weight:700;
+  background:var(--red);color:#fff;border-radius:var(--r);
+  pointer-events:none;min-width:90px;
+}
+.slr-ico{font-size:20px}
+
+/* The actual card — slides on top */
+.bcard{
+  background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);
+  box-shadow:var(--sh);
+  border-left:4px solid var(--bord);
+  position:relative;z-index:1;
+  transition:transform .22s cubic-bezier(.4,0,.2,1),box-shadow .2s;
+  user-select:none;touch-action:pan-y;
+  will-change:transform;
+}
+.bcard.upcoming{border-left-color:var(--v)}
+.bcard.today{border-left-color:var(--green)}
+.bcard.redeemed{border-left-color:var(--green);opacity:.75}
+.bcard.cancelled{border-left-color:var(--red-s);opacity:.6}
+.bcard.expired{border-left-color:var(--gray-m);opacity:.55}
+
+.bcard-main{padding:16px 18px 14px}
+
+/* top row */
+.bcard-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.bcard-name{font-size:15px;font-weight:700;color:var(--txt);flex:1;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bcard-badges{display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap}
+
+/* status pills */
+.spill{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:10.5px;font-weight:700;padding:3px 9px;
+  border-radius:20px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;
+}
+.spill.booked  {background:var(--v-s);color:var(--v);border:1px solid rgba(124,58,237,.25)}
+.spill.today   {background:var(--green-s);color:var(--green);border:1px solid #86efac}
+.spill.redeemed{background:var(--green-s);color:var(--green);border:1px solid #86efac}
+.spill.cancelled{background:var(--red-s);color:var(--red);border:1px solid #fca5a5}
+.spill.expired {background:var(--gray);color:var(--hint);border:1px solid var(--bord)}
+.spill-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+
+/* date chip */
+.date-chip{
+  flex-shrink:0;text-align:center;background:var(--gray);
+  border-radius:var(--ri);padding:4px 8px;min-width:46px;
+}
+.date-chip .dc-day{font-size:17px;font-weight:700;color:var(--txt);line-height:1}
+.date-chip .dc-mon{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted)}
+.date-chip.upcoming-today{background:var(--green-s)}
+.date-chip.upcoming-today .dc-day,.date-chip.upcoming-today .dc-mon{color:var(--green)}
+
+/* meta row */
+.bcard-meta{font-size:12.5px;color:var(--muted);margin-bottom:8px;
+  display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.meta-sep{opacity:.4}
+
+/* code row */
+.bcard-code{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:13px;font-weight:700;letter-spacing:.1em;
+  color:var(--v);background:var(--v-s);
+  border-radius:var(--ri);padding:5px 12px;margin-bottom:10px;
+  cursor:pointer;transition:all .15s;
+}
+.bcard-code:hover{background:var(--v);color:#fff}
+.bcard-code .copy-ico{font-size:12px;opacity:.7}
+
+/* action row */
+.bcard-actions{
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+  padding-top:10px;border-top:1px solid var(--bord);
+}
+.bca-btn{
+  display:inline-flex;align-items:center;gap:4px;
+  font-family:var(--font);font-size:12.5px;font-weight:600;
+  padding:6px 13px;border-radius:var(--ri);border:1.5px solid var(--bord);
+  cursor:pointer;transition:all .15s;background:var(--gray);color:var(--txt);
+  white-space:nowrap;
+}
+.bca-btn:hover{background:var(--v-s);border-color:var(--v);color:var(--v);transform:translateY(-1px)}
+.bca-btn.danger{background:var(--red-s);border-color:#fca5a5;color:var(--red)}
+.bca-btn.danger:hover{background:#fee2e2;border-color:var(--red)}
+.bca-btn.primary{background:var(--v);border-color:var(--v-d);color:#fff}
+.bca-btn.primary:hover{background:var(--v-d)}
+.bca-right{margin-left:auto}
+
+/* ── Detail drawer (QR + extra info) ────────────────────── */
+.bcard-drawer{
+  border-top:1px solid var(--bord);
+  max-height:0;overflow:hidden;
+  transition:max-height .32s cubic-bezier(.4,0,.2,1),opacity .22s;
+  opacity:0;background:var(--gray);
+}
+.bcard-drawer.open{max-height:600px;opacity:1}
+.drawer-inner{padding:16px 18px 18px}
+.drawer-row{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.drawer-qr{flex-shrink:0}
+.drawer-qr canvas{border-radius:10px;border:1px solid var(--bord);display:block}
+.drawer-info{flex:1;min-width:180px}
+.info-row{display:flex;justify-content:space-between;align-items:center;
+  padding:5px 0;border-bottom:1px solid var(--bord);font-size:13px}
+.info-row:last-child{border-bottom:none}
+.info-key{color:var(--muted);font-weight:500}
+.info-val{font-weight:600;color:var(--txt);text-align:right}
+.drawer-hint{font-size:11.5px;color:var(--hint);margin-top:10px;text-align:center}
+
+/* ── Empty state ─────────────────────────────────────────── */
+.empty{
+  background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);
+  box-shadow:var(--sh);padding:40px 24px;text-align:center;
+}
+.empty-ico{font-size:40px;margin-bottom:12px}
+.empty-title{font-size:16px;font-weight:700;margin-bottom:6px}
+.empty-desc{font-size:13.5px;color:var(--muted);margin-bottom:18px;line-height:1.6}
+.empty-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--v);color:#fff;border:none;
+  padding:10px 22px;border-radius:var(--ri);
+  font-family:var(--font);font-size:14px;font-weight:700;
+  cursor:pointer;transition:background .15s;text-decoration:none;
+}
+.empty-btn:hover{background:var(--v-d)}
+
+/* ── Modals ──────────────────────────────────────────────── */
+.overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.45);z-index:100;
+  align-items:center;justify-content:center;padding:20px;
+}
+.overlay.on{display:flex}
+.mbox{
+  background:var(--surf);border-radius:var(--r);
+  box-shadow:0 20px 60px rgba(0,0,0,.25);
+  padding:26px 24px;max-width:360px;width:100%;
+}
+.mbox h3{font-size:17px;font-weight:700;margin-bottom:8px}
+.mbox p{font-size:13.5px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+.mft{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.mbtn{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--font);font-size:13.5px;font-weight:600;
+  padding:9px 20px;border-radius:var(--ri);border:none;cursor:pointer;transition:all .15s;
+}
+.mbtn.sec{background:var(--gray);color:var(--txt)}
+.mbtn.sec:hover{background:var(--bord)}
+.mbtn.danger{background:var(--red);color:#fff}
+.mbtn.danger:hover{background:#b91c1c}
+
+/* ── Skeleton ────────────────────────────────────────────── */
+.skel{
+  background:linear-gradient(90deg,var(--gray) 25%,var(--bord) 50%,var(--gray) 75%);
+  background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px;
+}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skel-card{
+  background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);
+  box-shadow:var(--sh);padding:16px 18px;margin-bottom:12px;
+}
+
+/* Toast */
+#toast{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);
+  background:rgba(26,24,37,.9);color:#fff;padding:8px 18px;border-radius:999px;
+  font-size:13px;font-weight:600;opacity:0;pointer-events:none;
+  transition:opacity .2s,transform .2s;z-index:200;white-space:nowrap;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body class="has-top-band has-bottom-band">
+<header class="site"><div class="title">My Bookings</div></header>
+
+
+<div class="shell">
+
+  <div class="pg-hd">
+    <h1>My bookings</h1>
+    <p>Swipe left to cancel · Swipe down for QR &amp; details</p>
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-filter="open">Open</button>
+    <button class="tab" data-filter="today">Today</button>
+    <button class="tab" data-filter="past">Past</button>
+    <button class="tab" data-filter="all">All</button>
+  </div>
+
+  <!-- List -->
+  <div id="bookingList">
+    <!-- skeletons while loading -->
+    <div class="skel-card"><div class="skel" style="width:60%;height:14px;margin-bottom:8px"></div><div class="skel" style="width:40%;height:11px"></div></div>
+    <div class="skel-card"><div class="skel" style="width:70%;height:14px;margin-bottom:8px"></div><div class="skel" style="width:50%;height:11px"></div></div>
+  </div>
+
+</div><!-- /shell -->
+
+<!-- Cancel confirm modal -->
+<div class="overlay" id="cancelModal">
+  <div class="mbox">
+    <h3>Cancel this booking?</h3>
+    <p id="cancelModalText">This action cannot be undone. Your spot will be released.</p>
+    <div class="mft">
+      <button class="mbtn sec" onclick="closeCancelModal()">Keep it</button>
+      <button class="mbtn danger" id="cancelConfirmBtn" onclick="confirmCancel()">Yes, cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+<script>
+'use strict';
+
+/* ── State ──────────────────────────────────────────────── */
+let allBookings  = [];
+let activeFilter = 'open';
+let cancelTarget = null;
+const deviceId   = getDeviceId();
+const highlightId= new URLSearchParams(location.search).get('highlight');
+const initFilter = new URLSearchParams(location.search).get('filter');
+
+/* ── Helpers ────────────────────────────────────────────── */
+let _tt;
+function toast(msg,ms=2400){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),ms);}
+function esc(s){const d=document.createElement('div');d.textContent=String(s??'');return d.innerHTML;}
+function getDeviceId(){let id=localStorage.getItem('intime_device_id');if(!id){id=crypto.randomUUID();localStorage.setItem('intime_device_id',id);}return id;}
+function todayISO(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+
+function fmtDate(iso){
+  if(!iso) return {day:'?',mon:'???',full:'Unknown'};
+  const d=new Date(iso+'T12:00:00');
+  return {
+    day:String(d.getDate()).padStart(2,'0'),
+    mon:d.toLocaleDateString('en',{month:'short'}),
+    full:d.toLocaleDateString('en',{weekday:'long',day:'numeric',month:'long',year:'numeric'}),
+  };
+}
+
+function statusLabel(status){
+  const map={BOOKED:'Booked',REDEEMED:'Redeemed ✓',CANCELLED:'Cancelled',EXPIRED:'Expired',NO_SHOW:'No-show'};
+  return map[status]||status;
+}
+function statusClass(b,today){
+  if(b.status==='REDEEMED') return 'redeemed';
+  if(b.status==='CANCELLED') return 'cancelled';
+  if(b.status==='EXPIRED') return 'expired';
+  if(b.valid_use_day===today) return 'today';
+  return 'booked';
+}
+function pillClass(b,today){
+  if(b.status==='REDEEMED') return 'redeemed';
+  if(b.status==='CANCELLED') return 'cancelled';
+  if(b.status==='EXPIRED') return 'expired';
+  if(b.status==='BOOKED'&&b.valid_use_day===today) return 'today';
+  return 'booked';
+}
+
+/* ── Filter logic ───────────────────────────────────────── */
+function filterBookings(bookings, filter){
+  const today = todayISO();
+  if(filter==='open')  return bookings.filter(b=>b.status==='BOOKED'&&b.valid_use_day>=today);
+  if(filter==='today') return bookings.filter(b=>b.valid_use_day===today&&b.status==='BOOKED');
+  if(filter==='past')  return bookings.filter(b=>b.status!=='BOOKED'||(b.valid_use_day<today));
+  return bookings; // 'all'
+}
+
+/* ── Render list ─────────────────────────────────────────── */
+function renderList(){
+  const list=document.getElementById('bookingList');
+  const today=todayISO();
+  const items=filterBookings(allBookings, activeFilter);
+
+  if(!items.length){
+    const msgs={
+      open:'No open bookings. <a href="/modules/In-Time/use/scan.html" style="color:var(--v)">Scan a queue to book →</a>',
+      today:'No bookings for today.',
+      past:'No past bookings yet.',
+      all:'No bookings found.',
+    };
+    list.innerHTML=`
+      <div class="empty">
+        <div class="empty-ico">🎟</div>
+        <div class="empty-title">Nothing here</div>
+        <div class="empty-desc">${msgs[activeFilter]||''}</div>
+        <a class="empty-btn" href="/modules/In-Time/use/scan.html">📷 Scan a queue</a>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML=items.map(b=>cardHTML(b,today)).join('');
+
+  /* Wire interactivity */
+  items.forEach(b=>wireCard(b));
+
+  /* Scroll to highlighted */
+  if(highlightId){
+    const el=document.getElementById(`bc-${highlightId}`);
+    if(el) setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'center'}),300);
+  }
+}
+
+function cardHTML(b, today){
+  const dt   = fmtDate(b.valid_use_day);
+  const sc   = statusClass(b,today);
+  const pc   = pillClass(b,today);
+  const code = b.short_code||b.human_ref||'—';
+  const isToday = b.valid_use_day===today;
+  const canAct  = b.status==='BOOKED';
+
+  const pillLabel = pc==='today'?'Today':statusLabel(b.status);
+
+  return `
+<div class="bcard-wrap" id="bcw-${b.booking_id}">
+  <div class="swipe-left-reveal"><span class="slr-ico">🗑</span><span>Cancel</span></div>
+  <div class="bcard ${sc}" id="bc-${b.booking_id}" data-id="${b.booking_id}">
+    <div class="bcard-main">
+
+      <div class="bcard-top">
+        <div class="bcard-name">${esc(b.queue_name||'Queue')}</div>
+        <div class="bcard-badges">
+          <span class="spill ${pc}">
+            ${canAct?'<span class="spill-dot"></span>':''}
+            ${esc(pillLabel)}
+          </span>
+        </div>
+      </div>
+
+      <div class="bcard-meta">
+        ${b.venue_name?`<span>${esc(b.venue_name)}</span><span class="meta-sep">·</span>`:''}
+        <span>${esc(dt.full)}</span>
+        ${b.party_size>1?`<span class="meta-sep">·</span><span>${b.party_size} people</span>`:''}
+      </div>
+
+      <div class="bcard-code" onclick="copyCode('${esc(code)}',event)" title="Tap to copy">
+        ${esc(code)}<span class="copy-ico">⎘</span>
+      </div>
+
+      <div class="bcard-actions">
+        <button class="bca-btn" onclick="toggleDrawer('${b.booking_id}')">🔲 Show QR</button>
+        ${canAct?`
+        <button class="bca-btn" onclick="openModify('${b.booking_id}','${b.queue_id}')">✏️ Modify</button>
+        `:`<span style="font-size:12px;color:var(--hint);margin-left:auto">${statusLabel(b.status)}</span>`}
+      </div>
+
+    </div>
+
+    <!-- detail drawer -->
+    <div class="bcard-drawer" id="bdr-${b.booking_id}">
+      <div class="drawer-inner">
+        <div class="drawer-row">
+          <div class="drawer-qr" id="qr-${b.booking_id}">
+            <!-- QR generated by JS -->
+          </div>
+          <div class="drawer-info">
+            <div class="info-row"><span class="info-key">Booking ref</span><span class="info-val">${esc(code)}</span></div>
+            <div class="info-row"><span class="info-key">Date</span><span class="info-val">${esc(dt.full)}</span></div>
+            <div class="info-row"><span class="info-key">Party size</span><span class="info-val">${b.party_size}</span></div>
+            <div class="info-row"><span class="info-key">Status</span><span class="info-val">${esc(statusLabel(b.status))}</span></div>
+            ${b.source?`<div class="info-row"><span class="info-key">Type</span><span class="info-val">${esc(b.source==='live'?'Live walk-in':'Advance booking')}</span></div>`:''}
+          </div>
+        </div>
+        <p class="drawer-hint">Show this QR at the venue entrance for scanning.</p>
+      </div>
+    </div>
+
+  </div><!-- /.bcard -->
+</div><!-- /.bcard-wrap -->`;
+}
+
+/* ── Wire swipe + actions ────────────────────────────────── */
+function wireCard(b){
+  const card=document.getElementById(`bc-${b.booking_id}`);
+  if(!card) return;
+
+  /* ── Touch/mouse swipe ──────────────────────────────────── */
+  let startX=0, startY=0, curX=0, swiping=false, swipeLocked=false;
+  const THRESHOLD=80;
+
+  function onStart(e){
+    const pt=e.touches?e.touches[0]:e;
+    startX=pt.clientX; startY=pt.clientY; curX=0; swiping=true; swipeLocked=false;
+    card.style.transition='none';
+  }
+  function onMove(e){
+    if(!swiping) return;
+    const pt=e.touches?e.touches[0]:e;
+    const dx=pt.clientX-startX;
+    const dy=pt.clientY-startY;
+    if(!swipeLocked && Math.abs(dy)>Math.abs(dx)*1.2){ swiping=false; return; }
+    swipeLocked=true;
+    curX=dx;
+    card.style.transform=`translateX(${curX}px)`;
+    if(e.cancelable) e.preventDefault();
+  }
+  function onEnd(){
+    if(!swiping){ card.style.transform=''; return; }
+    swiping=false;
+    card.style.transition='';
+    if(curX < -THRESHOLD && b.status==='BOOKED'){
+      /* swipe left → cancel */
+      card.style.transform='';
+      openCancel(b.booking_id, b.queue_name||'this queue');
+    } else {
+      card.style.transform='';
+    }
+  }
+
+  /* Swipe down on the card → open QR drawer */
+  let touchStartY=0, touchStartX2=0;
+  card.addEventListener('touchstart', e=>{
+    touchStartY=e.touches[0].clientY;
+    touchStartX2=e.touches[0].clientX;
+  }, {passive:true});
+  card.addEventListener('touchend', e=>{
+    const dy=e.changedTouches[0].clientY - touchStartY;
+    const dx=Math.abs(e.changedTouches[0].clientX - touchStartX2);
+    if(dy > 40 && dx < 60){ openDrawer(String(b.booking_id)); }
+  }, {passive:true});
+
+  card.addEventListener('touchstart', onStart, {passive:true});
+  card.addEventListener('touchmove',  onMove,  {passive:false});
+  card.addEventListener('touchend',   onEnd,   {passive:true});
+
+  /* Mouse drag (desktop) */
+  card.addEventListener('mousedown', e=>{ if(e.button!==0) return; onStart(e); });
+  window.addEventListener('mousemove', e=>{ if(swiping) onMove(e); });
+  window.addEventListener('mouseup',   e=>{ if(swiping) onEnd(); });
+}
+
+/* ── Drawer toggle ───────────────────────────────────────── */
+function openDrawer(id){
+  const drawer=document.getElementById(`bdr-${id}`);
+  if(!drawer) return;
+  const isOpen=drawer.classList.contains('open');
+  /* close all others */
+  document.querySelectorAll('.bcard-drawer.open').forEach(d=>{
+    if(d.id!==`bdr-${id}`) d.classList.remove('open');
+  });
+  if(!isOpen){
+    drawer.classList.add('open');
+    renderQR(id);
+  } else {
+    drawer.classList.remove('open');
+  }
+}
+function toggleDrawer(id){ openDrawer(id); }
+
+/* ── QR generation ───────────────────────────────────────── */
+function renderQR(bookingId){
+  const qrEl=document.getElementById(`qr-${bookingId}`);
+  if(!qrEl||qrEl.dataset.rendered) return;
+  const b=allBookings.find(x=>String(x.booking_id)===String(bookingId));
+  if(!b||!b.token_id) return;
+
+  const payload=`intime:booking:${b.token_id}`;
+  if(window.QRCode){
+    const canvas=document.createElement('canvas');
+    qrEl.appendChild(canvas);
+    QRCode.toCanvas(canvas, payload, {
+      width:140, margin:2,
+      color:{dark:'#1a1825',light:'#f0eff5'}
+    }, err=>{ if(err) qrEl.innerHTML='<span style="font-size:12px;color:var(--hint)">QR unavailable</span>'; });
+  } else {
+    qrEl.innerHTML='<span style="font-size:12px;color:var(--hint)">QR unavailable</span>';
+  }
+  qrEl.dataset.rendered='1';
+}
+
+/* ── Copy code ───────────────────────────────────────────── */
+function copyCode(code,e){
+  e?.stopPropagation();
+  navigator.clipboard.writeText(code)
+    .then(()=>toast('Code copied!'))
+    .catch(()=>toast(code));
+}
+
+/* ── Cancel flow ─────────────────────────────────────────── */
+function openCancel(bookingId, queueName){
+  cancelTarget=bookingId;
+  document.getElementById('cancelModalText').innerHTML=
+    `Cancel your booking at <strong>${esc(queueName)}</strong>? This cannot be undone.`;
+  document.getElementById('cancelModal').classList.add('on');
+}
+function closeCancelModal(){
+  document.getElementById('cancelModal').classList.remove('on');
+  cancelTarget=null;
+}
+async function confirmCancel(){
+  if(!cancelTarget) return;
+  const btn=document.getElementById('cancelConfirmBtn');
+  btn.disabled=true; btn.textContent='Cancelling…';
+  try{
+    const r=await fetch(`/api/intime/bookings/${cancelTarget}/cancel`,{
+      method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({device_id:deviceId}),
+    });
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok&&!d.already) throw new Error(d.error||`HTTP ${r.status}`);
+    /* Update local state */
+    const b=allBookings.find(x=>x.booking_id===cancelTarget);
+    if(b) b.status='CANCELLED';
+    toast('Booking cancelled.');
+    closeCancelModal();
+    renderList();
+  }catch(err){
+    toast('Could not cancel: '+err.message);
+    btn.disabled=false; btn.textContent='Yes, cancel';
+  }
+}
+
+/* ── Modify flow ─────────────────────────────────────────── */
+function openModify(bookingId, queueId){
+  const url=new URL('/modules/In-Time/use/page 3-1.html', location.origin);
+  url.searchParams.set('queueId', queueId);
+  url.searchParams.set('modify',  bookingId);
+  location.href=url.toString();
+}
+
+/* ── Tab switching ───────────────────────────────────────── */
+document.getElementById('tabs').addEventListener('click', e=>{
+  const tab=e.target.closest('.tab');
+  if(!tab) return;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active');
+  activeFilter=tab.dataset.filter;
+  renderList();
+});
+
+/* ── Load bookings ───────────────────────────────────────── */
+async function loadBookings(){
+  try{
+    const r=await fetch(`/api/intime/bookings/mine?device_id=${encodeURIComponent(deviceId)}`,{
+      credentials:'same-origin',headers:{Accept:'application/json'}
+    });
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok) throw new Error(d.error||`HTTP ${r.status}`);
+    allBookings=d.bookings||[];
+
+    /* Apply filter from URL if present */
+    if(initFilter&&['open','today','past','all'].includes(initFilter)){
+      activeFilter=initFilter;
+      document.querySelectorAll('.tab').forEach(t=>{
+        t.classList.toggle('active', t.dataset.filter===initFilter);
+      });
+    }
+
+    renderList();
+  }catch(err){
+    document.getElementById('bookingList').innerHTML=`
+      <div class="empty">
+        <div class="empty-ico">⚠️</div>
+        <div class="empty-title">Could not load bookings</div>
+        <div class="empty-desc">${esc(err.message)}</div>
+        <button class="empty-btn" onclick="loadBookings()">Try again</button>
+      </div>`;
+  }
+}
+
+/* ── Boot ───────────────────────────────────────────────── */
+loadBookings();
+
+if(window.Drawer?.mount) Drawer.mount({mode:'visitor'});
+if(window.FAB?.mount) FAB.mount({
+  useTopBand:true,useBottomBand:true,
+  home:  {label:'🏠',title:'Home',onClick:()=>Drawer?.open?.()},
+  config:{label:'📷',title:'Scan new queue',href:'/modules/In-Time/use/scan.html'},
+  onBack:()=>{ history.length>1?history.back():(location.href='/modules/In-Time/use/main.html'); },
+});
+</script>
+</body>
+</html>

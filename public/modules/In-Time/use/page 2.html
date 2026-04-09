@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Scan — In-Time</title>
+<link rel="stylesheet" href="/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
+<style>
+:root{
+  --v:#7c3aed;--v-s:#ede9fc;--v-d:#6d28d9;
+  --green:#16a34a;--green-s:#f0fdf4;
+  --amber:#d97706;--amber-s:#fffbeb;
+  --red:#dc2626;--red-s:#fef2f2;
+  --txt:#1a1825;--muted:#6b6880;--hint:#9b98aa;
+  --surf:#fff;--bg:#f4f3f8;--bord:#e2e0ea;
+  --gray:#f0eff5;--gray-m:#d4d2de;
+  --r:14px;--ri:9px;
+  --sh:0 2px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --ring:0 0 0 3px rgba(124,58,237,.18);
+  --font:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:var(--font);background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55}
+
+.shell{max-width:480px;margin:0 auto;padding:120px 18px 120px}
+
+/* ── Camera card ── */
+.cam-card{
+  position:relative;border-radius:var(--r);overflow:hidden;
+  background:#000;aspect-ratio:4/3;
+  box-shadow:0 8px 32px rgba(0,0,0,.22);margin-bottom:16px;
+}
+.cam-card video{width:100%;height:100%;object-fit:cover;display:block}
+.cam-card canvas{display:none}
+
+/* Corner-finder overlay */
+.corners{position:absolute;inset:0;pointer-events:none}
+.corners::before,.corners::after,
+.corner-bl,.corner-br{
+  content:'';position:absolute;width:32px;height:32px;
+  border-color:var(--v);border-style:solid;opacity:.9;
+}
+.corners::before{top:14px;left:14px;border-width:3px 0 0 3px;border-radius:6px 0 0 0}
+.corners::after{top:14px;right:14px;border-width:3px 3px 0 0;border-radius:0 6px 0 0}
+.corner-bl{bottom:14px;left:14px;border-width:0 0 3px 3px;border-radius:0 0 0 6px}
+.corner-br{bottom:14px;right:14px;border-width:0 3px 3px 0;border-radius:0 0 6px 0}
+
+.scan-line{
+  position:absolute;left:14px;right:14px;height:2px;
+  background:linear-gradient(90deg,transparent,var(--v),transparent);
+  animation:scan 2.2s ease-in-out infinite;top:14px;
+}
+@keyframes scan{0%,100%{top:14px;opacity:.6}50%{top:calc(100% - 14px);opacity:1}}
+
+.cam-badge{
+  position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,.55);color:#fff;font-size:12px;font-weight:600;
+  padding:5px 14px;border-radius:999px;white-space:nowrap;
+  backdrop-filter:blur(4px);
+}
+
+/* ── Status card ── */
+.status-card{
+  background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);
+  box-shadow:var(--sh);padding:16px 18px;margin-bottom:14px;
+  display:flex;align-items:flex-start;gap:14px;
+}
+.sc-ico{font-size:26px;flex-shrink:0;margin-top:1px}
+.sc-body{flex:1;min-width:0}
+.sc-title{font-size:15px;font-weight:700;color:var(--txt);margin-bottom:2px}
+.sc-sub{font-size:13px;color:var(--muted);line-height:1.5}
+.sc-venue{font-size:13.5px;font-weight:600;color:var(--txt);margin-bottom:2px}
+.sc-addr{font-size:12.5px;color:var(--muted)}
+
+.status-card.found{border-color:var(--v);background:var(--v-s)}
+.status-card.found .sc-title{color:var(--v)}
+.status-card.err{border-color:#fca5a5;background:var(--red-s)}
+.status-card.err .sc-title{color:var(--red)}
+
+/* ── CTA button ── */
+.cta-btn{
+  width:100%;padding:13px;border-radius:var(--r);border:none;
+  background:var(--v);color:#fff;font-family:var(--font);
+  font-size:15px;font-weight:700;cursor:pointer;
+  transition:background .18s,transform .1s;
+  box-shadow:0 4px 16px rgba(124,58,237,.3);
+}
+.cta-btn:hover{background:var(--v-d)}
+.cta-btn:active{transform:scale(.98)}
+.cta-btn:disabled{opacity:.45;pointer-events:none}
+
+/* ── No-camera fallback ── */
+.nocam{
+  background:var(--surf);border:1.5px dashed var(--bord);border-radius:var(--r);
+  padding:28px 20px;text-align:center;margin-bottom:16px;
+}
+.nocam p{font-size:13.5px;color:var(--muted);margin-bottom:14px;line-height:1.6}
+.nocam input{
+  width:100%;padding:10px 13px;border:1.5px solid var(--bord);border-radius:var(--ri);
+  font-family:var(--font);font-size:14px;color:var(--txt);background:var(--surf);
+  outline:none;text-align:center;letter-spacing:.08em;margin-bottom:10px;
+  transition:border-color .18s,box-shadow .18s;
+}
+.nocam input:focus{border-color:var(--v);box-shadow:var(--ring)}
+.nocam .sec-btn{
+  background:var(--gray);border:1.5px solid var(--bord);color:var(--txt);
+  font-family:var(--font);font-size:13.5px;font-weight:600;
+  padding:9px 20px;border-radius:var(--ri);cursor:pointer;transition:all .15s;
+}
+.nocam .sec-btn:hover{background:var(--bord)}
+
+/* ── Page header ── */
+.pg-hd{margin-bottom:20px}
+.pg-hd h1{font-size:21px;font-weight:700;margin-bottom:3px}
+.pg-hd p{font-size:13.5px;color:var(--muted)}
+
+/* Toast */
+#toast{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);
+  background:rgba(26,24,37,.9);color:#fff;padding:8px 18px;border-radius:999px;
+  font-size:13px;font-weight:600;opacity:0;pointer-events:none;
+  transition:opacity .2s,transform .2s;z-index:200;white-space:nowrap;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body class="has-top-band has-bottom-band">
+<header class="site"><div class="title">Scan a Queue</div></header>
+
+
+<div class="shell">
+
+  <div class="pg-hd">
+    <h1>Scan a queue</h1>
+    <p>Point your camera at the venue's QR code to join or book a spot.</p>
+  </div>
+
+  <!-- Camera view -->
+  <div class="cam-card" id="camCard">
+    <video id="preview" playsinline autoplay muted></video>
+    <canvas id="qrCanvas" width="640" height="480"></canvas>
+    <div class="corners">
+      <div class="corner-bl"></div>
+      <div class="corner-br"></div>
+    </div>
+    <div class="scan-line"></div>
+    <div class="cam-badge" id="camBadge">Scanning…</div>
+  </div>
+
+  <!-- No-camera fallback (hidden until needed) -->
+  <div class="nocam" id="nocamCard" style="display:none">
+    <p>Camera not available.<br>Enter a queue ID or paste the queue URL to continue.</p>
+    <input type="text" id="manualInput" placeholder="Queue ID or URL" inputmode="numeric">
+    <button class="sec-btn" id="manualBtn" onclick="tryManual()">→ Go</button>
+  </div>
+
+  <!-- Status card -->
+  <div class="status-card" id="statusCard">
+    <span class="sc-ico">📷</span>
+    <div class="sc-body">
+      <div class="sc-title">Ready to scan</div>
+      <div class="sc-sub">Aim the camera at a venue QR code.</div>
+    </div>
+  </div>
+
+  <!-- CTA — hidden until queue is recognized -->
+  <button class="cta-btn" id="ctaBtn" style="display:none" onclick="proceed()">
+    Book my spot →
+  </button>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+<script>
+'use strict';
+
+/* ── State ────────────────────────────────────────────── */
+let stream      = null;
+let scanning    = false;
+let processing  = false;   /* guard against overlapping async detect calls */
+let rafId       = null;
+let recognized  = null;
+
+const video     = document.getElementById('preview');
+const canvas    = document.getElementById('qrCanvas');
+const ctx       = canvas.getContext('2d');
+const camBadge  = document.getElementById('camBadge');
+const statusCard= document.getElementById('statusCard');
+const ctaBtn    = document.getElementById('ctaBtn');
+
+const detector  = ('BarcodeDetector' in window)
+  ? new window.BarcodeDetector({ formats: ['qr_code'] })
+  : null;
+
+/* ── Toast ────────────────────────────────────────────── */
+let _tt;
+function toast(msg, ms=2400){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('show'), ms);
+}
+
+/* ── Camera ───────────────────────────────────────────── */
+async function startCamera(){
+  stream = await navigator.mediaDevices.getUserMedia({
+    video:{facingMode:{ideal:'environment'}}, audio:false
+  });
+  video.srcObject = stream;
+  await video.play().catch(()=>{});
+}
+function stopCamera(){
+  try{ stream?.getTracks()?.forEach(t=>t.stop()); }catch{}
+  stream = null;
+}
+
+/* ── QR parsing ───────────────────────────────────────── */
+function parseQrPayload(raw){
+  const s = String(raw||'').trim();
+
+  /* 1. JSON: {"kind":"intime-queue","queue_id":4,"name":"...","location":"...","gps_lat":...} */
+  try{
+    const j = JSON.parse(s);
+    const qid = j.queue_id || j.queueId;
+    if(qid) return {
+      kind:'queue', queueId:String(qid),
+      name: j.name || j.queue_name || 'Virtual Queue',
+      address: j.location || j.address || '',
+      gps_lat: j.gps_lat ?? null, gps_lng: j.gps_lng ?? null,
+    };
+  }catch{}
+
+  /* 2. URL with ?queueId= */
+  if(/^https?:\/\//i.test(s)){
+    try{
+      const u = new URL(s);
+      const qid = u.searchParams.get('queueId') || u.searchParams.get('queue_id');
+      if(qid) return {
+        kind:'queue', queueId:String(qid),
+        name: u.searchParams.get('name') || 'Virtual Queue',
+        address: u.searchParams.get('addr') || '',
+      };
+    }catch{}
+  }
+
+  /* 3. Legacy "intime:queue:4" */
+  const m = s.match(/^intime:queue:(\d+)$/i);
+  if(m) return { kind:'queue', queueId:m[1], name:'Virtual Queue', address:'' };
+
+  /* 4. Bare numeric id */
+  if(/^\d+$/.test(s)) return { kind:'queue', queueId:s, name:'Virtual Queue', address:'' };
+
+  return { kind:'unknown', raw:s };
+}
+
+/* ── Build booking URL ────────────────────────────────── */
+function bookingUrl(p){
+  const u = new URL('/modules/In-Time/use/page 3.html', location.origin);
+  u.searchParams.set('queueId', p.queueId);
+  if(p.name)    u.searchParams.set('name',    p.name);
+  if(p.address) u.searchParams.set('addr',    p.address);
+  if(p.gps_lat != null) u.searchParams.set('gps_lat', p.gps_lat);
+  if(p.gps_lng != null) u.searchParams.set('gps_lng', p.gps_lng);
+  return u.toString();
+}
+
+/* ── Status card states ───────────────────────────────── */
+function showReady(){
+  statusCard.className='status-card';
+  statusCard.innerHTML=`
+    <span class="sc-ico">📷</span>
+    <div class="sc-body">
+      <div class="sc-title">Ready to scan</div>
+      <div class="sc-sub">Aim the camera at a venue QR code.</div>
+    </div>`;
+  ctaBtn.style.display='none';
+  camBadge.textContent='Scanning…';
+}
+
+function showFound(p){
+  statusCard.className='status-card found';
+  statusCard.innerHTML=`
+    <span class="sc-ico">✅</span>
+    <div class="sc-body">
+      <div class="sc-venue">${esc(p.name)}</div>
+      ${p.address ? `<div class="sc-addr">📍 ${esc(p.address)}</div>` : ''}
+      <div class="sc-sub" style="margin-top:6px;color:var(--v)">Queue found — tap below to book</div>
+    </div>`;
+  ctaBtn.style.display='';
+  camBadge.textContent='Queue found ✓';
+}
+
+function showErr(msg){
+  statusCard.className='status-card err';
+  statusCard.innerHTML=`
+    <span class="sc-ico">⚠️</span>
+    <div class="sc-body">
+      <div class="sc-title">Not recognised</div>
+      <div class="sc-sub">${esc(msg)}</div>
+    </div>`;
+  ctaBtn.style.display='none';
+  camBadge.textContent='Invalid QR';
+}
+
+function esc(s){ const d=document.createElement('div'); d.textContent=String(s??''); return d.innerHTML; }
+
+/* ── Scan loop ────────────────────────────────────────── */
+async function scanLoop(){
+  if(!scanning || !video.videoWidth){ rafId=requestAnimationFrame(scanLoop); return; }
+  if(processing){ rafId=requestAnimationFrame(scanLoop); return; }
+  processing=true;
+  try{
+    if(detector){
+      const codes = await detector.detect(video);
+      if(codes?.length && scanning){ onRecognized(codes[0].rawValue||''); processing=false; return; }
+    } else {
+      canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+      ctx.drawImage(video,0,0,canvas.width,canvas.height);
+      const img=ctx.getImageData(0,0,canvas.width,canvas.height);
+      const code=window.jsQR&&jsQR(img.data,img.width,img.height);
+      if(code?.data && scanning){ onRecognized(code.data); processing=false; return; }
+    }
+  }catch{}
+  processing=false;
+  rafId=requestAnimationFrame(scanLoop);
+}
+
+function onRecognized(raw){
+  if(!scanning) return;        /* already handled */
+  scanning=false;
+  processing=false;
+  if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+
+  const p=parseQrPayload(raw);
+  if(p.kind==='queue'){
+    recognized=p;
+    showFound(p);
+    toast('Queue found!');
+    /* Small pause so user sees the confirmation card before navigating */
+    setTimeout(()=>proceed(), 800);
+  } else {
+    showErr('Not a valid In-Time QR code. Please try again.');
+    toast('Unrecognised QR');
+    setTimeout(()=>{ scanning=true; rafId=requestAnimationFrame(scanLoop); }, 1600);
+  }
+}
+
+function proceed(){
+  if(!recognized) return;
+  scanning=false;
+  processing=false;
+  if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+  stopCamera();
+  location.href = bookingUrl(recognized);
+}
+
+/* ── Manual input fallback ────────────────────────────── */
+function tryManual(){
+  const raw = document.getElementById('manualInput')?.value?.trim();
+  if(!raw){ toast('Please enter a queue ID'); return; }
+  const p = parseQrPayload(raw);
+  if(p.kind==='queue'){ recognized=p; proceed(); }
+  else toast('Unrecognised input. Enter a numeric Queue ID.');
+}
+document.getElementById('manualInput')?.addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ e.preventDefault(); tryManual(); }
+});
+
+/* ── Boot ─────────────────────────────────────────────── */
+(async()=>{
+  try{
+    await startCamera();
+    scanning=true;
+    rafId=requestAnimationFrame(scanLoop);
+  }catch(err){
+    document.getElementById('camCard').style.display='none';
+    document.getElementById('nocamCard').style.display='';
+    statusCard.className='status-card err';
+    statusCard.innerHTML=`
+      <span class="sc-ico">📵</span>
+      <div class="sc-body">
+        <div class="sc-title">Camera unavailable</div>
+        <div class="sc-sub">${esc(err.message||'Camera access was denied or is not available.')}</div>
+      </div>`;
+  }
+})();
+
+window.addEventListener('beforeunload',()=>{
+  if(rafId) cancelAnimationFrame(rafId);
+  stopCamera();
+});
+
+if(window.Drawer?.mount) Drawer.mount({mode:'visitor'});
+if(window.FAB?.mount) FAB.mount({
+  useTopBand:true, useBottomBand:true,
+  home:  {label:'🏠', title:'Home',   onClick:()=>Drawer?.open?.()},
+  config:{label:'⚙️', title:'Settings', href:'/pages/visitor/settings.html'},
+  onBack:()=>{ history.length>1 ? history.back() : (window.location.href='/'); },
+});
+</script>
+</body>
+</html>

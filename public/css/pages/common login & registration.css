@@ -1,0 +1,157 @@
+/* Global sizing reset */
+*,*::before,*::after { box-sizing: border-box; }
+
+html,body{height:100%}
+body{
+  margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;
+  background:url("/wallpapers/test - hills.jpg") no-repeat center center fixed;
+  background-size:cover;
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;color:#fff;
+}
+
+/* top-right language switch, outside card 
+.lang-switch{
+  position:fixed;top:16px;right:16px;z-index:50;
+  border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.3);
+  padding:6px 10px;border-radius:12px;backdrop-filter:blur(10px)
+}
+.lang-switch select{appearance:none;border:none;background:transparent;color:#fff;font-weight:600;outline:none}
+*/
+
+    /* -------- Language switcher -------- */
+    .lang-switch{position:fixed;top:16px;right:16px;z-index:20;padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.25);backdrop-filter:blur(10px)}
+    .lang-switch label{font-size:12px;color:#ddd;margin-right:8px}
+    .lang-switch select{appearance:none;border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.3);color:#fff;border-radius:10px;padding:6px 28px 6px 10px}
+
+
+/* Glass card */
+.card{
+  width:min(92vw,520px);border-radius:20px;background:transparent;
+  border:2px solid rgba(255,255,255,.55);
+  backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);
+  box-shadow:0 24px 60px rgba(0,0,0,.35);overflow:hidden;
+}
+.viewport{overflow:hidden}
+.slider{display:flex;width:200%;transition:transform .55s cubic-bezier(.22,.61,.36,1)}
+.panel{width:50%;padding:32px 32px 26px}
+.pad{padding:22px 26px 20px}               /* inner padding so inputs don’t touch the border */
+.panel h2{margin:10px 0 14px;text-align:center}
+
+.form{display:grid;gap:16px}
+.field{position:relative;width:100%}
+.label{font-size:14px;color:#ddd;margin:4px 0 6px;display:block}
+
+/* Unified input/select sizing + right padding for icons/toggle */
+.input, select{
+  width:100%;border:none;border-bottom:3px solid rgba(255,255,255,.95);
+  background:transparent;color:#fff;border-radius:0;padding:12px 2.25rem 10px 6px;outline:none
+}
+select option{color:#111}
+.input::placeholder{color:#dcdcdc}
+.input:focus{border-bottom-color:#c7d2fe;box-shadow:0 4px 0 -2px rgba(199,210,254,.45)}
+
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.remember{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:#e6e6e6}
+.primary{width:100%;border:none;border-radius:999px;padding:14px 18px;font-weight:700;background:#fff;color:#111;cursor:pointer}
+.muted{color:#e6e6e6;text-align:center;margin-top:8px}
+.link{color:#c7d2fe;text-decoration:none}.link:hover{text-decoration:underline}
+
+/* Forgot password modal */
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:60}
+.modal{width:min(92vw,420px);background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.5);border-radius:16px;padding:22px 20px 18px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 16px 48px rgba(0,0,0,0.35)}
+.modal h3{margin:0 0 10px;text-align:center}
+.actions{display:flex;gap:10px;margin-top:14px}
+.btn{border:none;border-radius:10px;padding:10px 14px;cursor:pointer}
+.btn.primary{background:#fff;color:#111;font-weight:600}
+.btn.ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.5)}
+
+/* Input icons (Ionicons) — white, vertically centered */
+.icon-right{position:absolute;right:.5rem;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;color:#fff}
+.icon-right ion-icon{color:#fff;font-size:20px}
+
+/* Password wrapper: full width row, consistent padding, no overflow */
+.password-wrapper { position: relative; display: flex; align-items: center; width:100%; }
+.password-wrapper .input { flex:1; min-width:0; padding-right:2.25rem; }
+.password-wrapper .toggle {
+  position: absolute;
+  right: 1.85rem;
+  top: 58%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: white;            /* <-- makes icons white */
+  transition: opacity 0.2s ease;
+}
+.password-wrapper .toggle:hover { opacity: .7; }
+.password-wrapper .toggle:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+/* Keep inputs transparent even when autofilled (Chrome/Edge/Safari) */
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus,
+.input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important; /* kill yellow */
+  box-shadow:         0 0 0 1000px transparent inset !important;
+  background-color: transparent !important;
+  -webkit-text-fill-color: #fff !important;   /* keep text white */
+  caret-color: #fff !important;
+  border-bottom: 3px solid #c7d2fe !important; /* match focus color */
+  transition: background-color 99999s ease 0s, color 99999s ease 0s !important; /* block fade-in */
+}
+
+/* Firefox */
+.input:-moz-autofill,
+.input:-moz-autofill:focus {
+  box-shadow: 0 0 0 1000px transparent inset !important;
+  -moz-text-fill-color: #fff !important;
+  caret-color: #fff !important;
+  border-bottom: 3px solid #c7d2fe !important; /* match focus color */
+}
+
+/* Prevent UA focus ring & keep your own */
+.input { background: transparent !important; outline: none !important; }
+.input:focus {
+  border-bottom-color:#c7d2fe !important;
+  box-shadow: 0 4px 0 -2px rgba(199,210,254,.45) !important;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Common dashboard Styling */
+.modules-grid{
+  display:grid;
+  gap:14px;
+  grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
+}
+.exclusive .modules-grid{ grid-template-columns: 1fr; }
+
+.tile{
+  display:flex;align-items:center;gap:12px;
+  padding:14px;border-radius:14px;text-decoration:none;color:#fff;
+  border:1.5px solid rgba(255,255,255,.45);
+  background:rgba(255,255,255,.08);backdrop-filter:blur(12px) saturate(140%);
+}
+.tile-icon img{ width:28px; height:28px; display:block; }
+.tile-title{ font-weight:700; }
+
+.tile-badge{
+  margin-left:auto; font-size:12px; padding:4px 8px; border-radius:999px;
+  border:1px solid rgba(255,255,255,.45);
+}
+.status-trial .tile-badge{ opacity:.9 }
+.status-upcoming{ opacity:.6; pointer-events:none }
+.status-suspended{ opacity:.45; pointer-events:none; filter:grayscale(1) }

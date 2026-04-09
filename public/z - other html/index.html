@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Connexion / Inscription</title>
+
+  <!-- Shared styles used by Host + Partner + this page -->
+  <link rel="stylesheet" href="/css/common login & registration.css" />
+
+  <!-- Page-specific styles (topbar/brand/socials/divider) -->
+  <link rel="stylesheet" href="/css/index.css" />
+  
+  <!-- Icons -->
+  <script src="https://unpkg.com/ionicons@4.5.10-0/dist/ionicons.js"></script>
+
+  <!-- language module -->
+  <script src="/js/i18n.js" defer></script>
+
+<!-- Get icons : Try CDN first then local fallback-->
+<script
+  src="https://unpkg.com/ionicons@4.5.10-0/dist/ionicons.js"
+  defer
+  onerror="(function(){
+    var nodes = document.querySelectorAll('ion-icon');
+    nodes.forEach(function(el){
+      var n = el.getAttribute('name');
+      if(!n) return;
+
+      var tries = ['md-'+n, 'ios-'+n, n];     // try these file names in order
+      var img = new Image();
+      img.alt = '';
+      img.className = el.getAttribute('class') || 'icon';
+
+      function tryNext(){
+        var base = tries.shift();
+        if(!base){
+          img.src = '/icons/ion-png/alert-circle.png'; // final fallback
+          return;
+        }
+        img.onerror = tryNext;                 // if this one 404s, try the next
+        img.src = '/icons/ion-png/' + base + '.png';
+      }
+
+      tryNext();
+      el.replaceWith(img);
+    });
+  })();">
+</script>
+
+
+
+
+
+</head>
+<body>
+  <!-- Header with room for logo + title -->
+  <header class="topbar" role="banner">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"></div>
+      <h2 class="title" id="app-title" data-i18n="appTitle">WanderPal</h2>
+    </div>
+  </header>
+
+  <!-- Language -->
+  <div class="lang-switch" aria-label="Language selector">
+    <label for="lang" id="lang-label" data-i18n="langLabel">Langue</label>
+    <select id="lang">
+      <option value="fr">Français</option>
+      <option value="en">English</option>
+      <option value="es">Español</option>
+      <option value="zh">中文</option>
+      <option value="hi">हिन्दी</option>
+      <option value="ar">العربية</option>
+      <option value="pt">Português</option>
+      <option value="ru">Русский</option>
+      <option value="bn">বাংলা</option>
+      <option value="id">Bahasa Indonesia</option>
+      <option value="ja">Japanese</option>
+      <option value="ko">Korean</option>
+      <option value="pl">Polish</option>
+      <option value="de">German</option>
+      <option value="vi">Tiếng Việt</option>
+      <option value="th">ไทย</option>
+      <option value="km">ភាសាខ្មែរ</option>
+      <option value="nl">Nederlands</option>
+      <option value="it">Italiano</option>
+      <option value="tr">Türkçe</option>
+      <option value="el">Ελληνικά</option>
+    </select>
+  </div>
+
+  <!-- Glass card with swipeable panels -->
+  <main class="card" role="main" aria-live="polite">
+    <div class="viewport">
+      <div class="slider" id="slider">
+
+        <!-- LOGIN -->
+        <section id="login" class="panel" aria-labelledby="login-title">
+          <h1 id="login-title" data-i18n="loginTitle">Connexion</h1>
+          <form class="form" onsubmit="return handleSubmit(event, 'login')">
+            <div class="field">
+              <input id="login-email" class="input" type="email" name="email" placeholder="Email address" data-ph="email" required />
+                <span class="icon-right"><ion-icon name="mail"></ion-icon></span>
+
+            </div>
+
+            <div class="field">
+              <div class="password-wrapper">
+                <input id="login-pass" class="input" type="password" name="password" placeholder="Password" data-ph="password" required />
+                <button type="button" class="toggle" onclick="togglePassword('login-pass', this)"
+                        aria-label="Show password">◎</button>
+                <span class="icon-right"><ion-icon name="lock"></ion-icon></span>
+              </div>
+            </div>
+
+            <div class="row">
+              <label class="remember">
+                <input type="checkbox" /> <span data-i18n="remember">Se souvenir de moi</span>
+              </label>
+              <a class="link" href="#" id="forgot-link" data-i18n="forgot">Mot de passe oublié</a>
+            </div>
+
+            <button class="primary" type="submit" data-i18n="loginBtn">Connexion</button>
+
+            <div class="divider"><span data-i18n="or">ou</span></div>
+
+            <!-- Socials -->
+            <div class="socials" aria-label="Connexion via réseaux sociaux">
+              <button class="soc-btn soc-google" title="Google" onclick="social('Google')" aria-label="Google">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                  <path fill="#EA4335" d="M12 10.2v3.6h5.1c-.2 1.2-.8 2.1-1.7 2.7l2.7 2.1c1.6-1.5 2.6-3.8 2.6-6.4 0-.6 0-1-.1-1.5H12z"/>
+                  <path fill="#34A853" d="M6.5 14.3a5.7 5.7 0 0 0 0-4.6L3.1 7.6a9.6 9.6 0 0 0 0 8.8l3.4-2.1z"/>
+                  <path fill="#FBBC05" d="M12 4.7c1.4 0 2.6.5 3.6 1.3l2.7-2.7A9.5 9.5 0 0 0 3.1 7.6l3.4 2.1A5.8 5.8 0 0 1 12 4.7z"/>
+                  <path fill="#4285F4" d="M12 21.3a8.6 8.6 0 0 0 6.1-2.4l-2.7-2.1a5.4 5.4 0 0 1-8.1-2.5l-3.4 2.1A9.6 9.6 0 0 0 12 21.3z"/>
+                </svg>
+              </button>
+              <button class="soc-btn soc-apple" title="Apple" onclick="social('Apple')" aria-label="Apple">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="#fff">
+                  <path d="M16.2 12.5c0-2.1 1.7-3.1 1.8-3.2-1-.1-2.2.6-2.8.6-.6 0-1.5-.6-2.4-.6-1.2 0-2.4.7-3 1.9-1.3 2.2-.3 5.5.9 7.3.6.9 1.3 1.9 2.2 1.9.8 0 1.1-.5 2.1-.5 1 0 1.2 .5 2.1 .5 .9 0 1.6-.9 2.2-1.9 .7-1 1-2 .9-2.1-.1 0-2-.8-2-3.9zM14.7 6.5c.5-.6 .9-1.4 .8-2.3-.8 .1 -1.7 .6 -2.2 1.2-.5 .6-.9 1.4-.8 2.3 .9 0 1.7-.5 2.2-1.2z"/>
+                </svg>
+              </button>
+              <button class="soc-btn soc-twitter" title="Twitter" onclick="social('Twitter')" aria-label="Twitter">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="#fff">
+                  <path d="M22.46 6c-.77.35-1.6.58-2.46.69a4.28 4.28 0 0 0 1.88-2.37 8.58 8.58 0 0 1-2.71 1.04 4.27 4.27 0 0 0-7.28 3.89 12.12 12.12 0 0 1-8.8-4.47 4.27 4.27 0 0 0 1.32 5.7 4.23 4.23 0 0 1-1.93-.53v.05a4.28 4.28 0 0 0 3.43 4.19 4.3 4.3 0 0 1-1.92.07 4.28 4.28 0 0 0 3.99 2.97A8.57 8.57 0 0 1 2 19.54a12.09 12.09 0 0 0 6.56 1.92c7.87 0 12.18-6.52 12.18-12.17 0-.19 0-.37-.01-.56A8.7 8.7 0 0 0 24 6.59a8.49 8.49 0 0 1-2.54.7z"/>
+                </svg>
+              </button>
+              <button class="soc-btn soc-facebook" title="Facebook" onclick="social('Facebook')" aria-label="Facebook">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="#fff" d="M13.5 21v-7h2.3l.4-2.7h-2.7v-1.7c0-.8.2-1.3 1.3-1.3h1.5V5.1c-.3 0-1.1-.1-2-.1-2 0-3.3 1.2-3.3 3.4v2h-2.2V14h2.2v7h2.5z"/></svg>
+              </button>
+              <button class="soc-btn soc-instagram" title="Instagram" onclick="social('Instagram')" aria-label="Instagram">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="#fff">
+                  <rect x="3" y="3" width="18" height="18" rx="5"/>
+                  <circle cx="12" cy="12" r="4"/>
+                  <circle cx="17.5" cy="6.5" r="1.2"/>
+                </svg>
+              </button>
+            </div>
+
+            <p class="muted-cta"><span data-i18n="noAccount">Pas de compte ?</span> <a class="link" href="#" data-toggle="register" data-i18n="signup">Inscrivez-vous</a></p>
+          </form>
+        </section>
+
+        <!-- REGISTER -->
+        <section id="register" class="panel" aria-labelledby="register-title">
+          <h1 id="register-title" data-i18n="registerTitle">Inscription</h1>
+          <form class="form" onsubmit="return handleSubmit(event, 'register')">
+            <div class="field">
+              <input id="reg-name" class="input" type="text" name="name" placeholder="Name" data-ph="namePlaceholder" required />
+              <span class="icon-right"><ion-icon name="person"></ion-icon></span>
+
+            </div>
+
+            <div class="field">
+              <input id="reg-email" class="input" type="email" name="email" placeholder="Email address" data-ph="email" required />
+              <span class="icon-right"><ion-icon name="mail"></ion-icon></span>
+            </div>
+
+            <div class="field">
+              <div class="password-wrapper">
+                <input id="reg-pass" class="input" type="password" name="password" placeholder="Create password" data-ph="createPassword" required />
+                <button type="button" class="toggle"
+                        onclick="togglePassword('reg-pass', this)"
+                        aria-label="Show password">◎</button>
+                <span class="icon-right"><ion-icon name="lock"></ion-icon></span>
+              </div>
+            </div>
+
+            <button class="primary" type="submit" data-i18n="registerBtn">Inscription</button>
+
+            <div class="divider"><span data-i18n="or">ou</span></div>
+
+            <!-- Socials (same five providers) -->
+            <div class="socials" aria-label="Inscription via réseaux sociaux">
+              <button class="soc-btn soc-google" title="Google" onclick="social('Google')" aria-label="Google">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                  <path fill="#EA4335" d="M12 10.2v3.6h5.1c-.2 1.2-.8 2.1-1.7 2.7l2.7 2.1c1.6-1.5 2.6-3.8 2.6-6.4 0-.6 0-1-.1-1.5H12z"/>
+                  <path fill="#34A853" d="M6.5 14.3a5.7 5.7 0 0 0 0-4.6L3.1 7.6a9.6 9.6 0 0 0 0 8.8l3.4-2.1z"/>
+                  <path fill="#FBBC05" d="M12 4.7c1.4 0 2.6.5 3.6 1.3l2.7-2.7A9.5 9.5 0 0 0 3.1 7.6l3.4 2.1A5.8 5.8 0 0 1 12 4.7z"/>
+                  <path fill="#4285F4" d="M12 21.3a8.6 8.6 0 0 0 6.1-2.4l-2.7-2.1a5.4 5.4 0 0 1-8.1-2.5l-3.4 2.1A9.6 9.6 0 0 0 12 21.3z"/>
+                </svg>
+              </button>
+              <button class="soc-btn soc-apple" title="Apple" onclick="social('Apple')" aria-label="Apple">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="#fff">
+                  <path d="M16.2 12.5c0-2.1 1.7-3.1 1.8-3.2-1-.1-2.2.6-2.8.6-.6 0-1.5-.6-2.4-.6-1.2 0-2.4.7-3 1.9-1.3 2.2-.3 5.5.9 7.3.6.9 1.3 1.9 2.2 1.9.8 0 1.1-.5 2.1-.5 1 0 1.2 .5 2.1 .5 .9 0 1.6-.9 2.2-1.9 .7-1 1-2 .9-2.1-.1 0-2-.8-2-3.9zM14.7 6.5c.5-.6 .9-1.4 .8-2.3-.8 .1 -1.7 .6 -2.2 1.2-.5 .6-.9 1.4-.8 2.3 .9 0 1.7-.5 2.2-1.2z"/>
+                </svg>
+              </button>
+              <button class="soc-btn soc-twitter" title="Twitter" onclick="social('Twitter')" aria-label="Twitter">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="#fff">
+                  <path d="M22.46 6c-.77.35-1.6.58-2.46.69a4.28 4.28 0 0 0 1.88-2.37 8.58 8.58 0 0 1-2.71 1.04 4.27 4.27 0 0 0-7.28 3.89 12.12 12.12 0 0 1-8.8-4.47 4.27 4.27 0 0 0 1.32 5.7 4.23 4.23 0 0 1-1.93-.53v.05a4.28 4.28 0 0 0 3.43 4.19 4.3 4.3 0 0 1-1.92.07 4.28 4.28 0 0 0 3.99 2.97A8.57 8.57 0 0 1 2 19.54a12.09 12.09 0 0 0 6.56 1.92c7.87 0 12.18-6.52 12.18-12.17 0-.19 0-.37-.01-.56A8.7 8.7 0 0 0 24 6.59a8.49 8.49 0 0 1-2.54.7z"/>
+                </svg>
+              </button>
+              <button class="soc-btn soc-facebook" title="Facebook" onclick="social('Facebook')" aria-label="Facebook">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="#fff" d="M13.5 21v-7h2.3l.4-2.7h-2.7v-1.7c0-.8.2-1.3 1.3-1.3h1.5V5.1c-.3 0-1.1-.1-2-.1-2 0-3.3 1.2-3.3 3.4v2h-2.2V14h2.2v7h2.5z"/></svg>
+              </button>
+              <button class="soc-btn soc-instagram" title="Instagram" onclick="social('Instagram')" aria-label="Instagram">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="#fff">
+                  <rect x="3" y="3" width="18" height="18" rx="5"/>
+                  <circle cx="12" cy="12" r="4"/>
+                  <circle cx="17.5" cy="6.5" r="1.2"/>
+                </svg>
+              </button>
+            </div>
+
+            <p class="muted-cta"><span data-i18n="haveAccount">Déjà un compte ?</span> <a class="link" href="#" data-toggle="login" data-i18n="signin">Connectez-vous</a></p>
+          </form>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Forgot password modal -->
+  <div class="backdrop" id="forgot-modal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="forgot-title">
+      <h3 id="forgot-title" data-i18n="forgotTitle">Mot de passe oublié</h3>
+      <p data-i18n="forgotDesc">Entrez votre adresse email. Nous vous enverrons un lien de réinitialisation.</p>
+      <form id="forgot-form" style="margin-top:10px;">
+        <div class="field">
+          <label class="label" for="forgot-email" data-i18n="email">Email</label>
+          <input id="forgot-email" class="input" type="email" placeholder="votre.email@mail.com" data-ph="emailPlaceholder" required />
+          <span class="icon-right"><ion-icon name="mail"></ion-icon></span>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn ghost" id="forgot-cancel" data-i18n="forgotCancel">Annuler</button>
+          <button type="submit" class="btn primary" data-i18n="forgotSend">Envoyer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+  // ---------- i18n basics ----------
+  let currentLang = 'fr';
+  let i18n = {};
+
+  function mapBrowserLang(code){
+    const short = (code || '').toLowerCase().split('-')[0];
+    const supported = ['en','fr','es','zh','hi','ar','pt','ru','bn','id','ja','ko','pl','de','vi','th','km','nl','it','tr','el'];
+    return supported.includes(short) ? short : 'en';
+  }
+
+  async function loadLang(lang) {
+    const res = await fetch(`/i18n/${lang}.json`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Missing language file');
+    return res.json();
+  }
+
+  async function applyLang(lang){
+    try {
+      i18n = await loadLang(lang);
+      currentLang = lang;
+      localStorage.setItem('lang', lang);
+    } catch {
+      i18n = await loadLang('en');
+      currentLang = 'en';
+    }
+    document.documentElement.lang = currentLang;
+    document.documentElement.dir = (currentLang === 'ar') ? 'rtl' : 'ltr';
+    document.title = (i18n.loginTitle || 'Login') + ' / ' + (i18n.registerTitle || 'Register');
+
+    document.querySelectorAll('[data-i18n]').forEach(el=>{
+      const key = el.getAttribute('data-i18n');
+      if (i18n[key] != null) el.textContent = i18n[key];
+    });
+    document.querySelectorAll('[data-ph]').forEach(el=>{
+      const key = el.getAttribute('data-ph');
+      if (i18n[key] != null) el.placeholder = i18n[key];
+    });
+  }
+
+  // ---------- Panel toggle ----------
+  document.addEventListener('click', (e)=>{
+    const t = e.target.closest('[data-toggle]');
+    if(!t) return;
+    e.preventDefault();
+    const mode = t.getAttribute('data-toggle');
+    document.getElementById('slider').style.transform = (mode==='login') ? 'translateX(0%)' : 'translateX(-50%)';
+  });
+
+  // ---------- Forgot modal (robust) ----------
+  (function () {
+    const modal     = document.getElementById('forgot-modal');
+    const emailEl   = document.getElementById('forgot-email');
+    const cancelBtn = document.getElementById('forgot-cancel');
+    const form      = document.getElementById('forgot-form');
+
+    document.addEventListener('click', function (e) {
+      const link = e.target.closest('#forgot-link');
+      if (!link) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (modal) {
+        modal.style.display = 'flex';
+        setTimeout(() => emailEl?.focus(), 0);
+      }
+    }, true);
+
+    cancelBtn?.addEventListener('click', () => (modal.style.display = 'none'));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal?.style.display === 'flex') modal.style.display = 'none';
+    });
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = (emailEl?.value || '').trim();
+      if (!email) return;
+      try {
+        const res  = await fetch('/api/forgot', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || 'Request failed');
+        alert('If an account exists, we’ve sent a reset link.');
+        modal.style.display = 'none';
+        form.reset();
+        if (data.devResetUrl) console.log('[DEV] Reset URL:', data.devResetUrl);
+      } catch (err) {
+        console.error('Forgot error:', err);
+        alert('We couldn’t process your request.');
+      }
+    });
+  })();
+
+  // ---------- Submit handlers ----------
+  async function handleSubmit(e, type){
+    e.preventDefault();
+
+    if (type === 'login') {
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-pass').value;
+
+      try {
+        const res = await fetch('/api/login', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.status === 403) {
+          alert(
+            data?.error
+            || i18n.suspendedMsg
+            || 'This account is suspended. Please contact abc@hotmail.com for more information.'
+          );
+          return false;
+        }
+
+        if (res.ok && (data?.ok === true || !data || Object.keys(data).length === 0)) {
+          window.location.href = '/dashboard';
+          return false;
+        }
+
+        alert(data?.error || i18n.invalidCreds || 'Invalid credentials');
+      } catch (err) {
+        console.error(err);
+        alert('Erreur réseau / serveur. Veuillez réessayer.');
+      }
+
+    } else {
+      const name = document.getElementById('reg-name').value.trim();
+      const email = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-pass').value;
+      try {
+        const res = await fetch('/api/register', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ name, email, password })
+        });
+        if (!res.ok) throw new Error('bad');
+        alert('Compte créé. Vous pouvez vous connecter.');
+        document.getElementById('slider').style.transform='translateX(0%)';
+      } catch {
+        alert('Impossible de créer le compte (email déjà utilisé ?)');
+      }
+    }
+    return false;
+  }
+  window.handleSubmit = handleSubmit;
+
+  // ---------- Language selector init ----------
+  const langSel = document.getElementById('lang');
+  langSel.addEventListener('change', e=> applyLang(e.target.value));
+
+  (async ()=>{
+    const saved = localStorage.getItem('lang');
+    const initial = saved || mapBrowserLang(navigator.language);
+    langSel.value = initial;
+    await applyLang(initial);
+    document.getElementById('slider').style.transform='translateX(0%)'; // start at login
+  })();
+
+  // ---------- Social (Google wired; others placeholders) ----------
+  function social(name){
+    const map = {
+      Google:   '/auth/google',
+      Apple:    '/auth/apple',
+      Facebook: '/auth/facebook',
+      Twitter:  '/auth/twitter',
+    };
+    const url = map[name];
+    if (url) window.location.href = url;
+    else alert(name + ' OAuth — not wired yet.');
+  }
+  window.social = social;
+
+  // Already logged in? bounce to dashboard
+  fetch('/api/me').then(r => { if (r.ok) location.href = '/dashboard'; });
+
+  // Toggle password visibility
+  function togglePassword(id, btn) {
+    const input = document.getElementById(id);
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    btn.textContent = show ? '◉' : '◎';
+    btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    input.focus();
+  }
+
+</script>
+</body>
+</html>

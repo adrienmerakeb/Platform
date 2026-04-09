@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>In-Time — Spot Booking</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+
+  <style>
+    body.vqsb{
+      background: var(--bg-base,#fafafa);
+      color: var(--text-base,#333);
+    }
+    .content-wrap.page-pad{
+      padding: 16px 16px 96px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    /* Hero */
+    .hero{
+      position: relative;
+      border-radius: 18px;
+      overflow: hidden;
+      padding: 18px 16px;
+      margin-bottom: 18px;
+      background:
+        linear-gradient(135deg, rgba(30,136,229,.16), rgba(67,160,71,.14)),
+        #fff;
+      border: 1px solid rgba(0,0,0,.04);
+      box-shadow: 0 10px 25px rgba(0,0,0,.05);
+    }
+    .hero::before{
+      content:"";
+      position:absolute;
+      inset:-40%;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(255,255,255,.25), transparent 55%),
+        radial-gradient(circle at 100% 100%, rgba(255,255,255,.20), transparent 55%);
+      opacity:.9;
+      pointer-events:none;
+    }
+    .hero .content{
+      position:relative;
+      z-index:1;
+    }
+    .hero h1{
+      margin:0 0 4px;
+      font-size:1.5rem;
+    }
+    .hero .meta{
+      font-size:.9rem;
+      opacity:.8;
+    }
+    .hero .meta span.tag{
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      padding:2px 8px;
+      border-radius:999px;
+      background:rgba(0,0,0,.05);
+      font-size:.8rem;
+      margin-top:4px;
+    }
+
+    .h2{
+      margin: 4px 2px 8px;
+      font-size:1.1rem;
+    }
+
+    /* Wave scroller */
+    .wave-container-wrapper{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-bottom:18px;
+    }
+    .wave-container{
+      flex:1;
+      display:flex;
+      gap:10px;
+      overflow-x:auto;
+      padding:6px 4px;
+      scroll-snap-type:x mandatory;
+    }
+    .wave-container::-webkit-scrollbar{
+      height:6px;
+    }
+    .wave-container::-webkit-scrollbar-thumb{
+      border-radius:999px;
+      background:rgba(0,0,0,.2);
+    }
+
+    .nav-arrow{
+      border:none;
+      border-radius:999px;
+      width:32px;
+      height:32px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      background:rgba(0,0,0,.05);
+      cursor:pointer;
+      font-size:14px;
+    }
+
+    .wave{
+      min-width:140px;
+      max-width:160px;
+      flex:0 0 auto;
+      scroll-snap-align:center;
+      background:#fff;
+      border-radius:14px;
+      padding:10px 10px 8px;
+      border:1px solid rgba(0,0,0,.06);
+      box-shadow:0 4px 10px rgba(0,0,0,.05);
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      gap:6px;
+      position:relative;
+      cursor:pointer;
+      transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease, background-color .12s ease;
+    }
+    .wave h3{
+      margin:0;
+      font-size:1rem;
+    }
+    .wave .window{
+      font-size:.8rem;
+      opacity:.75;
+    }
+    .wave .remaining{
+      font-size:.8rem;
+      margin-top:4px;
+    }
+    .wave .remaining strong{
+      font-weight:600;
+    }
+
+    .wave .slot-count{
+      position:absolute;
+      top:8px;
+      right:10px;
+      font-size:1.1rem;
+      font-weight:700;
+      opacity:.85;
+      cursor:pointer;
+    }
+    .wave .slot-controls{
+      display:flex;
+      justify-content:flex-end;
+      gap:6px;
+      margin-top:4px;
+    }
+    .wave .slot-controls button{
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,.12);
+      padding:2px 9px;
+      min-width:28px;
+      font-size:.9rem;
+      background:#fff;
+      cursor:pointer;
+      transition:background .12s ease, transform .05s ease;
+    }
+    .wave .slot-controls button.pressed{
+      transform:scale(.96);
+    }
+
+    .wave.sel{
+      border-color:var(--element-active,#1e88e5);
+      box-shadow:0 6px 15px rgba(30,136,229,.18);
+      transform:translateY(-2px);
+    }
+    .wave.has-slots{
+      background:linear-gradient(135deg, rgba(30,136,229,.12), rgba(67,160,71,.10)), #fff;
+    }
+    .wave.current::after{
+      content:"Now";
+      position:absolute;
+      left:10px;
+      bottom:6px;
+      font-size:.7rem;
+      padding:2px 6px;
+      border-radius:999px;
+      background:rgba(0,0,0,.06);
+    }
+
+    /* Details cards */
+    .details{
+      display:grid;
+      grid-template-columns:minmax(0,2fr) minmax(0,1.5fr);
+      gap:12px;
+    }
+    @media (max-width:768px){
+      .details{
+        grid-template-columns:1fr;
+      }
+    }
+    .card{
+      background:#fff;
+      border-radius:14px;
+      padding:12px;
+      border:1px solid rgba(0,0,0,.06);
+      box-shadow:0 4px 10px rgba(0,0,0,.04);
+    }
+    .card h4{
+      margin:0 0 8px;
+      font-size:1rem;
+    }
+    .card ul{
+      padding-left:18px;
+    }
+
+    .kv{
+      display:grid;
+      grid-template-columns:auto 1fr;
+      column-gap:8px;
+      row-gap:4px;
+      font-size:.9rem;
+    }
+    .kv .k{
+      opacity:.7;
+      font-weight:500;
+    }
+
+    .total-pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      padding:4px 10px;
+      border-radius:999px;
+      font-size:.85rem;
+      margin-top:8px;
+      background:rgba(0,0,0,.05);
+    }
+    .total-pill.maxed{
+      background:rgba(198,40,40,.08);
+      color:#b71c1c;
+      font-weight:600;
+    }
+
+    /* Toast */
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:74px;
+      transform:translateX(-50%) translateY(30px);
+      background:rgba(0,0,0,.88);
+      color:#fff;
+      padding:8px 14px;
+      font-size:.85rem;
+      border-radius:999px;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .16s ease, transform .16s ease;
+      z-index:999;
+    }
+    .toast.show{
+      opacity:1;
+      transform:translateX(-50%) translateY(0);
+    }
+
+    footer.site{
+      font-size:.8rem;
+      opacity:.75;
+      text-align:center;
+    }
+  </style>
+</head>
+<body class="vqsb has-top-band">
+  <header class="site">
+    <div class="title" id="topTitle">In-Time — Booking</div>
+  </header>
+
+  <main class="content-wrap page-pad">
+    <section class="hero" id="hero">
+      <div class="content">
+        <h1 id="heroTitle">Welcome to the Virtual Queue</h1>
+        <div class="meta" id="heroMeta">
+          Loading venue…
+        </div>
+        <div class="meta">
+          <span class="tag" id="heroTag">Today • 09:00–18:00 • 15-min waves</span>
+        </div>
+      </div>
+    </section>
+
+    <h2 class="h2">Available waves today</h2>
+    <div class="wave-container-wrapper">
+      <button class="nav-arrow left" id="scrollLeft" title="Previous">◀</button>
+      <div class="wave-container" id="waveContainer"></div>
+      <button class="nav-arrow right" id="scrollRight" title="Next">▶</button>
+    </div>
+
+    <section class="details">
+      <div class="card">
+        <h4>Your selection</h4>
+        <div class="kv" id="selList">
+          <div class="k">Selection</div><div>None yet</div>
+        </div>
+        <div id="totalWrap" style="text-align:center">
+          <span class="total-pill" id="totalPill">Total booked: 0 / 5</span>
+        </div>
+      </div>
+      <div class="card">
+        <h4>Good to know</h4>
+        <ul class="muted" style="margin:0 0 0 18px;">
+          <li>You can reserve up to <strong>5</strong> slots in total.</li>
+          <li>Tap a wave to focus it, then use <strong>+</strong> / <strong>−</strong> or the big number.</li>
+          <li>Each wave is <strong>15 minutes</strong> long.</li>
+          <li>Your booked slots will be confirmed with a unique <strong>XXX-XXX-XXX code</strong> and a QR.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site">
+    © <span id="y"></span> Tourism App MVP • <span id="venueFooter">Loading venue…</span>
+  </footer>
+  <script>document.getElementById('y').textContent = new Date().getFullYear();</script>
+
+  <!-- Drawer + FABs -->
+  <script src="/js/drawer.js"></script>
+  <script src="/js/fab.js"></script>
+
+  <script>
+  /* ====== In-Time — Real Spot Booking (visitor side) ====== */
+  const $ = (sel) => document.querySelector(sel);
+  const params = new URLSearchParams(location.search);
+
+  // Queue id coming from QR (JSON payload → Scan page → ?queueId=)
+  const queueIdParam = params.get('queueId');
+
+  // We'll use today's date for now
+  function todayISO(){
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  }
+
+  // Defaults (can be improved later with queue config)
+  let OPEN_TIME  = '09:00';
+  let CLOSE_TIME = '18:00';
+  let CADENCE_MIN = 15;
+  let CAPACITY_PER_WAVE = 40;
+
+  let queue = null;          // loaded from /api/intime/queues/:id
+  let waves = [];            // [{label,start,stop,booked,capacity,remaining,el}]
+  let totalBooked = 0;       // 0..5
+  const slotDate = todayISO();
+
+  const waveContainer = $('#waveContainer');
+
+  const tMinutes = (t) => {
+    const [h,m] = t.split(':').map(Number);
+    return h*60 + m;
+  };
+  const toHHMM = (min) => {
+    const h = Math.floor(min/60);
+    const m = min % 60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  };
+
+  /* ---------- Toast ---------- */
+  let toastTimer = null;
+  function showToast(msg){
+    let t = document.querySelector('.toast');
+    if (!t){
+      t = document.createElement('div');
+      t.className = 'toast';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=> t.classList.remove('show'), 2200);
+  }
+
+  /* ---------- Build waves ---------- */
+  function buildWaves(){
+    waves = [];
+    let cur = tMinutes(OPEN_TIME);
+    const end = tMinutes(CLOSE_TIME);
+
+    while (cur < end){
+      const start = cur;
+      const stop  = Math.min(cur + CADENCE_MIN, end);
+      const label = toHHMM(start);
+      const capacity = CAPACITY_PER_WAVE;
+
+      waves.push({
+        label,
+        start,
+        stop,
+        booked: 0,
+        capacity,
+        remaining: capacity,
+        el: null
+      });
+
+      cur = stop;
+    }
+  }
+
+  /* ---------- Render waves ---------- */
+  function renderWaves(){
+    waveContainer.innerHTML = '';
+    waves.forEach(w =>{
+      const el = document.createElement('div');
+      el.className = 'wave';
+      el.dataset.label = w.label;
+
+      el.innerHTML = `
+        <div>
+          <h3>${w.label}</h3>
+          <div class="window">${toHHMM(w.start)} – ${toHHMM(w.stop)}</div>
+          <div class="remaining">Remaining: <strong>${w.remaining}</strong></div>
+        </div>
+        <div class="slot-count" aria-hidden="true">${w.booked}</div>
+        <div class="slot-controls" aria-label="Slot controls for ${w.label}">
+          <button class="plus" type="button" title="Add">+</button>
+          <button class="minus" type="button" title="Remove">−</button>
+        </div>
+      `;
+
+      // focus selection when clicking card body
+      el.addEventListener('click',(e)=>{
+        if (e.target.closest('.slot-controls')) return;
+        document.querySelectorAll('.wave').forEach(x=> x.classList.remove('sel'));
+        el.classList.add('sel');
+      });
+
+      const plus   = el.querySelector('.plus');
+      const minus  = el.querySelector('.minus');
+      const countEl= el.querySelector('.slot-count');
+
+      const pressOn  = (btn)=> btn.classList.add('pressed');
+      const pressOff = (btn)=> btn.classList.remove('pressed');
+
+      plus.addEventListener('mousedown', ()=>pressOn(plus));
+      plus.addEventListener('mouseup',   ()=>pressOff(plus));
+      plus.addEventListener('mouseleave',()=>pressOff(plus));
+
+      minus.addEventListener('mousedown', ()=>pressOn(minus));
+      minus.addEventListener('mouseup',   ()=>pressOff(minus));
+      minus.addEventListener('mouseleave',()=>pressOff(minus));
+
+      plus.addEventListener('click',(e)=>{ e.stopPropagation(); adjust(w,+1); });
+      countEl.addEventListener('click',(e)=>{ e.stopPropagation(); adjust(w,+1); });
+      minus.addEventListener('click',(e)=>{ e.stopPropagation(); adjust(w,-1); });
+
+      w.el = el;
+      waveContainer.appendChild(el);
+    });
+  }
+
+  /* ---------- Adjust counts ---------- */
+  function adjust(w, delta){
+    if (delta > 0){
+      if (totalBooked >= 5){
+        return showToast('Maximum of 5 slots reached.');
+      }
+      if (w.remaining <= 0){
+        return showToast('No remaining slots in this wave.');
+      }
+    }
+
+    const nextBooked = Math.max(0, Math.min(5, w.booked + delta));
+    let diff = nextBooked - w.booked;
+    if (diff === 0) return;
+
+    // global cap 5
+    if (diff > 0 && totalBooked + diff > 5){
+      diff = 5 - totalBooked;
+      if (diff <= 0) return showToast('Maximum of 5 slots reached.');
+    }
+
+    // per-wave remaining
+    if (diff > 0 && diff > w.remaining){
+      diff = w.remaining;
+      if (diff <= 0) return showToast('No remaining slots in this wave.');
+    }
+
+    w.booked   += diff;
+    w.remaining = w.capacity - w.booked;
+    totalBooked+= diff;
+
+    if (w.el){
+      w.el.classList.toggle('has-slots', w.booked > 0);
+      w.el.classList.add('sel');
+      w.el.querySelector('.slot-count').textContent = String(w.booked);
+      const rem = w.el.querySelector('.remaining');
+      if (rem) rem.innerHTML = `Remaining: <strong>${w.remaining}</strong>`;
+    }
+
+    updateTotalsUI();
+    setBRState(totalBooked > 0);
+  }
+
+  /* ---------- Highlight current wave ---------- */
+  function highlightCurrent(){
+    const now = new Date();
+    const minuteNow = now.getHours()*60 + now.getMinutes();
+
+    let idx = waves.findIndex(w => w.start <= minuteNow && minuteNow < w.stop);
+    if (idx === -1) idx = waves.findIndex(w => w.start >= minuteNow);
+    if (idx === -1) idx = 0;
+
+    const w = waves[idx];
+    if (w?.el){
+      w.el.classList.add('current');
+      setTimeout(()=> w.el.scrollIntoView({ behavior:'smooth', inline:'center', block:'nearest' }), 60);
+    }
+  }
+
+  /* ---------- Scrollers ---------- */
+  $('#scrollLeft').addEventListener('click', ()=>{
+    waveContainer.scrollBy({ left: -360, behavior:'smooth' });
+  });
+  $('#scrollRight').addEventListener('click', ()=>{
+    waveContainer.scrollBy({ left: 360, behavior:'smooth' });
+  });
+
+  /* ---------- Totals UI ---------- */
+  function updateTotalsUI(){
+    const pill = $('#totalPill');
+    if (pill){
+      pill.textContent = `Total booked: ${totalBooked} / 5`;
+      pill.classList.toggle('maxed', totalBooked >= 5);
+    }
+
+    const sel = waves.filter(w => w.booked > 0);
+    const box = $('#selList');
+
+    if (box){
+      if (!sel.length){
+        box.innerHTML = `<div class="k">Selection</div><div>None yet</div>`;
+      } else {
+        let html = '';
+        sel.forEach((w,i)=>{
+          html += `
+            <div class="k">${i===0 ? 'Selection' : ''}</div>
+            <div>${w.label} (${toHHMM(w.start)}–${toHHMM(w.stop)}) × <strong>${w.booked}</strong></div>
+          `;
+        });
+        box.innerHTML = html;
+      }
+    }
+
+    // footer summary
+    const footerVenue = $('#venueFooter');
+    if (footerVenue && queue){
+      footerVenue.textContent = queue.name || queue.location || 'Queue';
+    }
+  }
+
+  /* ---------- FAB (bottom right) state ---------- */
+  function setBRState(enabled){
+    const br = document.querySelector('.fab.br');
+    if (!br) return;
+    if (enabled){
+      br.removeAttribute('aria-disabled');
+      br.style.opacity = '';
+    } else {
+      br.setAttribute('aria-disabled','true');
+      br.style.opacity = '.45';
+    }
+  }
+
+  /* ---------- Reset selection ---------- */
+  function resetToDefaults(){
+    totalBooked = 0;
+    waves.forEach(w =>{
+      w.booked = 0;
+      if (typeof w.capacity === 'number') w.remaining = w.capacity;
+      if (w.el){
+        w.el.classList.remove('has-slots','sel');
+        const cnt = w.el.querySelector('.slot-count');
+        if (cnt) cnt.textContent = '0';
+        const rem = w.el.querySelector('.remaining');
+        if (rem && typeof w.remaining === 'number'){
+          rem.innerHTML = `Remaining: <strong>${w.remaining}</strong>`;
+        }
+      }
+    });
+    updateTotalsUI();
+    setBRState(false);
+    highlightCurrent();
+  }
+
+  /* ---------- Validate: call real /api/intime/bookings ---------- */
+  async function validateBooking(){
+    if (!queue){
+      return showToast('Queue not loaded yet, please retry.');
+    }
+    if (totalBooked <= 0){
+      return showToast('Please select at least one slot.');
+    }
+
+    const selections = waves.filter(w => w.booked > 0);
+    const created = [];
+
+    try {
+      for (const w of selections){
+        const payload = {
+          queue_id: queue.id,
+          slot_date: slotDate,
+          slot_start: toHHMM(w.start),
+          slot_end: toHHMM(w.stop),
+          party_size: w.booked,
+          source: 'advance', // or 'live' depending on your logic
+          visitor_email: null,
+          visitor_name: null
+        };
+
+        const res = await fetch('/api/intime/bookings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.ok){
+          console.error('Booking error', data);
+          throw new Error(data.error || 'BOOKING_FAILED');
+        }
+
+        created.push({
+          when: `${payload.slot_start}–${payload.slot_end}`,
+          count: payload.party_size,
+          code9: data.booking?.code9,
+          bookingId: data.booking?.id,
+          qr: data.qr?.image_base64 || null
+        });
+      }
+
+      // Simple confirmation dialog with codes
+      let msg = `Your booking is confirmed for ${queue.name || queue.location || 'this venue'}:\n\n`;
+      created.forEach(c =>{
+        msg += `• ${c.when} × ${c.count} → code: ${c.code9 || 'N/A'}\n`;
+      });
+      msg += `\nPlease keep your codes or QR for check-in.`;
+
+      alert(msg);
+      resetToDefaults();
+      // You can redirect to "My bookings" later if you have a page.
+    } catch (err){
+      console.error('Booking failed', err);
+      showToast('An error occurred while creating your booking. Please try again.');
+    }
+  }
+
+  /* ---------- Load queue info from backend ---------- */
+  async function loadQueue(){
+    if (!queueIdParam){
+      showToast('Missing queue id in URL.');
+      return;
+    }
+    try{
+      const res = await fetch(`/api/intime/queues/${encodeURIComponent(queueIdParam)}`);
+      const data = await res.json();
+      if (!res.ok || !data.ok || !data.queue){
+        throw new Error(data.error || 'QUEUE_NOT_FOUND');
+      }
+      queue = data.queue;
+
+      const name = queue.name || 'Virtual Queue';
+      const loc  = queue.location || '';
+      document.getElementById('topTitle').textContent = `In-Time — ${name}`;
+      document.getElementById('heroTitle').textContent = `Welcome to ${name}`;
+      document.getElementById('heroMeta').textContent = loc
+        ? `Address: ${loc}`
+        : 'Select a time slot below to join the queue.';
+
+      document.getElementById('venueFooter').textContent = name;
+
+      // You could later override OPEN_TIME / CLOSE_TIME / CADENCE_MIN / CAPACITY_PER_WAVE
+      // from queue.operating_days / wave_capacity / time_per_slot_minutes, etc.
+      if (queue.wave_capacity) CAPACITY_PER_WAVE = Number(queue.wave_capacity) || CAPACITY_PER_WAVE;
+      if (queue.time_per_slot_minutes) CADENCE_MIN = Number(queue.time_per_slot_minutes) || CADENCE_MIN;
+
+      document.getElementById('heroTag').textContent =
+        `Today • ${OPEN_TIME}–${CLOSE_TIME} • ${CADENCE_MIN}-min waves`;
+
+      buildWaves();
+      renderWaves();
+      highlightCurrent();
+      updateTotalsUI();
+      setBRState(false);
+    } catch (err){
+      console.error('Error loading queue info', err);
+      showToast('Unable to load queue details. Please try the QR again.');
+    }
+  }
+
+  /* ---------- Drawer + FAB chrome ---------- */
+  Drawer.mount({ mode:'visitor' });
+
+  FAB.mount({
+    useTopBand: true,
+    useBottomBand: true,
+    home:   { onClick: () => Drawer.open(), title: 'Home', label:'🏠' },
+    config: { title: 'Reset', label: '↺', onClick: () => resetToDefaults() },
+    onBack: () => history.length > 1
+      ? history.back()
+      : (location.href = '/pages/visitor/booking.html'),
+    br:     { title: 'Validate', label:'✓', onClick: () => validateBooking() }
+  });
+
+  /* ---------- Boot ---------- */
+  loadQueue();
+  </script>
+</body>
+</html>

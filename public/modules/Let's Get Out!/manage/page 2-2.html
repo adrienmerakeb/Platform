@@ -1,0 +1,2329 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Let’s Get Out! — Guiding editor</title>
+
+  <!-- Shared app styles -->
+  <link rel="stylesheet" href="/css/style.css"/>
+
+  <!-- Leaflet for map picker -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    crossorigin=""
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    crossorigin=""
+    defer
+  ></script>
+
+  <style>
+    body.has-top-band.has-bottom-band main.container {
+      padding-top: 8vh;
+      padding-bottom: 8vh;
+    }
+
+    main.container {
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+
+    /* Hero / intro */
+    .wizard-hero {
+      margin: 20px auto 16px;
+      padding: 16px 20px 18px;
+      border-radius: 20px;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      backdrop-filter: blur(14px);
+    }
+
+    .wizard-hero h1 {
+      margin: 0 0 4px;
+      font-size: 1.6rem;
+      letter-spacing: .02em;
+    }
+
+    .wizard-hero p {
+      margin: 0;
+      font-size: 0.95rem;
+      opacity: 0.9;
+    }
+
+    .wizard-steps {
+      margin-top: 6px;
+      font-size: 0.82rem;
+      opacity: 0.8;
+    }
+
+    .wizard-steps .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      margin-left: 4px;
+    }
+    .badge-edit {
+      background: #1e88e5;
+      color: #fff;
+    }
+    .badge-readonly {
+      background: #757575;
+      color: #fff;
+    }
+
+    /* Body / cards */
+    .wizard-body {
+      margin: 16px auto 80px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .wizard-card {
+      border-radius: 18px;
+      padding: 16px 18px 18px;
+      background: #ffffff;
+      color: #1b1b1b;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    }
+
+    .wizard-card h2 {
+      margin: 0 0 6px;
+      font-size: 1.05rem;
+    }
+
+    .wizard-card p {
+      margin: 0 0 10px;
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    /* Fields */
+    .field-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .field {
+      flex: 1 1 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.9rem;
+    }
+
+    .field label {
+      font-weight: 600;
+      font-size: 0.86rem;
+    }
+
+    .field select,
+    .field input[type="text"],
+    .field input[type="number"],
+    .field textarea {
+      border-radius: 10px;
+      border: 1px solid #d0d7de;
+      padding: 7px 9px;
+      font: inherit;
+    }
+
+    .field textarea {
+      min-height: 70px;
+      resize: vertical;
+    }
+
+    .hint {
+      font-size: 0.8rem;
+      color: #777;
+    }
+
+    /* Steps header */
+    .steps-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .steps-header-row .hint {
+      max-width: 420px;
+    }
+
+    /* The inline "Add step" is kept but we still prefer the FAB */
+    .steps-header-row #btnAddStepInline {
+      border-radius: 999px;
+      border: 1px solid #1e88e5;
+      background: #1e88e5;
+      color: #fff;
+      padding: 6px 13px;
+      font-size: 0.86rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Steps list & step card */
+    .steps-list {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .step-card {
+      border-radius: 14px;
+      border: 1px solid #e0e0e0;
+      padding: 10px 12px 12px;
+      background: #fafafa;
+    }
+
+    .step-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .step-order {
+      font-size: 0.9rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .step-order span.index {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: #1e88e5;
+      color: #fff;
+      font-size: 0.82rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .step-actions {
+      display: flex;
+      gap: 4px;
+      flex-wrap: nowrap;
+    }
+
+    .step-actions button {
+      border-radius: 999px;
+      border: none;
+      background: #e0e0e0;
+      color: #333;
+      padding: 4px 7px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      min-width: 28px;
+    }
+
+    .step-actions button:hover {
+      background: #d0d0d0;
+    }
+
+    /* Step meta rows */
+    .step-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 6px;
+      font-size: 0.84rem;
+    }
+
+    .step-meta-row label {
+      font-weight: 400;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Tag input */
+    .tag-input {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      border: 1px solid #d0d7de;
+      background: #fafafa;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .tag-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #1e88e5;
+      color: #fff;
+      font-size: 0.78rem;
+    }
+
+    .tag-chip button {
+      border: none;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      font-size: 0.78rem;
+      padding: 0;
+    }
+
+    #guidingTagInput {
+      border: none;
+      background: transparent;
+      flex: 1 1 80px;
+      min-width: 80px;
+      font: inherit;
+      padding: 2px 4px;
+    }
+
+    #guidingTagInput:focus {
+      outline: none;
+    }
+
+    /* Duration toggle pills */
+    .duration-toggle {
+      display: inline-flex;
+      border-radius: 999px;
+      border: 1px solid #d0d7de;
+      overflow: hidden;
+    }
+
+    .dur-mode-btn {
+      border: none;
+      background: transparent;
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .dur-mode-btn.active {
+      background: #1e88e5;
+      color: #fff;
+    }
+
+    /* Generic pill toggle groups (transport, emergency, etc.) */
+    .pill-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .pill-toggle {
+      border-radius: 999px;
+      border: 1px solid #d0d7de;
+      background: #ffffff;
+      padding: 3px 9px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .pill-toggle.active {
+      background: #1e88e5;
+      color: #fff;
+      border-color: #1e88e5;
+    }
+
+    /* Floating footer actions (Save / FAB / Publish) */
+    .wizard-footer-actions {
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: calc(var(--band-h, 68px) / 2 - 40px); /* roughly mid-band */
+      width: 80vw;
+      max-width: 900px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      z-index: 1200;
+      pointer-events: none;
+    }
+
+    .wizard-footer-actions > * {
+      pointer-events: auto;
+    }
+
+    .wizard-footer-actions button {
+      border-radius: 999px;
+      border: none;
+      padding: 8px 14px;
+      font-size: 0.88rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .wizard-footer-actions .btn-secondary,
+    .wizard-footer-actions .btn-primary {
+      flex: 1 1 0;
+      text-align: center;
+    }
+
+    .btn-secondary {
+      background: #ffffff;
+      color: #333;
+      border: 1px solid #d0d7de;
+    }
+
+    .btn-secondary:hover {
+      background: #f3f3f3;
+    }
+
+    .btn-primary {
+      background: #1e88e5;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #166cc0;
+    }
+
+    .btn-add-step-fab {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      border: none;
+      background: #1e88e5;
+      color: #fff;
+      position: relative;
+      flex-shrink: 0;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      transform: translateY(-30px); /* pushes it down over the band */
+      overflow: hidden;
+      transition:
+        background 0.15s ease,
+        box-shadow 0.15s ease;
+    }
+
+    .btn-add-step-fab .icon,
+    .btn-add-step-fab .label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-add-step-fab .icon {
+      opacity: 1;
+      font-size: 2rem;
+    }
+
+    .btn-add-step-fab .label {
+      opacity: 0;
+      pointer-events: none;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+
+    .btn-add-step-fab:hover {
+      background: #166cc0;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    }
+
+    .btn-add-step-fab:hover .icon {
+      opacity: 0;
+    }
+
+    .btn-add-step-fab:hover .label {
+      opacity: 1;
+    }
+
+    /* Audio player row */
+    .step-audio-player-row {
+      display: none;
+      margin-top: 6px;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .step-audio-player-row button {
+      border-radius: 999px;
+      border: 1px solid #d0d7de;
+      background: #fff;
+      padding: 4px 9px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .step-audio-player-row button:hover {
+      background: #f3f3f3;
+    }
+
+    /* Image list */
+    .step-images-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .step-image-item {
+      border-radius: 10px;
+      border: 1px solid #d0d7de;
+      background: #ffffff;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 120px;
+    }
+
+    .step-image-thumb {
+      width: 100%;
+      height: 80px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: #eee;
+    }
+
+    .step-image-caption {
+      border-radius: 8px;
+      border: 1px solid #d0d7de;
+      font-size: 0.78rem;
+      padding: 3px 5px;
+      resize: vertical;
+      min-height: 32px;
+    }
+
+    .step-image-remove {
+      align-self: flex-end;
+      border-radius: 999px;
+      border: 1px solid #e57373;
+      background: #ffebee;
+      color: #c62828;
+      font-size: 0.78rem;
+      padding: 2px 6px;
+      cursor: pointer;
+    }
+
+    .step-image-remove:hover {
+      background: #ffcdd2;
+    }
+
+    .step-image-note-counter {
+      font-size: 0.7rem;
+      text-align: right;
+      opacity: 0.7;
+      margin-top: -2px;
+    }
+
+    /* Map modal */
+    .map-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .map-modal.hidden {
+      display: none;
+    }
+
+    .map-modal-content {
+      background: #fff;
+      border-radius: 16px;
+      width: min(96vw, 640px);
+      height: min(80vh, 520px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+    }
+
+    .map-modal-header {
+      padding: 8px 12px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+      background: #fafafa;
+    }
+
+    .map-modal-header h3 {
+      margin: 0;
+      font-size: 0.96rem;
+    }
+
+    .map-modal-body {
+      flex: 1 1 auto;
+      position: relative;
+    }
+
+    #mapPicker {
+      position: absolute;
+      inset: 0;
+    }
+
+    .map-modal-footer {
+      padding: 8px 12px;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .map-modal-footer button {
+      border-radius: 999px;
+      border: 1px solid #d0d7de;
+      padding: 6px 12px;
+      font-size: 0.86rem;
+      cursor: pointer;
+      background: #fff;
+    }
+
+    .map-modal-footer button.primary {
+      background: #1e88e5;
+      color: #fff;
+      border-color: #1e88e5;
+    }
+
+    /* Mobile tweaks */
+    @media (max-width: 640px) {
+      .wizard-hero {
+        margin-top: 64px;
+        padding-inline: 14px;
+      }
+      .wizard-body {
+        margin-bottom: 72px;
+      }
+      .wizard-footer-actions {
+        flex-direction: column;
+        align-items: center;
+        width: min(92vw, 480px);
+        bottom: calc(var(--band-h, 68px) / 2 - 20px);
+      }
+      .wizard-footer-actions .btn-secondary,
+      .wizard-footer-actions .btn-primary {
+        width: 100%;
+      }
+      .btn-add-step-fab {
+        transform: translateY(-10px);
+      }
+    }
+  </style>
+</head>
+
+<body class="has-top-band has-bottom-band">
+<header class="site">
+  <div class="title">Let’s Get Out! — Guiding editor</div>
+  <div class="subtitle">
+    View and edit the full content and steps of this guiding.
+  </div>
+</header>
+
+<main class="container">
+  <!-- Hero / intro -->
+  <section class="wizard-hero">
+    <h1 id="heroTitle">Guiding content &amp; steps</h1>
+    <p id="heroText">
+      Edit the main information and step-by-step structure of your guiding.
+      Use this page to refine notes, locations, media and accessibility.
+    </p>
+    <div class="wizard-steps" id="wizardStepsInfo">
+      Editor • Loaded from your existing guiding
+    </div>
+  </section>
+
+  <section class="wizard-body">
+
+    <!-- 1) Guiding overview -->
+    <article class="wizard-card">
+      <h2>Guiding overview</h2>
+      <p>
+        These fields describe this specific guiding. They can differ from your
+        general guide profile.
+      </p>
+
+      <!-- Row: title + language -->
+      <div class="field-row">
+        <div class="field">
+          <label for="guidingTitle">Guiding title</label>
+          <input type="text" id="guidingTitle" placeholder="e.g. Kyoto food &amp; hidden alleys"/>
+        </div>
+        <div class="field">
+          <label for="guidingLanguage">Main language</label>
+          <select id="guidingLanguage">
+            <option value="">— Select a language —</option>
+            <option value="en">English</option>
+            <option value="fr">French</option>
+            <option value="cs">Czech</option>
+            <option value="pl">Polish</option>
+            <option value="es">Spanish</option>
+            <option value="de">German</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Row: tags + default radius -->
+      <div class="field-row">
+        <div class="field">
+          <label>Tags / categories</label>
+          <div class="tag-input" id="guidingTagsWrapper">
+            <div class="tag-list" id="guidingTagsList"></div>
+            <input type="text"
+                   id="guidingTagInput"
+                   placeholder="Type a tag and press Enter"/>
+          </div>
+          <div class="hint">
+            Examples: city walk, food, hidden gems, museum, nightlife…
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="guidingRadiusDefault">Default radius</label>
+          <select id="guidingRadiusDefault">
+            <option value="">— Select —</option>
+            <option value="10">10 m</option>
+            <option value="50">50 m</option>
+            <option value="150">150 m</option>
+            <option value="250">250 m</option>
+          </select>
+          <div class="hint">
+            Used for all steps that don’t override their own radius.
+          </div>
+        </div>
+      </div>
+
+      <!-- Row: duration with toggle -->
+      <div class="field-row">
+        <div class="field">
+          <label>Approximate duration</label>
+          <div class="field-row" style="gap:8px;margin-top:0;">
+            <div class="duration-toggle">
+              <button type="button"
+                      class="dur-mode-btn active"
+                      data-mode="calculated">
+                Calculated
+              </button>
+              <button type="button"
+                      class="dur-mode-btn"
+                      data-mode="provided">
+                Provided
+              </button>
+            </div>
+          </div>
+
+          <div class="field-row"
+               id="durationProvidedRow"
+               style="gap:6px;margin-top:6px;display:none;">
+            <input type="number"
+                   id="guidingDurationProvided"
+                   min="0"
+                   step="5"
+                   placeholder="e.g. 90"/>
+            <span style="align-self:center;font-size:0.86rem;">minutes</span>
+          </div>
+
+          <div class="hint" id="durationHint">
+            Duration will be calculated as the sum of all step durations.
+          </div>
+        </div>
+      </div>
+
+      <!-- Global accessibility toggle -->
+      <div class="field-row">
+        <div class="field">
+          <label style="font-weight:600;font-size:0.86rem;">Accessibility for entire visit</label>
+          <label style="display:inline-flex;align-items:center;gap:6px;font-size:0.85rem;font-weight:400;">
+            <input type="checkbox" id="guidingAccessibilityAllSteps"/>
+            This visit is fully accessible to visitors with mobility issues.
+          </label>
+          <div class="hint">
+            Turning this on means every step of this guiding is accessible
+            (step-free paths, no unavoidable stairs, reasonable surfaces, etc.).
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 2) Guiding description (whole visit) -->
+    <article class="wizard-card">
+      <h2>Guiding description</h2>
+      <p>
+        This description applies to the entire guiding and is shown to visitors
+        before they start.
+      </p>
+
+      <div class="field">
+        <label for="guidingDescription">Overview description</label>
+        <textarea id="guidingDescription"
+                  placeholder="Explain what this guiding covers, who it is for, and any requirements (difficulty, equipment, etc.)."></textarea>
+      </div>
+    </article>
+
+    <!-- 3) Steps builder -->
+    <article class="wizard-card">
+      <h2>Steps &amp; segments</h2>
+      <div class="steps-header-row">
+        <div class="hint" id="stepsHint">
+          Edit the sequence of segments that structure your guiding.
+          You can reorder steps, override their radius, add audio explanations,
+          attach GPS coordinates and photos.
+        </div>
+        <button type="button" id="btnAddStepInline">
+          ➕ Add a step
+        </button>
+      </div>
+
+      <div class="steps-list" id="stepsList">
+        <!-- Steps dynamically injected here -->
+      </div>
+
+      <div class="hint" style="margin-top:10px;">
+        Tip: short, focused steps (2–5 minutes each for online content,
+        or clear checkpoints for Live / IRL) work best for visitors.
+      </div>
+    </article>
+  </section>
+</main>
+
+<footer class="site"></footer>
+
+<!-- Floating actions: save / publish -->
+<div class="wizard-footer-actions" id="footerActions">
+  <button type="button" class="btn-secondary" id="btnSaveDraft">
+    💾 Save changes
+  </button>
+
+  <button type="button" class="btn-add-step-fab" id="btnAddStepFooter">
+    <span class="icon">+</span>
+    <span class="label">Add step</span>
+  </button>
+
+  <button type="button" class="btn-primary" id="btnPublish">
+    ✅ Save &amp; publish
+  </button>
+</div>
+
+<!-- Map modal -->
+<div class="map-modal hidden" id="mapModal">
+  <div class="map-modal-content">
+    <div class="map-modal-header">
+      <h3>Select step location</h3>
+      <button type="button" id="mapModalClose" style="border:none;background:transparent;font-size:1.2rem;cursor:pointer;">✕</button>
+    </div>
+    <div class="map-modal-body">
+      <div id="mapPicker"></div>
+    </div>
+    <div class="map-modal-footer">
+      <button type="button" id="mapModalCancel">Cancel</button>
+      <button type="button" id="mapModalApply" class="primary">Use this location</button>
+    </div>
+  </div>
+</div>
+
+<!-- Shared chrome: drawer + FAB -->
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const params           = new URLSearchParams(window.location.search);
+    const GUIDING_ID       = params.get('id');
+    const VIEW_MODE        = (params.get('mode') || 'edit').toLowerCase();
+    const isReadOnly       = VIEW_MODE === 'details';
+
+    function redirectToMainWithError(msg) {
+      if (msg) alert(msg);
+      window.location.href = "/modules/Let's Get Out!/manage/main.html";
+    }
+
+    if (!GUIDING_ID) {
+      redirectToMainWithError('Missing guiding id. Returning to Let’s Get Out! manage.');
+      return;
+    }
+
+    const stepsList              = document.getElementById('stepsList');
+    const btnAddStepInline       = document.getElementById('btnAddStepInline');
+    const btnAddStepFooter       = document.getElementById('btnAddStepFooter');
+
+    const guidingTitleEl         = document.getElementById('guidingTitle');
+    const guidingLanguageEl      = document.getElementById('guidingLanguage');
+    const guidingDescriptionEl   = document.getElementById('guidingDescription');
+    const guidingRadiusEl        = document.getElementById('guidingRadiusDefault');
+
+    const tagInputEl             = document.getElementById('guidingTagInput');
+    const tagListEl              = document.getElementById('guidingTagsList');
+
+    const durModeButtons         = document.querySelectorAll('.dur-mode-btn');
+    const durationProvidedRow    = document.getElementById('durationProvidedRow');
+    const durationProvidedInput  = document.getElementById('guidingDurationProvided');
+    const durationHintEl         = document.getElementById('durationHint');
+
+    const globalAccessibilityToggle = document.getElementById('guidingAccessibilityAllSteps');
+
+    const btnSaveDraft           = document.getElementById('btnSaveDraft');
+    const btnPublish             = document.getElementById('btnPublish');
+    const footerActions          = document.getElementById('footerActions');
+
+    const heroTitleEl            = document.getElementById('heroTitle');
+    const heroTextEl             = document.getElementById('heroText');
+    const wizardStepsInfoEl      = document.getElementById('wizardStepsInfo');
+    const stepsHintEl            = document.getElementById('stepsHint');
+
+    const mapModal               = document.getElementById('mapModal');
+    const mapModalClose          = document.getElementById('mapModalClose');
+    const mapModalCancel         = document.getElementById('mapModalCancel');
+    const mapModalApply          = document.getElementById('mapModalApply');
+
+    let mapInstance = null;
+    let mapMarker   = null;
+    let mapTarget   = { latInput: null, lngInput: null, wrapper: null };
+
+    let durationMode = 'calculated';
+    let tags         = [];
+
+    const MAX_IMAGES_PER_STEP     = 5;
+    const MAX_IMAGE_NOTE_CHARS    = 120;
+    const MAX_AUDIO_BYTES         = 10 * 1024 * 1024;
+    const MAX_IMAGE_BYTES         = 6 * 1024 * 1024;
+
+    /* ------------------- Apply mode to UI (edit / details) ------------------- */
+
+    function applyModeToUI() {
+      const headerTitle = document.querySelector('header.site .title');
+      const headerSubtitle = document.querySelector('header.site .subtitle');
+
+      if (isReadOnly) {
+        if (headerTitle) headerTitle.textContent = "Let’s Get Out! — Guiding details";
+        if (headerSubtitle) {
+          headerSubtitle.textContent =
+            "Review all information and steps of this guiding (read-only mode).";
+        }
+        if (heroTitleEl) heroTitleEl.textContent = "Guiding details";
+        if (heroTextEl) {
+          heroTextEl.textContent =
+            "You are in read-only mode. All content, steps, media and locations are visible but cannot be edited here.";
+        }
+        if (wizardStepsInfoEl) {
+          wizardStepsInfoEl.innerHTML =
+            'Details view • Loaded from your existing guiding ' +
+            '<span class="badge badge-readonly">Read-only</span>';
+        }
+        if (stepsHintEl) {
+          stepsHintEl.textContent =
+            "This is a read-only view of the guiding’s steps and segments.";
+        }
+
+        // Hide save/publish/footer actions
+        if (footerActions) footerActions.style.display = 'none';
+        if (btnAddStepInline) btnAddStepInline.style.display = 'none';
+
+        // Disable all inputs/selects/textareas/buttons inside main content,
+        // but DO NOT touch drawer/FAB/navigation.
+        const main = document.querySelector('main.container');
+        if (main) {
+          main.querySelectorAll('input, select, textarea, button').forEach(el => {
+            // Let map modal close buttons still work just in case it opens
+            if (el.closest('.map-modal')) return;
+            el.disabled = true;
+          });
+        }
+      } else {
+        if (headerTitle) headerTitle.textContent = "Let’s Get Out! — Edit guiding";
+        if (headerSubtitle) {
+          headerSubtitle.textContent =
+            "Edit titles, descriptions, steps, media and accessibility for this guiding.";
+        }
+        if (heroTitleEl) heroTitleEl.textContent = "Guiding content & steps";
+        if (heroTextEl) {
+          heroTextEl.textContent =
+            "Use this editor to refine the content and structure of your guiding.";
+        }
+        if (wizardStepsInfoEl) {
+          wizardStepsInfoEl.innerHTML =
+            'Editor • Loaded from your existing guiding ' +
+            '<span class="badge badge-edit">Editable</span>';
+        }
+      }
+    }
+
+    applyModeToUI();
+
+    /* ---------------------------- Tags ----------------------------- */
+
+    function renderTags() {
+      tagListEl.innerHTML = '';
+      tags.forEach((t, idx) => {
+        const chip = document.createElement('span');
+        chip.className = 'tag-chip';
+        chip.innerHTML = `
+          <span>${t}</span>
+          <button type="button" data-idx="${idx}" title="Remove">×</button>
+        `;
+        tagListEl.appendChild(chip);
+      });
+    }
+
+    if (!isReadOnly) {
+      tagInputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          const raw = tagInputEl.value.trim().replace(/,$/, '');
+          if (raw && !tags.includes(raw)) {
+            tags.push(raw);
+            renderTags();
+          }
+          tagInputEl.value = '';
+        }
+      });
+
+      tagListEl.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-idx]');
+        if (!btn) return;
+        const idx = Number(btn.dataset.idx);
+        if (!Number.isNaN(idx)) {
+          tags.splice(idx, 1);
+          renderTags();
+        }
+      });
+    }
+
+    /* ---------------------- Duration handling ---------------------- */
+
+    function computeTotalDurationFromSteps() {
+      const cardEls = Array.from(stepsList.querySelectorAll('.step-card'));
+      let total = 0;
+      cardEls.forEach(card => {
+        const v = card.querySelector('.step-duration').value;
+        const n = v ? Number(v) : 0;
+        if (!Number.isNaN(n)) total += n;
+      });
+      return total;
+    }
+
+    function updateDurationUI() {
+      const total = computeTotalDurationFromSteps();
+      if (durationMode === 'calculated') {
+        durationProvidedRow.style.display = 'none';
+        if (total) {
+          durationHintEl.textContent =
+            `Duration will be calculated (~${total} minutes) from step durations.`;
+        } else {
+          durationHintEl.textContent =
+            'Duration will be calculated as the sum of all step durations.';
+        }
+      } else {
+        durationProvidedRow.style.display = 'flex';
+        durationHintEl.textContent =
+          'Use the provided duration as global indication in minutes.';
+      }
+    }
+
+    durModeButtons.forEach(btn => {
+      if (isReadOnly) return;
+      btn.addEventListener('click', () => {
+        durationMode = btn.dataset.mode;
+        durModeButtons.forEach(b => b.classList.toggle('active', b === btn));
+        updateDurationUI();
+      });
+    });
+
+    window.recomputeDurationFromSteps = updateDurationUI;
+
+    /* ------------------- Reverse geocoding helper ------------------ */
+
+    async function autofillLocationFromLatLng(lat, lng, wrapper) {
+      if (!wrapper) return;
+      const countryInput = wrapper.querySelector('.step-country');
+      const cityInput    = wrapper.querySelector('.step-city');
+      if (!countryInput && !cityInput) return;
+
+      try {
+        const url =
+          'https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1' +
+          `&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`;
+
+        const res = await fetch(url, {
+          headers: { 'Accept': 'application/json' }
+        });
+
+        if (!res.ok) {
+          console.warn('Reverse geocoding failed', await res.text());
+          return;
+        }
+
+        const data = await res.json();
+        const addr = data.address || {};
+
+        const country = addr.country || '';
+        const city =
+          addr.city ||
+          addr.town ||
+          addr.village ||
+          addr.municipality ||
+          addr.suburb ||
+          addr.neighbourhood ||
+          '';
+
+        if (country && countryInput) {
+          countryInput.value = country;
+        }
+        if (city && cityInput) {
+          cityInput.value = city;
+        }
+      } catch (err) {
+        console.error('Reverse geocoding error', err);
+      }
+    }
+
+    /* ---------------------- Global accessibility ------------------- */
+
+    function updateGlobalAccessibilityToggleFromSteps() {
+      if (!globalAccessibilityToggle) return;
+      const cards = Array.from(stepsList.querySelectorAll('.step-card'));
+      if (!cards.length) {
+        globalAccessibilityToggle.checked = false;
+        return;
+      }
+      const allAccessible = cards.every(card => {
+        const cb = card.querySelector('.step-has-accessibility');
+        return cb && cb.checked;
+      });
+      globalAccessibilityToggle.checked = allAccessible;
+    }
+
+    if (!isReadOnly && globalAccessibilityToggle) {
+      globalAccessibilityToggle.addEventListener('change', () => {
+        if (globalAccessibilityToggle.checked) {
+          const msg =
+            'By turning this on, you confirm that the ENTIRE visit is accessible to people with mobility issues.\n\n' +
+            'This includes step-free access, no unavoidable staircases, and generally suitable paths.\n\n' +
+            'Do you want to mark ALL steps as accessible?';
+          const ok = window.confirm(msg);
+          if (!ok) {
+            globalAccessibilityToggle.checked = false;
+            return;
+          }
+          const cards = Array.from(stepsList.querySelectorAll('.step-card'));
+          cards.forEach(card => {
+            const cb = card.querySelector('.step-has-accessibility');
+            if (cb) cb.checked = true;
+          });
+        }
+      });
+    }
+
+    /* --------------------------- Map picker ------------------------ */
+
+    function ensureMapInstance() {
+      if (mapInstance) return;
+
+      const defaultLat = 50.0755;
+      const defaultLng = 14.4378;
+
+      mapInstance = L.map('mapPicker').setView([defaultLat, defaultLng], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(mapInstance);
+
+      mapInstance.on('click', (e) => {
+        const { lat, lng } = e.latlng;
+
+        if (mapMarker) {
+          mapMarker.setLatLng([lat, lng]);
+        } else {
+          mapMarker = L.marker([lat, lng]).addTo(mapInstance);
+        }
+      });
+    }
+
+    function openMapForStep(latInput, lngInput, wrapper) {
+      if (isReadOnly) return;
+      mapTarget.latInput = latInput;
+      mapTarget.lngInput = lngInput;
+      mapTarget.wrapper  = wrapper || null;
+
+      mapModal.classList.remove('hidden');
+      ensureMapInstance();
+
+      let lat = parseFloat(latInput.value);
+      let lng = parseFloat(lngInput.value);
+      const hasValid = !Number.isNaN(lat) && !Number.isNaN(lng);
+
+      if (!hasValid) {
+        lat = 50.0755;
+        lng = 14.4378;
+        if (mapMarker) {
+          mapMarker.remove();
+          mapMarker = null;
+        }
+      } else {
+        if (mapMarker) {
+          mapMarker.setLatLng([lat, lng]);
+        } else {
+          mapMarker = L.marker([lat, lng]).addTo(mapInstance);
+        }
+      }
+
+      mapInstance.setView([lat, lng], hasValid ? 15 : 13);
+
+      setTimeout(() => {
+        mapInstance.invalidateSize();
+      }, 200);
+    }
+
+    function closeMapModal() {
+      mapModal.classList.add('hidden');
+      mapTarget.wrapper = null;
+    }
+
+    mapModalClose.addEventListener('click', closeMapModal);
+    mapModalCancel.addEventListener('click', closeMapModal);
+
+    mapModalApply.addEventListener('click', () => {
+      if (!mapTarget.latInput || !mapTarget.lngInput) {
+        closeMapModal();
+        return;
+      }
+      if (!mapMarker) {
+        alert('Please click on the map to choose a location first.');
+        return;
+      }
+
+      const pos = mapMarker.getLatLng();
+      const lat = pos.lat;
+      const lng = pos.lng;
+
+      mapTarget.latInput.value = lat.toFixed(6);
+      mapTarget.lngInput.value = lng.toFixed(6);
+
+      if (mapTarget.wrapper) {
+        autofillLocationFromLatLng(lat, lng, mapTarget.wrapper);
+      }
+
+      closeMapModal();
+    });
+
+    /* --------------------------- Steps ----------------------------- */
+
+    function renumberSteps() {
+      const stepEls = stepsList.querySelectorAll('.step-card');
+      stepEls.forEach((stepEl, idx) => {
+        const indexSpan = stepEl.querySelector('.step-order span.index');
+        const labelSpan = stepEl.querySelector('.step-order span.label');
+        if (indexSpan) indexSpan.textContent = idx + 1;
+        if (labelSpan)  labelSpan.textContent = 'Step ' + (idx + 1);
+      });
+      updateDurationUI();
+      updateGlobalAccessibilityToggleFromSteps();
+    }
+
+    function attachNoteLimiter(textarea, counterEl) {
+      if (!textarea || !counterEl) return;
+
+      function update() {
+        let value = textarea.value || '';
+        if (value.length > MAX_IMAGE_NOTE_CHARS) {
+          value = value.slice(0, MAX_IMAGE_NOTE_CHARS);
+          textarea.value = value;
+        }
+        counterEl.textContent = `${value.length}/${MAX_IMAGE_NOTE_CHARS}`;
+      }
+
+      textarea.addEventListener('input', update);
+      update();
+    }
+
+    function createImageItemElement(image) {
+      const { url, caption } = image || {};
+      const item = document.createElement('div');
+      item.className = 'step-image-item';
+      item.innerHTML = `
+        <img class="step-image-thumb" src="${url || ''}" alt="Step image"/>
+        <textarea class="step-image-caption"
+          placeholder="Short note… (max ${MAX_IMAGE_NOTE_CHARS} characters)"
+          maxlength="${MAX_IMAGE_NOTE_CHARS}">${caption ? caption : ''}</textarea>
+        <div class="step-image-note-counter"></div>
+        <input type="hidden" class="step-image-url" value="${url || ''}"/>
+        <button type="button" class="step-image-remove">✕</button>
+      `;
+
+      const removeBtn   = item.querySelector('.step-image-remove');
+      const captionEl   = item.querySelector('.step-image-caption');
+      const counterEl   = item.querySelector('.step-image-note-counter');
+
+      attachNoteLimiter(captionEl, counterEl);
+
+      if (!isReadOnly) {
+        removeBtn.addEventListener('click', () => {
+          const ok = confirm('Remove this image from the step?');
+          if (!ok) return;
+          item.remove();
+        });
+      } else {
+        removeBtn.style.display = 'none';
+        captionEl.readOnly = true;
+      }
+
+      return item;
+    }
+
+    function createStepElement(initial = {}) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'step-card';
+
+      wrapper.innerHTML = `
+        <div class="step-header">
+          <div class="step-order">
+            <span class="index">1</span>
+            <span class="label">Step 1</span>
+          </div>
+          <div class="step-actions">
+            <button type="button" class="step-move-up" title="Move up">↑</button>
+            <button type="button" class="step-move-down" title="Move down">↓</button>
+            <button type="button" class="step-delete" title="Delete">✕</button>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Step title</label>
+            <input type="text" class="step-title" placeholder="e.g. Meeting point &amp; introduction"/>
+          </div>
+          <div class="field">
+            <label>Estimated duration</label>
+            <div class="field-row" style="gap:6px;margin-top:0;">
+              <input type="number" class="step-duration" min="0" step="5" placeholder="e.g. 15"/>
+              <span style="align-self:center;font-size:0.86rem;">minutes</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:8px;">
+          <label>Notes &amp; recommendations</label>
+          <textarea class="step-description"
+                    placeholder="Tips, warnings, context, or recommendations for this step."></textarea>
+        </div>
+
+        <!-- AUDIO AREA -->
+        <div class="field" style="margin-top:8px;">
+          <label>Audio explanation (optional)</label>
+          <div class="field-row" style="gap:8px;align-items:center;margin-top:4px;">
+            <button type="button" class="step-audio-record" style="flex:0 0 auto;font-size:0.8rem;">
+              🎙 Record
+            </button>
+            <input type="file"
+                   class="step-audio-file"
+                   accept="audio/*"
+                   style="flex:1 1 auto;font-size:0.82rem;"/>
+          </div>
+          <div class="hint step-audio-hint">
+            No audio uploaded yet.
+          </div>
+          <div class="step-audio-player-row">
+            <audio class="step-audio-player" controls style="flex:1 1 auto;max-width:100%;"></audio>
+            <button type="button" class="step-audio-clear">🗑 Remove audio</button>
+          </div>
+          <input type="hidden" class="step-audio-url"/>
+        </div>
+
+        <!-- IMAGES / PHOTOS -->
+        <div class="field step-images-block" style="margin-top:8px;">
+          <label>Images / photos (optional)</label>
+          <div class="field-row" style="gap:8px;align-items:center;margin-top:4px;">
+            <input type="file" class="step-image-file" accept="image/*" multiple/>
+          </div>
+          <div class="hint">
+            Add up to ${MAX_IMAGES_PER_STEP} photos to illustrate this step. Keep each file under ~3–4 MB for best performance.
+          </div>
+          <div class="step-images-list"></div>
+        </div>
+
+        <!-- LOCATION / GPS / RADIUS -->
+        <div class="step-meta-row" style="margin-top:10px;">
+          <label style="flex:1 1 220px;flex-direction:column;align-items:flex-start;">
+            <span>Location / checkpoint</span>
+            <input type="text" class="step-location" placeholder="e.g. Gion Shijo station exit 5"/>
+          </label>
+
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1 1 220px;">
+            <div style="display:flex;gap:6px;">
+              <div class="field" style="flex:1 1 50%;">
+                <label style="font-weight:500;font-size:0.8rem;">Latitude</label>
+                <input type="number" class="step-lat" step="0.000001" placeholder="e.g. 35.003120"/>
+              </div>
+              <div class="field" style="flex:1 1 50%;">
+                <label style="font-weight:500;font-size:0.8rem;">Longitude</label>
+                <input type="number" class="step-lng" step="0.000001" placeholder="e.g. 135.772340"/>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button type="button"
+                      class="step-use-gps"
+                      style="border-radius:999px;border:1px solid #1e88e5;background:#1e88e5;color:#fff;font-size:0.8rem;padding:4px 9px;cursor:pointer;">
+                📍 Use my GPS
+              </button>
+              <button type="button"
+                      class="step-pick-map"
+                      style="border-radius:999px;border:1px solid #ccc;background:#f5f5f5;color:#333;font-size:0.8rem;padding:4px 9px;cursor:pointer;">
+                🗺 Pick on map
+              </button>
+            </div>
+          </div>
+
+          <div class="field" style="flex:0 0 140px;">
+            <label style="font-weight:500;font-size:0.8rem;">Radius override (m)</label>
+            <input type="number" class="step-radius" min="0" step="5" placeholder="e.g. 50"/>
+          </div>
+        </div>
+
+        <!-- COUNTRY / CITY -->
+        <div class="step-meta-row" style="margin-top:10px;">
+          <div class="field" style="flex:1 1 220px;">
+            <label style="font-weight:500;font-size:0.8rem;">Country / region</label>
+            <input type="text" class="step-country" placeholder="e.g. Japan"/>
+          </div>
+          <div class="field" style="flex:1 1 220px;">
+            <label style="font-weight:500;font-size:0.8rem;">City / area</label>
+            <input type="text" class="step-city" placeholder="e.g. Kyoto"/>
+          </div>
+        </div>
+
+        <!-- TRANSPORT + SERVICES -->
+        <div class="step-meta-row" style="margin-top:6px;">
+          <div class="field" style="flex:2 1 260px;">
+            <label style="font-weight:500;font-size:0.8rem;">Transport modes</label>
+            <div class="pill-group step-transport-group">
+              <button type="button" class="pill-toggle step-transport-toggle" data-mode="walk">🚶 Walk</button>
+              <button type="button" class="pill-toggle step-transport-toggle" data-mode="bike">🚲 Bike</button>
+              <button type="button" class="pill-toggle step-transport-toggle" data-mode="bus">🚌 Bus</button>
+              <button type="button" class="pill-toggle step-transport-toggle" data-mode="tram">🚋 Tram</button>
+              <button type="button" class="pill-toggle step-transport-toggle" data-mode="metro">Ⓜ Metro</button>
+              <button type="button" class="pill-toggle step-transport-toggle" data-mode="train">🚆 Train</button>
+              <button type="button" class="pill-toggle step-transport-toggle" data-mode="car">🚗 Car</button>
+              <button type="button" class="pill-toggle step-transport-toggle" data-mode="boat">⛴ Boat</button>
+            </div>
+          </div>
+          <div class="field" style="flex:1 1 180px;">
+            <label style="font-weight:500;font-size:0.8rem;">Services &amp; access</label>
+            <div class="pill-group">
+              <label style="display:inline-flex;align-items:center;gap:4px;font-size:0.78rem;font-weight:400;">
+                <input type="checkbox" class="step-has-fee"/>
+                Paid / fees
+              </label>
+              <label style="display:inline-flex;align-items:center;gap:4px;font-size:0.78rem;font-weight:400;">
+                <input type="checkbox" class="step-has-accessibility"/>
+                Accessible
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- EMERGENCY SERVICES -->
+        <div class="step-meta-row" style="margin-top:4px;">
+          <div class="field" style="flex:1 1 100%;">
+            <label style="font-weight:500;font-size:0.8rem;">Nearby emergency services</label>
+            <div class="pill-group step-emergency-group">
+              <button type="button" class="pill-toggle step-emergency-toggle" data-tag="hospital">🏥 Hospital / clinic</button>
+              <button type="button" class="pill-toggle step-emergency-toggle" data-tag="pharmacy">💊 Pharmacy</button>
+              <button type="button" class="pill-toggle step-emergency-toggle" data-tag="police">👮 Police</button>
+              <button type="button" class="pill-toggle step-emergency-toggle" data-tag="callbox">📞 Emergency phone point</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      /* ---------------------- AUDIO HANDLING ---------------------- */
+      const audioFileInput  = wrapper.querySelector('.step-audio-file');
+      const audioUrlInput   = wrapper.querySelector('.step-audio-url');
+      const audioHint       = wrapper.querySelector('.step-audio-hint');
+      const audioRecordBtn  = wrapper.querySelector('.step-audio-record');
+      const audioPlayerRow  = wrapper.querySelector('.step-audio-player-row');
+      const audioPlayer     = wrapper.querySelector('.step-audio-player');
+      const audioClearBtn   = wrapper.querySelector('.step-audio-clear');
+
+      function updateAudioUI(url) {
+        const clean = (url || '').trim();
+        audioUrlInput.value = clean;
+
+        if (!clean) {
+          audioHint.textContent = 'No audio uploaded yet.';
+          if (audioPlayer) {
+            audioPlayer.pause();
+            audioPlayer.removeAttribute('src');
+          }
+          if (audioPlayerRow) {
+            audioPlayerRow.style.display = 'none';
+          }
+          if (audioFileInput) {
+            audioFileInput.value = '';
+          }
+        } else {
+          audioHint.textContent = 'Audio attached to this step.';
+          if (audioPlayer) {
+            audioPlayer.src = clean;
+            audioPlayer.load();
+          }
+          if (audioPlayerRow) {
+            audioPlayerRow.style.display = 'flex';
+          }
+        }
+      }
+
+      let mediaRecorder = null;
+      let recordedChunks = [];
+      let mediaStream = null;
+
+      async function uploadAudioBlob(blob) {
+        if (blob.size > MAX_AUDIO_BYTES) {
+          alert('Recorded audio is too large (max 10 MB). Please record a shorter segment.');
+          return;
+        }
+
+        audioHint.textContent = 'Uploading recorded audio…';
+
+        try {
+          const file = new File([blob], 'step-audio.webm', { type: blob.type || 'audio/webm' });
+          const formData = new FormData();
+          formData.append('audio', file);
+
+          const res = await fetch('/api/letsgetout/upload-audio', {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+          });
+
+          if (!res.ok) {
+            const txt = await res.text();
+            console.error('Audio upload failed', res.status, txt);
+            alert('Could not upload recorded audio. Server response: ' + (txt || res.status));
+            updateAudioUI('');
+            return;
+          }
+
+          const data = await res.json();
+          if (!data.url) {
+            alert('Server did not return an audio URL.');
+            updateAudioUI('');
+            return;
+          }
+
+          updateAudioUI(data.url);
+        } catch (err) {
+          console.error('Audio upload error', err);
+          alert('Error while uploading recorded audio.');
+          updateAudioUI('');
+        }
+      }
+
+      if (!isReadOnly) {
+        audioRecordBtn.addEventListener('click', async () => {
+          if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+            audioRecordBtn.textContent = '🎙 Record';
+            return;
+          }
+
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('Audio recording is not supported on this device/browser.');
+            return;
+          }
+
+          try {
+            mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          } catch (err) {
+            console.error('getUserMedia error', err);
+            alert('Could not access microphone. Please check your browser permissions.');
+            return;
+          }
+
+          recordedChunks = [];
+
+          let options = { mimeType: 'audio/webm' };
+          if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+            options = { mimeType: 'audio/webm;codecs=opus' };
+          }
+          if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+            options = { mimeType: '' };
+          }
+
+          mediaRecorder = new MediaRecorder(mediaStream, options);
+
+          mediaRecorder.addEventListener('dataavailable', (e) => {
+            if (e.data && e.data.size > 0) {
+              recordedChunks.push(e.data);
+            }
+          });
+
+          mediaRecorder.addEventListener('stop', async () => {
+            audioRecordBtn.textContent = '🎙 Record';
+            mediaStream.getTracks().forEach(t => t.stop());
+            mediaStream = null;
+
+            if (!recordedChunks.length) return;
+            const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+            recordedChunks = [];
+            await uploadAudioBlob(blob);
+          });
+
+          mediaRecorder.start();
+          audioHint.textContent = 'Recording… click again to stop.';
+          audioRecordBtn.textContent = '⏹ Stop';
+        });
+
+        audioFileInput.addEventListener('change', async () => {
+          const file = audioFileInput.files[0];
+          if (!file) return;
+
+          if (file.size > MAX_AUDIO_BYTES) {
+            alert('Audio file is too large (max 10 MB).');
+            audioFileInput.value = '';
+            return;
+          }
+
+          audioHint.textContent = 'Uploading audio…';
+
+          try {
+            const formData = new FormData();
+            formData.append('audio', file);
+
+            const res = await fetch('/api/letsgetout/upload-audio', {
+              method: 'POST',
+              credentials: 'include',
+              body: formData
+            });
+
+            if (!res.ok) {
+              const txt = await res.text();
+              console.error('Audio upload failed', res.status, txt);
+              alert('Could not upload audio file. Server response: ' + (txt || res.status));
+              updateAudioUI('');
+              return;
+            }
+
+            const data = await res.json();
+            if (!data.url) {
+              alert('Server did not return an audio URL.');
+              updateAudioUI('');
+              return;
+            }
+
+            updateAudioUI(data.url);
+          } catch (err) {
+            console.error('Audio upload error', err);
+            alert('Error while uploading audio.');
+            updateAudioUI('');
+          }
+        });
+
+        if (audioClearBtn) {
+          audioClearBtn.addEventListener('click', () => {
+            const ok = confirm('Remove the audio from this step?');
+            if (!ok) return;
+            updateAudioUI('');
+          });
+        }
+      } else {
+        audioRecordBtn.style.display = 'none';
+        audioFileInput.style.display = 'none';
+        if (audioClearBtn) audioClearBtn.style.display = 'none';
+      }
+
+      /* ---------------------- IMAGE HANDLING ----------------------- */
+      const imageFileInput = wrapper.querySelector('.step-image-file');
+      const imageListEl    = wrapper.querySelector('.step-images-list');
+
+      async function uploadImageFile(file) {
+        if (file.size > MAX_IMAGE_BYTES) {
+          alert('Image is too large (max ~6 MB). Please choose a smaller file.');
+          return null;
+        }
+
+        try {
+          const formData = new FormData();
+          formData.append('image', file);
+
+          const res = await fetch('/api/letsgetout/upload-image', {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+          });
+
+          if (!res.ok) {
+            const txt = await res.text();
+            console.error('Image upload failed', res.status, txt);
+            alert('Could not upload image file. Server response: ' + (txt || res.status));
+            return null;
+          }
+
+          const data = await res.json();
+          if (!data.url) {
+            alert('Server did not return an image URL.');
+            return null;
+          }
+
+          return data.url;
+        } catch (err) {
+          console.error('Image upload error', err);
+          alert('Error while uploading image.');
+          return null;
+        }
+      }
+
+      if (!isReadOnly && imageFileInput && imageListEl) {
+        imageFileInput.addEventListener('change', async () => {
+          const files = Array.from(imageFileInput.files || []);
+          if (!files.length) return;
+
+          let currentCount = imageListEl.querySelectorAll('.step-image-item').length;
+          if (currentCount >= MAX_IMAGES_PER_STEP) {
+            alert(`You can attach up to ${MAX_IMAGES_PER_STEP} images for this step.`);
+            imageFileInput.value = '';
+            return;
+          }
+
+          for (const file of files) {
+            if (currentCount >= MAX_IMAGES_PER_STEP) {
+              alert(`You can attach up to ${MAX_IMAGES_PER_STEP} images for this step.`);
+              break;
+            }
+
+            const url = await uploadImageFile(file);
+            if (!url) continue;
+
+            const item = createImageItemElement({ url, caption: '' });
+            imageListEl.appendChild(item);
+            currentCount++;
+          }
+
+          imageFileInput.value = '';
+        });
+      } else if (imageFileInput) {
+        imageFileInput.style.display = 'none';
+      }
+
+      /* ----------------- TRANSPORT + EMERGENCY TOGGLES ------------- */
+      const transportGroup = wrapper.querySelector('.step-transport-group');
+      const emergencyGroup = wrapper.querySelector('.step-emergency-group');
+      const accessibilityCheckbox = wrapper.querySelector('.step-has-accessibility');
+
+      if (!isReadOnly && transportGroup) {
+        transportGroup.addEventListener('click', (e) => {
+          const btn = e.target.closest('.step-transport-toggle');
+          if (!btn) return;
+          btn.classList.toggle('active');
+        });
+      }
+
+      if (!isReadOnly && emergencyGroup) {
+        emergencyGroup.addEventListener('click', (e) => {
+          const btn = e.target.closest('.step-emergency-toggle');
+          if (!btn) return;
+          btn.classList.toggle('active');
+        });
+      }
+
+      if (accessibilityCheckbox && !isReadOnly) {
+        accessibilityCheckbox.addEventListener('change', () => {
+          updateGlobalAccessibilityToggleFromSteps();
+        });
+      }
+
+      /* --------------------- INITIAL VALUES ------------------------ */
+      if (initial.title)
+        wrapper.querySelector('.step-title').value = initial.title;
+      if (initial.duration != null)
+        wrapper.querySelector('.step-duration').value = initial.duration;
+      if (initial.description)
+        wrapper.querySelector('.step-description').value = initial.description;
+      if (initial.location)
+        wrapper.querySelector('.step-location').value = initial.location;
+      if (typeof initial.lat === 'number')
+        wrapper.querySelector('.step-lat').value = initial.lat;
+      if (typeof initial.lng === 'number')
+        wrapper.querySelector('.step-lng').value = initial.lng;
+      if (typeof initial.radius_override_m === 'number') {
+        wrapper.querySelector('.step-radius').value = initial.radius_override_m;
+      }
+
+      if (initial.country)
+        wrapper.querySelector('.step-country').value = initial.country;
+      if (initial.city)
+        wrapper.querySelector('.step-city').value = initial.city;
+
+      if (Array.isArray(initial.images) && initial.images.length && imageListEl) {
+        initial.images.forEach(img => {
+          if (!img || !img.url) return;
+          const item = createImageItemElement({
+            url: img.url,
+            caption: img.caption || ''
+          });
+          imageListEl.appendChild(item);
+        });
+      }
+
+      const initialTransport = Array.isArray(initial.transport_modes)
+        ? initial.transport_modes
+        : (initial.transport_modes ? [initial.transport_modes] : []);
+      if (initialTransport.length) {
+        const transportButtons = wrapper.querySelectorAll('.step-transport-toggle');
+        transportButtons.forEach((btn) => {
+          const mode = btn.dataset.mode;
+          if (initialTransport.includes(mode)) {
+            btn.classList.add('active');
+          }
+        });
+      }
+
+      if (typeof initial.has_fee !== 'undefined') {
+        const feeEl = wrapper.querySelector('.step-has-fee');
+        if (feeEl) feeEl.checked = !!initial.has_fee;
+      }
+      if (typeof initial.has_accessibility !== 'undefined') {
+        if (accessibilityCheckbox) accessibilityCheckbox.checked = !!initial.has_accessibility;
+      } else if (globalAccessibilityToggle && globalAccessibilityToggle.checked) {
+        if (accessibilityCheckbox) accessibilityCheckbox.checked = true;
+      }
+
+      const initialEmergency = Array.isArray(initial.emergency_tags)
+        ? initial.emergency_tags
+        : [];
+      if (initialEmergency.length) {
+        const emergencyButtons = wrapper.querySelectorAll('.step-emergency-toggle');
+        emergencyButtons.forEach((btn) => {
+          const tag = btn.dataset.tag;
+          if (initialEmergency.includes(tag)) {
+            btn.classList.add('active');
+          }
+        });
+      }
+
+      if (initial.audio_url) {
+        updateAudioUI(initial.audio_url);
+      } else {
+        updateAudioUI('');
+      }
+
+      /* -------------------------- ACTIONS -------------------------- */
+      const btnUp   = wrapper.querySelector('.step-move-up');
+      const btnDown = wrapper.querySelector('.step-move-down');
+      const btnDel  = wrapper.querySelector('.step-delete');
+
+      if (!isReadOnly) {
+        btnUp.addEventListener('click', () => {
+          const prev = wrapper.previousElementSibling;
+          if (prev) {
+            stepsList.insertBefore(wrapper, prev);
+            renumberSteps();
+          }
+        });
+
+        btnDown.addEventListener('click', () => {
+          const next = wrapper.nextElementSibling;
+          if (next) {
+            const afterNext = next.nextSibling;
+            stepsList.insertBefore(wrapper, afterNext);
+            renumberSteps();
+          }
+        });
+
+        btnDel.addEventListener('click', () => {
+          if (stepsList.children.length === 1) {
+            wrapper.querySelector('.step-title').value = '';
+            wrapper.querySelector('.step-duration').value = '';
+            wrapper.querySelector('.step-description').value = '';
+            wrapper.querySelector('.step-location').value = '';
+            wrapper.querySelector('.step-lat').value = '';
+            wrapper.querySelector('.step-lng').value = '';
+            wrapper.querySelector('.step-radius').value = '';
+            wrapper.querySelector('.step-country').value = '';
+            wrapper.querySelector('.step-city').value = '';
+
+            const imgItems = wrapper.querySelectorAll('.step-image-item');
+            imgItems.forEach(i => i.remove());
+
+            const transportButtons = wrapper.querySelectorAll('.step-transport-toggle');
+            transportButtons.forEach(b => b.classList.remove('active'));
+            const emergencyButtons = wrapper.querySelectorAll('.step-emergency-toggle');
+            emergencyButtons.forEach(b => b.classList.remove('active'));
+            const feeEl = wrapper.querySelector('.step-has-fee');
+            const accEl = wrapper.querySelector('.step-has-accessibility');
+            if (feeEl) feeEl.checked = false;
+            if (accEl) accEl.checked = false;
+            updateAudioUI('');
+            updateGlobalAccessibilityToggleFromSteps();
+          } else {
+            wrapper.remove();
+            renumberSteps();
+          }
+        });
+      } else {
+        btnUp.style.display = 'none';
+        btnDown.style.display = 'none';
+        btnDel.style.display = 'none';
+      }
+
+      const latInput = wrapper.querySelector('.step-lat');
+      const lngInput = wrapper.querySelector('.step-lng');
+      const gpsBtn   = wrapper.querySelector('.step-use-gps');
+      const mapBtn   = wrapper.querySelector('.step-pick-map');
+
+      function onLatLngManualChange() {
+        const lat = parseFloat(latInput.value);
+        const lng = parseFloat(lngInput.value);
+        if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+          autofillLocationFromLatLng(lat, lng, wrapper);
+        }
+      }
+
+      if (!isReadOnly) {
+        latInput.addEventListener('change', onLatLngManualChange);
+        latInput.addEventListener('blur', onLatLngManualChange);
+        lngInput.addEventListener('change', onLatLngManualChange);
+        lngInput.addEventListener('blur', onLatLngManualChange);
+
+        gpsBtn.addEventListener('click', () => {
+          if (!navigator.geolocation) {
+            alert('Geolocation is not supported on this device/browser.');
+            return;
+          }
+
+          gpsBtn.disabled = true;
+          gpsBtn.textContent = '📍 Getting location…';
+
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const { latitude, longitude } = pos.coords;
+              latInput.value = latitude.toFixed(6);
+              lngInput.value = longitude.toFixed(6);
+
+              autofillLocationFromLatLng(latitude, longitude, wrapper);
+
+              gpsBtn.textContent = '📍 Use my GPS';
+              gpsBtn.disabled = false;
+            },
+            (err) => {
+              console.error('Geolocation error', err);
+              alert('Could not get your location.');
+              gpsBtn.textContent = '📍 Use my GPS';
+              gpsBtn.disabled = false;
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+          );
+        });
+
+        mapBtn.addEventListener('click', () => {
+          openMapForStep(latInput, lngInput, wrapper);
+        });
+      } else {
+        gpsBtn.style.display = 'none';
+        mapBtn.style.display = 'none';
+      }
+
+      const durationInput = wrapper.querySelector('.step-duration');
+      durationInput.addEventListener('input', () => {
+        if (typeof window.recomputeDurationFromSteps === 'function') {
+          window.recomputeDurationFromSteps();
+        }
+      });
+
+      return wrapper;
+    }
+
+    function addStep(initial = {}) {
+      if (globalAccessibilityToggle &&
+          globalAccessibilityToggle.checked &&
+          typeof initial.has_accessibility === 'undefined') {
+        initial = { ...initial, has_accessibility: 1 };
+      }
+      const stepEl = createStepElement(initial);
+      stepsList.appendChild(stepEl);
+      renumberSteps();
+    }
+
+    if (!isReadOnly) {
+      btnAddStepInline.addEventListener('click', () => {
+        addStep();
+      });
+
+      if (btnAddStepFooter) {
+        btnAddStepFooter.addEventListener('click', () => {
+          addStep();
+        });
+      }
+    }
+
+    /* --------------------- Collect payloads ------------------------ */
+
+    function collectGuidingMetaPayload() {
+      const title    = guidingTitleEl.value.trim();
+      const language = guidingLanguageEl.value || null;
+      const desc     = guidingDescriptionEl.value.trim();
+      const radius   = guidingRadiusEl.value ? Number(guidingRadiusEl.value) : null;
+
+      let durationMin = null;
+      if (durationMode === 'calculated') {
+        const total = computeTotalDurationFromSteps();
+        durationMin = total || null;
+      } else {
+        const v = durationProvidedInput.value;
+        durationMin = v ? Number(v) : null;
+      }
+
+      return {
+        title: title || null,
+        languages: language ? [language] : [],
+        description: desc || null,
+        tags: tags.join(','),
+        standard_radius_m: radius,
+        duration_min: durationMin
+      };
+    }
+
+    function collectStepsPayload() {
+      const cards = Array.from(stepsList.querySelectorAll('.step-card'));
+
+      return cards.map((el) => {
+        const stepTitle = el.querySelector('.step-title').value.trim();
+        const stepDurStr = el.querySelector('.step-duration').value;
+        const stepDur = stepDurStr ? Number(stepDurStr) : null;
+        const stepDesc = el.querySelector('.step-description').value.trim();
+        const stepLoc  = el.querySelector('.step-location').value.trim();
+
+        const latStr   = el.querySelector('.step-lat').value;
+        const lngStr   = el.querySelector('.step-lng').value;
+        const lat      = latStr ? Number(latStr) : 0;
+        const lng      = lngStr ? Number(lngStr) : 0;
+
+        const radiusStr      = el.querySelector('.step-radius').value;
+        const radiusOverride = radiusStr ? Number(radiusStr) : null;
+
+        const audioUrl = el.querySelector('.step-audio-url').value || '';
+
+        const country = el.querySelector('.step-country').value.trim();
+        const city    = el.querySelector('.step-city').value.trim();
+
+        const transportButtons = el.querySelectorAll('.step-transport-toggle.active');
+        const transportModes = Array.from(transportButtons)
+          .map(btn => btn.dataset.mode)
+          .filter(Boolean);
+
+        const feeEl = el.querySelector('.step-has-fee');
+        const accEl = el.querySelector('.step-has-accessibility');
+        const hasFee = !!(feeEl && feeEl.checked);
+        const hasAccessibility = !!(accEl && accEl.checked);
+
+        const emergencyButtons = el.querySelectorAll('.step-emergency-toggle.active');
+        const emergencyTags = Array.from(emergencyButtons)
+          .map(btn => btn.dataset.tag)
+          .filter(Boolean);
+
+        const imageItems = Array.from(el.querySelectorAll('.step-image-item'));
+        const images = imageItems.map(item => {
+          const urlEl = item.querySelector('.step-image-url');
+          const captionEl = item.querySelector('.step-image-caption');
+          const url = urlEl ? urlEl.value.trim() : '';
+          const caption = captionEl ? captionEl.value.trim() : '';
+          if (!url) return null;
+          return {
+            url,
+            caption: caption || null
+          };
+        }).filter(Boolean);
+
+        const metaJson = JSON.stringify({
+          duration_min: stepDur,
+          location_label: stepLoc || null,
+          images
+        });
+
+        return {
+          title: stepTitle || null,
+          description: stepDesc || null,
+          recommendations: metaJson,
+          lat,
+          lng,
+          audio_url: audioUrl || '',
+          radius_override_m: radiusOverride,
+          country: country || null,
+          city: city || null,
+          transport_modes: transportModes,
+          has_fee: hasFee,
+          has_accessibility: hasAccessibility,
+          emergency_tags: emergencyTags
+        };
+      });
+    }
+
+    /* ------------------------- Save logic -------------------------- */
+
+    async function saveGuiding({ silent = false, keepalive = false } = {}) {
+      const metaPayload  = collectGuidingMetaPayload();
+      const stepsPayload = collectStepsPayload();
+
+      const commonOptions = (method, body) => ({
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+        keepalive
+      });
+
+      let res = await fetch(
+        `/api/letsgetout/guidings/${encodeURIComponent(GUIDING_ID)}`,
+        commonOptions('PUT', metaPayload)
+      );
+      if (!res.ok) {
+        if (!silent) {
+          console.error('PUT /guidings/:id failed', await res.text());
+          alert('Could not save guiding information (meta).');
+        }
+        return false;
+      }
+
+      res = await fetch(
+        `/api/letsgetout/guidings/${encodeURIComponent(GUIDING_ID)}/steps`,
+        commonOptions('POST', { steps: stepsPayload })
+      );
+      if (!res.ok) {
+        if (!silent) {
+          console.error('POST /guidings/:id/steps failed', await res.text());
+          alert('Could not save guiding steps.');
+        }
+        return false;
+      }
+
+      return true;
+    }
+
+    async function publishGuiding() {
+      const ok = await saveGuiding({ silent: false, keepalive: false });
+      if (!ok) return;
+
+      try {
+        const res = await fetch(
+          `/api/letsgetout/guidings/${encodeURIComponent(GUIDING_ID)}/publish`,
+          {
+            method: 'POST',
+            credentials: 'include'
+          }
+        );
+
+        if (!res.ok) {
+          console.error('POST /publish failed', await res.text());
+          alert('Guiding was saved but could not be published. Please try again.');
+          return;
+        }
+
+        window.location.href = "/modules/Let's Get Out!/manage/main.html?saved=1&published=1";
+      } catch (err) {
+        console.error('Publish error', err);
+        alert('Network error while publishing guiding.');
+      }
+    }
+
+    if (!isReadOnly) {
+      btnSaveDraft.addEventListener('click', async () => {
+        const ok = await saveGuiding({ silent: false, keepalive: false });
+        if (ok) {
+          alert('Guiding changes saved.');
+        }
+      });
+
+      btnPublish.addEventListener('click', async () => {
+        await publishGuiding();
+      });
+
+      window.addEventListener('beforeunload', () => {
+        try {
+          saveGuiding({ silent: true, keepalive: true });
+        } catch {
+          // ignore
+        }
+      });
+    }
+
+    /* ---------------------- Load existing data ---------------------- */
+
+    async function loadGuiding() {
+      try {
+        const res = await fetch(
+          `/api/letsgetout/guidings/${encodeURIComponent(GUIDING_ID)}`,
+          { credentials: 'include' }
+        );
+        if (!res.ok) {
+          console.error('GET /guidings/:id failed', await res.text());
+          addStep();
+          updateDurationUI();
+          return;
+        }
+
+        const data = await res.json();
+        const guiding = data.guiding || data;
+        const steps   = Array.isArray(data.steps) ? data.steps : [];
+
+        if (guiding.title) guidingTitleEl.value = guiding.title;
+
+        if (guiding.languages_json) {
+          try {
+            const langs = JSON.parse(guiding.languages_json);
+            if (Array.isArray(langs) && langs[0]) {
+              guidingLanguageEl.value = langs[0];
+            }
+          } catch {}
+        }
+
+        if (typeof guiding.standard_radius_m === 'number') {
+          guidingRadiusEl.value = String(guiding.standard_radius_m);
+        }
+
+        if (typeof guiding.duration_min === 'number' && guiding.duration_min > 0) {
+          durationProvidedInput.value = guiding.duration_min;
+        }
+
+        if (guiding.description) {
+          guidingDescriptionEl.value = guiding.description;
+        }
+
+        if (guiding.tags) {
+          tags = guiding.tags
+            .split(',')
+            .map(t => t.trim())
+            .filter(Boolean);
+          renderTags();
+        }
+
+        stepsList.innerHTML = '';
+        if (steps.length) {
+          steps.forEach((stepRow) => {
+            let meta = {};
+            if (stepRow.recommendations) {
+              try {
+                const parsed = JSON.parse(stepRow.recommendations);
+                if (parsed && typeof parsed === 'object') {
+                  meta = parsed;
+                }
+              } catch {}
+            }
+
+            let transportModes = [];
+            if (stepRow.transport_modes_json) {
+              try {
+                const parsedTm = JSON.parse(stepRow.transport_modes_json);
+                if (Array.isArray(parsedTm)) transportModes = parsedTm;
+              } catch {}
+            } else if (stepRow.transport_mode) {
+              transportModes = [stepRow.transport_mode];
+            }
+
+            let emergencyTags = [];
+            if (stepRow.emergency_tags_json) {
+              try {
+                const parsedEm = JSON.parse(stepRow.emergency_tags_json);
+                if (Array.isArray(parsedEm)) emergencyTags = parsedEm;
+              } catch {}
+            }
+
+            const imagesFromMeta = Array.isArray(meta.images) ? meta.images : [];
+
+            addStep({
+              title: stepRow.title || '',
+              duration: meta.duration_min ?? null,
+              description: stepRow.description || '',
+              location: meta.location_label || '',
+              lat: typeof stepRow.lat === 'number' ? stepRow.lat : null,
+              lng: typeof stepRow.lng === 'number' ? stepRow.lng : null,
+              radius_override_m: typeof stepRow.radius_override_m === 'number'
+                ? stepRow.radius_override_m
+                : null,
+              audio_url: stepRow.audio_url || '',
+              country: stepRow.country || '',
+              city: stepRow.city || '',
+              transport_modes: transportModes,
+              has_fee: stepRow.has_fee ? 1 : 0,
+              has_accessibility: stepRow.has_accessibility ? 1 : 0,
+              emergency_tags: emergencyTags,
+              images: imagesFromMeta
+            });
+          });
+        } else {
+          addStep();
+        }
+
+        updateDurationUI();
+        updateGlobalAccessibilityToggleFromSteps();
+      } catch (err) {
+        console.error('loadGuiding error', err);
+        if (!stepsList.children.length) addStep();
+        updateDurationUI();
+        updateGlobalAccessibilityToggleFromSteps();
+      }
+    }
+
+    loadGuiding();
+    updateDurationUI();
+
+    /* --------------------- Drawer + FAB chrome ---------------------- */
+
+    if (window.Drawer && typeof window.Drawer.mount === 'function') {
+      window.Drawer.mount({ mode: 'guide' });
+    }
+
+    if (window.FAB && typeof window.FAB.mount === 'function') {
+      window.FAB.mount({
+        useTopBand: true,
+        useBottomBand: true,
+        home: {
+          title: 'Home / Services',
+          label: '🏠',
+          onClick: () =>
+            window.Drawer &&
+            window.Drawer.open &&
+            window.Drawer.open()
+        },
+        config: {
+          title: "Let’s Get Out! — Settings",
+          label: "⚙️",
+          href: "/modules/Let's Get Out!/settings.html"
+        },
+        onBack: () => {
+          window.location.href = "/modules/Let's Get Out!/manage/main.html";
+        }
+      });
+    }
+  });
+</script>
+</body>
+</html>

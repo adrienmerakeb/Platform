@@ -1,0 +1,1592 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Let’s Get Out — Manage my Guidings</title>
+
+  <link rel="stylesheet" href="/css/style.css"/>
+
+  <style>
+    :root {
+      --chip-bg:#f1f3f4;
+      --chip-tx:#444;
+      --chip-border:#d0d7de;
+      --chip-bg-active:#1e88e5;
+      --chip-tx-active:#fff;
+      --danger:#c62828;
+      --success:#2e7d32;
+
+      --guiding-primary:#1e88e5;
+      --guiding-secondary:#43a047;
+    }
+
+    /* ===== Global layout: only capsules frame scrolls ===== */
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    body.has-top-band.has-bottom-band main.container {
+      padding-top: 8vh;
+      padding-bottom: 0;
+      height: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header.site {
+      text-align: center;
+    }
+
+    header.site .title {
+      display: block;
+    }
+
+    header.site .subtitle {
+      margin-top: 2px;
+      font-size: 0.85rem;
+      opacity: 0.85;
+    }
+
+    /* ===== Toolbar / single-row search + filters + refresh ===== */
+
+    .guiding-toolbar {
+      position: sticky;
+      top: 8px;
+      z-index: 50;
+      width: 100%;
+      margin: 8px 4px 12px;
+      padding: 8px 10px;
+      border-radius: 16px;
+      background: #ffffff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.10);
+      font-size: 0.85rem;
+      box-sizing: border-box;
+    }
+
+    body.has-top-band .guiding-toolbar {
+      top: calc(var(--topband-h, 68px) + 8px);
+    }
+
+    /* Main single row */
+    .guiding-toolbar .toolbar-row--main {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: nowrap;          /* ❗ never wrap */
+      min-width: 0;
+      overflow-x: auto;           /* horizontal scroll instead of 2nd line */
+      padding-bottom: 2px;
+      -ms-overflow-style: none;
+      scrollbar-width: thin;
+    }
+
+    .guiding-toolbar .toolbar-row--main::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    .guiding-toolbar .toolbar-label {
+      font-size: 0.8rem;
+      color: #555;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    /* Search input */
+    .guiding-toolbar .toolbar-search-input {
+      padding: 6px 8px;
+      border-radius: 999px;
+      border: 1px solid #d0d7de;
+      font-size: 0.82rem;
+
+      flex: 1 1 120px;          /* grows and shrinks */
+      min-width: 80px;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* Filters (same row) */
+    .guiding-toolbar .toolbar-select {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+
+      padding: 6px 28px 6px 10px;
+      border-radius: 999px;
+      border: 1px solid #d0d7de;
+      font-size: 0.82rem;
+      color: #444;
+      background: #fff;
+      background-image: url("data:image/svg+xml;utf8,<svg fill='%23666' height='14' width='14' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'><polygon points='0,0 20,0 10,10'/></svg>");
+      background-repeat: no-repeat;
+      background-position: calc(100% - 10px) center;
+      background-size: 10px;
+      cursor: pointer;
+      transition: .18s ease;
+
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
+    .guiding-toolbar .toolbar-select:hover {
+      border-color: #b6bec8;
+      background-color: #f6f8fa;
+    }
+
+    .guiding-toolbar .toolbar-select:focus {
+      outline: none;
+      border-color: #1e88e5;
+      box-shadow: 0 0 0 3px rgba(30,136,229,0.25);
+    }
+
+    /* Refresh button at the end */
+    .guiding-toolbar .toolbar-refresh-btn {
+      flex: 0 0 auto;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid #d0d7de;
+      background: #f6f8fa;
+      font-size: 0.85rem;
+      cursor: pointer;
+      line-height: 1;
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+      white-space: nowrap;
+    }
+
+    .guiding-toolbar .toolbar-refresh-btn:hover {
+      background: #333;
+      color: #fff;
+      border-color: #fff;
+    }
+
+    @media (max-width: 400px) {
+      .guiding-toolbar {
+        padding-inline: 6px;
+      }
+      .guiding-toolbar .toolbar-row--main {
+        gap: 4px;
+      }
+      .guiding-toolbar .toolbar-search-input {
+        font-size: 0.8rem;
+        padding-inline: 6px;
+      }
+    }
+
+    /* ===== Guiding list meta + frame ===== */
+
+    .guiding-list-wrapper {
+      width: 100%;
+      margin: 0;
+      padding-bottom: 6.8vh;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .guiding-list-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 0 4px 6px;
+      font-size: 0.82rem;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+    }
+
+    .guiding-list-frame {
+      border-radius: 16px;
+      border: none;
+      background: transparent;
+      overflow-y: auto;
+      padding: 12px 0;
+      flex: 1 1 auto;
+      min-height: 0;
+
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .guiding-list-frame::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
+    }
+
+    .guiding-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 0;
+    }
+
+    /* ===== Capsules ===== */
+
+    .guiding-card {
+      width: calc(100% - 8px);
+      margin: 0 4px;
+      border-radius: 18px;
+      background: #ffffff;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.10);
+      border: 1px solid #e0e0e0;
+      padding: 10px 12px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.85rem;
+      box-sizing: border-box;
+    }
+
+    .guiding-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .guiding-title {
+      font-weight: 600;
+      font-size: 0.98rem;
+      color: #222;
+      margin: 0;
+    }
+
+    .guiding-subtitle {
+      margin: 0;
+      font-size: 0.78rem;
+      color: #666;
+    }
+
+    .status-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      justify-content: flex-end;
+    }
+
+    .status-pill {
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .status-pill.active {
+      background: #e8f5e9;
+      color: var(--success);
+      border-color: #c8e6c9;
+    }
+
+    .status-pill.inactive {
+      background: #ffebee;
+      color: var(--danger);
+      border-color: #ffcdd2;
+    }
+
+    .status-pill.finished {
+      background: #e3f2fd;
+      color: #1565c0;
+      border-color: #bbdefb;
+    }
+
+    .status-pill.progress {
+      background: #fff8e1;
+      color: #ff8f00;
+      border-color: #ffecb3;
+    }
+
+    .guiding-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .guiding-tag {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.74rem;
+      background: #f1f3f4;
+      color: #444;
+      border: 1px solid #e0e0e0;
+      white-space: nowrap;
+    }
+
+    .guiding-tag.type {
+      background: #e3f2fd;
+      border-color: #bbdefb;
+      color: #1e88e5;
+    }
+
+    .guiding-tag.accessible {
+      background: #e8f5e9;
+      border-color: #c8e6c9;
+      color: #2e7d32;
+    }
+
+    .guiding-tag.monetized {
+      background: #fff3e0;
+      border-color: #ffe0b2;
+      color: #ef6c00;
+    }
+
+    .guiding-body {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      color: #444;
+    }
+
+    .guiding-body-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.8rem;
+    }
+
+    .guiding-body-row span.label {
+      color: #777;
+    }
+
+    .guiding-body-row span.value {
+      text-align: right;
+    }
+
+    .guiding-body-row .value strong {
+      font-weight: 600;
+    }
+
+    .guiding-body-row .rating {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .guiding-body-row .rating span.stars {
+      font-size: 0.9rem;
+    }
+
+    .guiding-actions {
+      margin-top: 6px;
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .guiding-actions-main,
+    .guiding-actions-secondary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .guiding-actions button {
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid #d0d7de;
+      background: #f6f8fa;
+      font-size: 0.78rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #333;
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+      white-space: nowrap;
+    }
+
+    .guiding-actions button:hover {
+      background: #333;
+      color: #fff;
+      border-color: #fff;
+    }
+
+    .guiding-actions button.danger {
+      border-color: #ffcdd2;
+      background: #ffebee;
+      color: var(--danger);
+    }
+
+    .guiding-actions button.danger:hover {
+      background: var(--danger);
+      color: #fff;
+      border-color: #fff;
+    }
+
+    /* ===== Toggles & status buttons ===== */
+
+    .status-toggle-btn {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #bbdefb;
+      background: #e3f2fd;
+      font-size: 0.78rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #1565c0;
+      white-space: nowrap;
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+
+    .status-toggle-btn.in-progress {
+      background: #fff8e1;
+      border-color: #ffecb3;
+      color: #ff8f00;
+    }
+
+    .status-toggle-btn:hover {
+      background: #333;
+      color: #fff;
+      border-color: #fff;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 22px;
+    }
+
+    .toggle-switch input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #cfd8dc;
+      border-radius: 999px;
+      transition: .2s;
+    }
+
+    .toggle-slider::before {
+      content: "";
+      position: absolute;
+      height: 18px;
+      width: 18px;
+      left: 2px;
+      top: 2px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      transition: .2s;
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background: #66bb6a;
+    }
+
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(22px);
+    }
+
+    .toggle-label {
+      font-size: 0.78rem;
+      color: #555;
+      margin-left: 4px;
+    }
+
+    /* ===== New guiding floating button ===== */
+
+    .guiding-new-wrapper {
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: calc(var(--band-h, 68px) - (var(--fab-size, 56px) / 2));
+      z-index: 9999;
+      width: 75px;
+      height: 75px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .guiding-new-btn {
+      pointer-events: auto;
+      border: 2px solid rgba(255,255,255,0.7);
+      background: #ffffff;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+
+    .guiding-new-btn img.guiding-new-icon {
+      width: 62%;
+      height: 62%;
+      object-fit: contain;
+      transition: transform .15s ease, opacity .15s ease, filter .15s ease;
+      filter: none;
+    }
+
+    .guiding-new-btn:hover {
+      background: #121212;
+      border-color: #ffffff;
+    }
+
+    .guiding-new-btn:hover img.guiding-new-icon {
+      transform: scale(1.06);
+      filter: invert(1);
+    }
+
+    .guiding-new-btn:active img.guiding-new-icon {
+      transform: scale(0.96);
+    }
+
+    /* ===== Empty state ===== */
+
+    .empty-state {
+      margin-top: 14px;
+      padding: 16px 14px;
+      border-radius: 18px;
+      border: 1px dashed #cfd8dc;
+      background: #fafbfc;
+      font-size: 0.85rem;
+      color: #555;
+      margin-left: 4px;
+      margin-right: 4px;
+    }
+
+    .empty-state strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.92rem;
+      color: #222;
+    }
+
+    /* ===== Generic modals ===== */
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 3000;
+    }
+
+    .modal-dialog {
+      max-width: 520px;
+      width: 92vw;
+      max-height: 80vh;
+      background: #ffffff;
+      color: #000;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      padding: 14px 16px 12px;
+      font-size: 0.9rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-dialog h3 {
+      margin: 0 0 6px;
+      font-size: 1.02rem;
+    }
+
+    .modal-dialog p {
+      margin: 0 0 8px;
+      font-size: 0.84rem;
+      color: #444;
+    }
+
+    .modal-footer {
+      margin-top: 10px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .modal-footer button {
+      padding: 6px 13px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+
+    .modal-btn-secondary {
+      background: #eeeeee;
+      color: #333;
+    }
+
+    .modal-btn-secondary:hover {
+      background: #333;
+      color: #fff;
+    }
+
+    .modal-btn-danger {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .modal-btn-danger:hover {
+      background: #fff;
+      color: var(--danger);
+    }
+
+    .modal-btn-primary {
+      background: #1e88e5;
+      color: #fff;
+    }
+
+    .modal-btn-primary:hover {
+      background: #fff;
+      color: #1e88e5;
+      border: 1px solid #1e88e5;
+    }
+
+    .modal-error {
+      margin-top: 4px;
+      color: var(--danger);
+      font-size: 0.8rem;
+    }
+
+    .preview-dialog ul {
+      margin: 4px 0 0;
+      padding-left: 18px;
+      font-size: 0.84rem;
+    }
+
+    .preview-dialog li {
+      margin-bottom: 2px;
+    }
+
+    @media (max-width: 640px) {
+      .guiding-body-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .guiding-body-row span.value {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+
+<body class="has-top-band has-bottom-band">
+
+<header class="site">
+  <div class="title">Guide — Manage my Guidings</div>
+  <div class="subtitle">
+    Review, finish and activate your guidings.
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- Single-row toolbar: Search + filters + refresh -->
+  <section class="guiding-toolbar">
+    <div class="toolbar-row--main">
+      <span class="toolbar-label">Search</span>
+
+      <input id="searchInput"
+             type="search"
+             class="toolbar-search-input"
+             placeholder="Title, city, tag…">
+
+      <span class="toolbar-label">Visibility</span>
+      <select id="statusFilterSelect" class="toolbar-select">
+        <option value="all">All</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+
+      <span class="toolbar-label">Monetization</span>
+      <select id="monetizationFilterSelect" class="toolbar-select">
+        <option value="all">All</option>
+        <option value="monetized">Monetized</option>
+        <option value="free">Not monetized</option>
+      </select>
+
+      <button class="toolbar-refresh-btn" type="button" id="refreshBtn" title="Refresh guidings">
+        ↻
+      </button>
+    </div>
+  </section>
+
+  <!-- Guiding list -->
+  <section class="guiding-list-wrapper">
+    <div class="guiding-list-meta">
+      <span id="guidingCountLabel">Loading guidings…</span>
+      <span id="guidingLastRefresh"></span>
+    </div>
+
+    <div class="guiding-list-frame" id="guidingListFrame">
+      <div id="guidingList" class="guiding-cards"></div>
+
+      <div id="guidingEmptyState" class="empty-state" style="display:none;">
+        <strong>No guidings found.</strong>
+        Create your first guiding or adjust the filters above.
+      </div>
+    </div>
+  </section>
+
+  <!-- New guiding button -->
+  <section class="guiding-new-wrapper">
+    <button class="guiding-new-btn" type="button" id="newGuidingBtn">
+      <img
+        src="/icons/ion-png-black/ios-add-circle-outline.png"
+        alt="Add new guiding"
+        class="guiding-new-icon">
+    </button>
+  </section>
+</main>
+
+<footer class="site">
+  © <span id="y"></span> Tourism App MVP • Let’s Get Out — Manage
+</footer>
+
+<!-- Delete confirmation modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal-dialog">
+    <h3>Delete this guiding?</h3>
+    <p id="deleteModalText">
+      Are you sure you want to permanently delete this guiding?
+      This action cannot be undone.
+    </p>
+    <div id="deleteModalError" class="modal-error" style="display:none;"></div>
+    <div class="modal-footer">
+      <button type="button" class="modal-btn-secondary" id="deleteCancelBtn">Cancel</button>
+      <button type="button" class="modal-btn-danger" id="deleteConfirmBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Preview modal -->
+<div class="modal-overlay" id="previewModal">
+  <div class="modal-dialog preview-dialog">
+    <h3 id="previewTitle">Guiding preview</h3>
+    <p id="previewIntro">
+      Quick overview of this guiding’s structure and conditions.
+    </p>
+    <ul id="previewList">
+      <!-- Filled via JS -->
+    </ul>
+    <div id="previewError" class="modal-error" style="display:none;"></div>
+    <div class="modal-footer">
+      <button type="button" class="modal-btn-secondary" id="previewCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // footer year
+  document.getElementById('y').textContent = new Date().getFullYear();
+</script>
+
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+
+<script>
+  // ======= STATE =======
+  let allGuidings = [];
+  const filters = {
+    search: '',
+    status: 'all',
+    monetization: 'all'
+  };
+
+  let deleteTargetId = null;
+  let deleteTargetName = null;
+  let previewGuidingId = null;
+
+  // ======= UTIL =======
+  async function fetchJsonOptional(url, options = {}, errorLabel = 'Request') {
+    const res = await fetch(url, options);
+    const contentType = res.headers.get('content-type') || '';
+    const isJson = contentType.includes('application/json');
+    let data = null;
+
+    if (isJson) {
+      try { data = await res.json(); } catch (e) {}
+    }
+
+    if (!res.ok) {
+      const msg = (data && data.error) || `${errorLabel} failed (HTTP ${res.status})`;
+      throw new Error(msg);
+    }
+
+    if (data && data.ok === false) {
+      throw new Error(data.error || `${errorLabel} failed (server reported error)`);
+    }
+
+    if (data) return data;
+    return { ok: true };
+  }
+
+  function formatDate(dtString) {
+    if (!dtString) return '';
+    const d = new Date(dtString);
+    if (isNaN(d.getTime())) return dtString;
+    return d.toLocaleDateString();
+  }
+
+  function formatCurrencyFromCents(cents, currency = 'EUR') {
+    if (cents == null || isNaN(cents)) return '—';
+    const amount = Number(cents) / 100;
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 2
+      }).format(amount);
+    } catch (e) {
+      return amount.toFixed(2) + ' ' + currency;
+    }
+  }
+
+  function updateLastRefreshLabel() {
+    const el = document.getElementById('guidingLastRefresh');
+    const now = new Date();
+    el.textContent = 'Last refresh: ' + now.toLocaleTimeString();
+  }
+
+  function progressLabel(g) {
+    const st = (g.status || '').toLowerCase();
+    if (st === 'published' || st === 'finished') return 'Finished';
+    return 'In progress';
+  }
+
+  function ratingSummary(g) {
+    const count = g.rating_count || 0;
+    const avg  = g.rating_avg   || 0;
+    if (!count) return 'No ratings yet';
+    const rounded = Math.round(avg * 10) / 10;
+    return `${rounded.toFixed(1)} / 5 · ${count} review${count !== 1 ? 's' : ''}`;
+  }
+
+  function summarizeLocations(g) {
+    const city    = g.primary_city;
+    const country = g.primary_country;
+
+    if (city && country) return `${city}, ${country}`;
+    if (city || country) return city || country;
+
+    if (g.countries_cities_json) {
+      try {
+        const arr = JSON.parse(g.countries_cities_json) || [];
+        if (arr.length) {
+          const first = arr[0];
+          if (first.city && first.country) return `${first.city}, ${first.country}`;
+          if (first.city || first.country) return first.city || first.country;
+        }
+      } catch {}
+    }
+
+    return 'Location not set';
+  }
+
+  function summarizeTags(g) {
+    if (g.tags && typeof g.tags === 'string') {
+      return g.tags.trim() || 'None';
+    }
+    return 'None';
+  }
+
+  function summarizeEarnings(g) {
+    const totalEarnedCents = g.total_earned_cents || 0;
+    const totalTipsCents   = g.total_tips_cents   || 0;
+
+    const fromTipsCents  = totalTipsCents;
+    const fromMonetCents = Math.max(totalEarnedCents - totalTipsCents, 0);
+
+    const fromMonetization = formatCurrencyFromCents(fromMonetCents);
+    const fromTips         = formatCurrencyFromCents(fromTipsCents);
+    const fromViews        = '—';
+
+    return { fromMonetization, fromTips, fromViews };
+  }
+
+  function guidingTypeLabel(g) {
+    const t = (g.type || '').toLowerCase();
+    if (t === 'online') return 'Online';
+    if (t === 'live')   return 'Live (online)';
+    if (t === 'irl')    return 'IRL / On-site';
+    return t || 'Not specified';
+  }
+
+  function tipsLabel(g) {
+    if (g.tipping_enabled === 1 || g.tipping_enabled === true)  return 'Tips: active';
+    if (g.tipping_enabled === 0 || g.tipping_enabled === false) return 'Tips: disabled';
+    return 'Tips: n/a';
+  }
+
+  function isMonetized(g) {
+    const hasPrice = (g.price_cents || 0) > 0;
+    const model    = (g.monetization_model || '').toLowerCase();
+    const freeUse  = g.free_use === 1 || g.free_use === true;
+    if (hasPrice) return true;
+    if (model && model !== 'none' && !freeUse) return true;
+    return false;
+  }
+
+  function updateGuidingListFrameHeight() {
+    const frame = document.getElementById('guidingListFrame');
+    if (!frame) return;
+
+    const viewportHeight = window.innerHeight;
+    const rootStyles = getComputedStyle(document.documentElement);
+    const bandH = parseInt(rootStyles.getPropertyValue('--band-h')) || 68;
+
+    const rect = frame.getBoundingClientRect();
+    const available = viewportHeight - bandH - rect.top;
+
+    if (available > 0) {
+      frame.style.height = available + 'px';
+    } else {
+      frame.style.height = '0px';
+    }
+    frame.style.maxHeight = 'none';
+  }
+
+  // ======= RENDERING =======
+  function renderGuidings() {
+    const listEl    = document.getElementById('guidingList');
+    const emptyEl   = document.getElementById('guidingEmptyState');
+    const countLabel = document.getElementById('guidingCountLabel');
+
+    listEl.innerHTML = '';
+
+    let filtered = allGuidings.slice();
+
+    if (filters.search) {
+      const term = filters.search.toLowerCase();
+      filtered = filtered.filter(g => {
+        const title   = (g.title || '').toLowerCase();
+        const type    = (g.type || '').toLowerCase();
+        const tags    = (g.tags || '').toLowerCase();
+        const city    = (g.primary_city || '').toLowerCase();
+        const country = (g.primary_country || '').toLowerCase();
+        return (
+          title.includes(term) ||
+          type.includes(term)  ||
+          tags.includes(term)  ||
+          city.includes(term)  ||
+          country.includes(term)
+        );
+      });
+    }
+
+    if (filters.status === 'active') {
+      filtered = filtered.filter(g => !!g.is_active);
+    } else if (filters.status === 'inactive') {
+      filtered = filtered.filter(g => !g.is_active);
+    }
+
+    if (filters.monetization === 'monetized') {
+      filtered = filtered.filter(g => isMonetized(g));
+    } else if (filters.monetization === 'free') {
+      filtered = filtered.filter(g => !isMonetized(g));
+    }
+
+    if (!allGuidings.length) {
+      countLabel.textContent = 'No guidings yet.';
+    } else {
+      countLabel.textContent = `${filtered.length} of ${allGuidings.length} guiding(s) shown.`;
+    }
+
+    if (!filtered.length) {
+      emptyEl.style.display = 'block';
+      return;
+    }
+    emptyEl.style.display = 'none';
+
+    filtered.forEach(g => {
+      const card = document.createElement('article');
+      card.className = 'guiding-card';
+      card.dataset.guidingId = g.id;
+
+      const isFinished   = progressLabel(g) === 'Finished';
+      const isActive     = !!g.is_active && isFinished;
+      const progressText = progressLabel(g);
+      const publishDate  = formatDate(g.published_at);
+      const ratingText   = ratingSummary(g);
+      const monetized    = isMonetized(g);
+      const locSummary   = summarizeLocations(g);
+      const tagsSummary  = summarizeTags(g);
+      const earnings     = summarizeEarnings(g);
+      const tipsState    = tipsLabel(g);
+
+      card.innerHTML = `
+        <div class="guiding-card-header">
+          <div>
+            <h2 class="guiding-title">${g.title || 'Untitled guiding'}</h2>
+            <p class="guiding-subtitle">
+              ${locSummary}
+            </p>
+          </div>
+          <div class="status-pills">
+            <span class="status-pill ${isFinished ? 'finished' : 'progress'}">
+              ${progressText}
+            </span>
+            <span class="status-pill ${isActive ? 'active' : 'inactive'}">
+              ${isFinished ? (isActive ? 'Active' : 'Inactive') : 'Inactive'}
+            </span>
+          </div>
+        </div>
+
+        <div class="guiding-tags">
+          <span class="guiding-tag type">${guidingTypeLabel(g)}</span>
+          ${g.has_accessibility ? `<span class="guiding-tag accessible">Accessible</span>` : ''}
+          ${monetized ? `<span class="guiding-tag monetized">Monetized</span>` : '<span class="guiding-tag">Not monetized</span>'}
+          ${tipsState ? `<span class="guiding-tag">${tipsState}</span>` : ''}
+        </div>
+
+        <div class="guiding-body">
+          <div class="guiding-body-row">
+            <span class="label">Themes / tags</span>
+            <span class="value">${tagsSummary}</span>
+          </div>
+
+          <div class="guiding-body-row">
+            <span class="label">Status</span>
+            <span class="value">
+              ${progressText} • ${isFinished ? (isActive ? 'Visible' : 'Hidden') : 'Hidden'}
+              ${publishDate ? ` • Published: ${publishDate}` : ''}
+            </span>
+          </div>
+
+          <div class="guiding-body-row">
+            <span class="label">Ratings</span>
+            <span class="value rating">
+              <span class="stars">⭐</span>
+              <span>${ratingText}</span>
+            </span>
+          </div>
+
+          <div class="guiding-body-row">
+            <span class="label">Monetization</span>
+            <span class="value">
+              Monetized: <strong>${monetized ? 'Yes' : 'No'}</strong>
+              ${g.free_use ? ' • Free for visitors' : ''}
+            </span>
+          </div>
+
+          <div class="guiding-body-row">
+            <span class="label">Earnings</span>
+            <span class="value">
+              From monetization: <strong>${earnings.fromMonetization}</strong><br>
+              From tips: <strong>${earnings.fromTips}</strong><br>
+              From views/ads: <strong>${earnings.fromViews}</strong>
+            </span>
+          </div>
+        </div>
+
+        <div class="guiding-actions">
+          <div class="guiding-actions-main">
+            <button type="button" class="btn-preview" data-id="${g.id}">
+              👁 Preview
+            </button>
+            <button type="button" class="btn-edit" data-id="${g.id}">
+              ✏️ Modify
+            </button>
+            <button type="button" class="btn-manage" data-id="${g.id}">
+              📂 Details
+            </button>
+          </div>
+          <div class="guiding-actions-secondary">
+            <button type="button"
+                    class="status-toggle-btn ${isFinished ? 'finished' : 'in-progress'}"
+                    data-id="${g.id}">
+              ${isFinished ? 'Status: Finished' : 'Status: In progress'}
+            </button>
+
+            <div class="active-toggle-wrapper" style="${isFinished ? '' : 'display:none;'}">
+              <label class="toggle-switch">
+                <input type="checkbox"
+                       class="guiding-toggle"
+                       data-id="${g.id}"
+                       ${isActive ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">${isActive ? 'Active' : 'Inactive'}</span>
+            </div>
+
+            <button type="button" class="danger btn-delete-guiding" data-id="${g.id}">
+              🗑 Delete
+            </button>
+          </div>
+        </div>
+      `;
+
+      listEl.appendChild(card);
+    });
+  }
+
+  // ======= LOAD GUIDINGS =======
+  function loadGuidings() {
+    const countLabel = document.getElementById('guidingCountLabel');
+    countLabel.textContent = 'Loading guidings…';
+
+    fetchJsonOptional('/api/letsgetout/guidings', {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    }, 'Load guidings')
+      .then(data => {
+        if (Array.isArray(data)) {
+          allGuidings = data;
+        } else if (Array.isArray(data.guidings)) {
+          allGuidings = data.guidings;
+        } else {
+          throw new Error('Unexpected guidings response from server.');
+        }
+
+        // Enforce rule locally: active only if finished
+        allGuidings = allGuidings.map(g => {
+          const finished = progressLabel(g) === 'Finished';
+          if (!finished) {
+            return { ...g, is_active: 0 };
+          }
+          return g;
+        });
+
+        renderGuidings();
+        updateLastRefreshLabel();
+        updateGuidingListFrameHeight();
+      })
+      .catch(err => {
+        console.error(err);
+        allGuidings = [];
+        renderGuidings();
+        const label = document.getElementById('guidingCountLabel');
+        label.textContent = 'Error loading guidings.';
+      });
+  }
+
+  // ======= FILTER HANDLERS =======
+  document.getElementById('searchInput').addEventListener('input', (e) => {
+    filters.search = e.target.value.trim();
+    renderGuidings();
+  });
+
+  document.getElementById('statusFilterSelect').addEventListener('change', (e) => {
+    filters.status = e.target.value;
+    renderGuidings();
+  });
+
+  document.getElementById('monetizationFilterSelect').addEventListener('change', (e) => {
+    filters.monetization = e.target.value;
+    renderGuidings();
+  });
+
+  // ======= NEW GUIDING / REFRESH =======
+  document.getElementById('newGuidingBtn').addEventListener('click', () => {
+    window.location.href = "/modules/Let's Get Out!/manage/page 1.html";
+  });
+
+  document.getElementById('refreshBtn').addEventListener('click', () => {
+    loadGuidings();
+  });
+
+  // ======= DELETE MODAL =======
+  const deleteModal = document.getElementById('deleteModal');
+  const deleteText  = document.getElementById('deleteModalText');
+  const deleteError = document.getElementById('deleteModalError');
+
+  function openDeleteModal(id, name) {
+    deleteTargetId   = id;
+    deleteTargetName = name || '';
+    deleteError.style.display = 'none';
+    deleteError.textContent   = '';
+    deleteText.innerHTML = `
+      Are you sure you want to permanently delete
+      <strong>${deleteTargetName || 'this guiding'}</strong>?<br>
+      This action cannot be undone.
+    `;
+    deleteModal.style.display = 'flex';
+  }
+
+  function closeDeleteModal() {
+    deleteModal.style.display = 'none';
+    deleteTargetId   = null;
+    deleteTargetName = null;
+  }
+
+  document.getElementById('deleteCancelBtn').addEventListener('click', closeDeleteModal);
+
+  document.getElementById('deleteConfirmBtn').addEventListener('click', () => {
+    if (!deleteTargetId) {
+      closeDeleteModal();
+      return;
+    }
+    deleteError.style.display = 'none';
+    deleteError.textContent   = '';
+
+    fetchJsonOptional(`/api/letsgetout/guidings/${encodeURIComponent(deleteTargetId)}`, {
+      method: 'DELETE',
+      headers: { 'Accept': 'application/json' }
+    }, 'Delete guiding')
+      .then(() => {
+        allGuidings = allGuidings.filter(g => String(g.id) !== String(deleteTargetId));
+        renderGuidings();
+        closeDeleteModal();
+      })
+      .catch(err => {
+        console.error(err);
+        deleteError.textContent = err.message || 'Error deleting guiding.';
+        deleteError.style.display = 'block';
+      });
+  });
+
+  deleteModal.addEventListener('click', (e) => {
+    if (e.target === deleteModal) {
+      closeDeleteModal();
+    }
+  });
+
+  // ======= PREVIEW MODAL =======
+  const previewModal = document.getElementById('previewModal');
+  const previewTitle = document.getElementById('previewTitle');
+  const previewList  = document.getElementById('previewList');
+  const previewError = document.getElementById('previewError');
+
+  function openPreviewModal(guidingId) {
+    previewGuidingId = guidingId;
+    previewError.style.display = 'none';
+    previewError.textContent   = '';
+    previewList.innerHTML      = '<li>Loading summary…</li>';
+
+    const base = allGuidings.find(g => String(g.id) === String(guidingId));
+    previewTitle.textContent = base?.title ? `Preview — ${base.title}` : 'Guiding preview';
+
+    previewModal.style.display = 'flex';
+
+    fetchJsonOptional(`/api/letsgetout/guidings/${encodeURIComponent(guidingId)}/summary`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    }, 'Load guiding summary')
+      .then(data => {
+        const stepsCount  = data.steps_count ?? null;
+        const lengthKm    = data.total_length_km ?? data.length_km ?? null;
+        const durationMin = data.total_duration_min ?? data.duration_min ?? null;
+        const modes       = data.transport_modes || [];
+        const access      = data.has_accessibility;
+        const health      = data.health_facilities_summary    || 'Not specified';
+        const emergency   = data.emergency_facilities_summary || 'Not specified';
+
+        const distanceStr = lengthKm != null
+          ? lengthKm.toFixed(2) + ' km'
+          : 'n/a';
+
+        const durationStr = durationMin != null
+          ? durationMin + ' min'
+          : 'n/a';
+
+        const stepsStr = stepsCount != null
+          ? `${stepsCount} step${stepsCount !== 1 ? 's' : ''}`
+          : 'n/a';
+
+        const modesStr = Array.isArray(modes) && modes.length
+          ? modes.join(' · ')
+          : 'Not specified';
+
+        const accessStr = access === true
+          ? 'Accessible route'
+          : (access === false ? 'No accessibility guarantee' : 'Not specified');
+
+        previewList.innerHTML = `
+          <li><strong>Number of steps:</strong> ${stepsStr}</li>
+          <li><strong>Distance (start → finish):</strong> ${distanceStr}</li>
+          <li><strong>Estimated duration:</strong> ${durationStr}</li>
+          <li><strong>Modes of mobility:</strong> ${modesStr}</li>
+          <li><strong>Accessibility:</strong> ${accessStr}</li>
+          <li><strong>Health facilities nearby:</strong> ${health}</li>
+          <li><strong>Emergency facilities nearby:</strong> ${emergency}</li>
+        `;
+      })
+      .catch(err => {
+        console.error(err);
+        previewError.textContent = err.message || 'Error loading guiding summary.';
+        previewError.style.display = 'block';
+        previewList.innerHTML = '';
+      });
+  }
+
+  function closePreviewModal() {
+    previewModal.style.display = 'none';
+    previewGuidingId = null;
+  }
+
+  document.getElementById('previewCloseBtn').addEventListener('click', closePreviewModal);
+  previewModal.addEventListener('click', (e) => {
+    if (e.target === previewModal) {
+      closePreviewModal();
+    }
+  });
+
+  // ======= CARD ACTIONS =======
+  document.getElementById('guidingList').addEventListener('click', (e) => {
+    const card = e.target.closest('.guiding-card');
+    if (!card) return;
+    const guidingId = card.dataset.guidingId;
+
+    if (e.target.closest('.btn-delete-guiding')) {
+      const name = card.querySelector('.guiding-title')?.textContent?.trim() || '';
+      openDeleteModal(guidingId, name);
+      return;
+    }
+
+    if (e.target.closest('.btn-preview')) {
+      openPreviewModal(guidingId);
+      return;
+    }
+
+    if (e.target.closest('.btn-edit')) {
+      window.location.href =
+        `/modules/Let's Get Out!/manage/page 2-2.html?id=${encodeURIComponent(guidingId)}&mode=edit`;
+      return;
+    }
+
+    if (e.target.closest('.btn-manage')) {
+      window.location.href =
+        `/modules/Let's Get Out!/manage/page 2-2.html?id=${encodeURIComponent(guidingId)}&mode=details`;
+      return;
+    }
+
+    if (e.target.closest('.status-toggle-btn')) {
+      const btn = e.target.closest('.status-toggle-btn');
+      toggleFinishedStatus(card, guidingId, btn);
+      return;
+    }
+  });
+
+  // ======= ACTIVE TOGGLE (only when Finished) =======
+  document.getElementById('guidingList').addEventListener('change', (e) => {
+    const toggle = e.target.closest('.guiding-toggle');
+    if (!toggle) return;
+
+    const card = toggle.closest('.guiding-card');
+    const guidingId = toggle.dataset.id;
+
+    const finishedPill = card.querySelector('.status-pill.finished, .status-pill.progress');
+    const isFinished = finishedPill && finishedPill.classList.contains('finished');
+    if (!isFinished) {
+      toggle.checked = false;
+      return;
+    }
+
+    const newActive = toggle.checked;
+
+    const activePill = card.querySelector('.status-pills .status-pill.active, .status-pills .status-pill.inactive');
+    const label      = card.querySelector('.toggle-label');
+
+    if (activePill) {
+      activePill.classList.toggle('active', newActive);
+      activePill.classList.toggle('inactive', !newActive);
+      activePill.textContent = newActive ? 'Active' : 'Inactive';
+    }
+    if (label) label.textContent = newActive ? 'Active' : 'Inactive';
+
+    fetchJsonOptional(`/api/letsgetout/guidings/${encodeURIComponent(guidingId)}/state`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        status: 'published',
+        is_active: !!newActive
+      })
+    }, 'Update guiding state')
+      .then((updated) => {
+        const idx = allGuidings.findIndex(g => String(g.id) === String(guidingId));
+        if (idx !== -1) {
+          allGuidings[idx] = { ...allGuidings[idx], ...updated };
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        toggle.checked = !newActive;
+        if (activePill) {
+          activePill.classList.toggle('active', !newActive);
+          activePill.classList.toggle('inactive', newActive);
+          activePill.textContent = !newActive ? 'Active' : 'Inactive';
+        }
+        if (label) label.textContent = !newActive ? 'Active' : 'Inactive';
+        alert(err.message || 'Error updating guiding status.');
+      });
+  });
+
+  // ======= In-progress / Finished toggle =======
+  function toggleFinishedStatus(card, guidingId, buttonEl) {
+    const currentText = buttonEl.textContent || '';
+    const isCurrentlyFinished = currentText.toLowerCase().includes('finished');
+    const newStatus = isCurrentlyFinished ? 'in-progress' : 'published';
+
+    const pills = card.querySelectorAll('.status-pills .status-pill');
+    const progressPill = Array.from(pills).find(p => p.classList.contains('progress') || p.classList.contains('finished'));
+    const activePill   = Array.from(pills).find(p => p !== progressPill);
+    const activeWrapper = card.querySelector('.active-toggle-wrapper');
+    const toggleInput   = card.querySelector('.guiding-toggle');
+    const toggleLabel   = card.querySelector('.toggle-label');
+
+    // Optimistic UI
+    if (newStatus === 'published') {
+      buttonEl.textContent = 'Status: Finished';
+      buttonEl.classList.remove('in-progress');
+      buttonEl.classList.add('finished');
+
+      if (progressPill) {
+        progressPill.classList.remove('progress');
+        progressPill.classList.add('finished');
+        progressPill.textContent = 'Finished';
+      }
+
+      if (activeWrapper) {
+        activeWrapper.style.display = '';
+      }
+
+    } else {
+      buttonEl.textContent = 'Status: In progress';
+      buttonEl.classList.remove('finished');
+      buttonEl.classList.add('in-progress');
+
+      if (progressPill) {
+        progressPill.classList.remove('finished');
+        progressPill.classList.add('progress');
+        progressPill.textContent = 'In progress';
+      }
+
+      // Force inactive when in progress
+      if (toggleInput) toggleInput.checked = false;
+      if (toggleLabel) toggleLabel.textContent = 'Inactive';
+      if (activePill) {
+        activePill.classList.remove('active');
+        activePill.classList.add('inactive');
+        activePill.textContent = 'Inactive';
+      }
+      if (activeWrapper) {
+        activeWrapper.style.display = 'none';
+      }
+    }
+
+    fetchJsonOptional(`/api/letsgetout/guidings/${encodeURIComponent(guidingId)}/state`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        status: newStatus,
+        is_active: newStatus === 'published'
+          ? !!(toggleInput && toggleInput.checked)
+          : false
+      })
+    }, 'Update guiding state')
+      .then((updated) => {
+        const idx = allGuidings.findIndex(g => String(g.id) === String(guidingId));
+        if (idx !== -1) {
+          allGuidings[idx] = { ...allGuidings[idx], ...updated };
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert(err.message || 'Error updating guiding status.');
+        loadGuidings(); // restore server truth
+      });
+  }
+
+  // ======= INIT =======
+  document.addEventListener('DOMContentLoaded', () => {
+    loadGuidings();
+    setTimeout(updateGuidingListFrameHeight, 0);
+  });
+
+  window.addEventListener('resize', updateGuidingListFrameHeight);
+
+  // Mount drawer + FAB
+  Drawer.mount({ mode: 'guide' });
+
+  FAB.mount({
+    useTopBand: true,
+    useBottomBand: true,
+
+    home: {
+      title: 'Home & Services',
+      label: '🏠',
+      onClick: () => Drawer.open()
+    },
+
+    config: {
+      title: 'Settings',
+      label: '⚙️',
+      href: '/pages/guide/settings.html'
+    },
+
+    onBack: () => {
+      if (history.length > 1) {
+        history.back();
+      } else {
+        location.href = '/pages/guide/dashboard.html';
+      }
+    }
+  });
+
+  // ======= HARD HIDE: bottom-right FAB button (geometry-based) =======
+  function hideBottomRightFabButton() {
+    const bandH = parseInt(
+      getComputedStyle(document.documentElement).getPropertyValue('--band-h')
+    ) || 68;
+
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+
+    const candidates = Array.from(document.querySelectorAll('button, a'))
+      .filter(el => {
+        const rect = el.getBoundingClientRect();
+        if (!rect.width || !rect.height) return false;
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+
+        const nearBottom = cy > vh - bandH - 80 && cy < vh;
+        const rightSide  = cx > vw * 0.6;
+
+        return nearBottom && rightSide;
+      });
+
+    candidates.forEach(el => {
+      el.style.display       = 'none';
+      el.style.visibility    = 'hidden';
+      el.style.pointerEvents = 'none';
+    });
+  }
+
+  hideBottomRightFabButton();
+
+  const fabObserver = new MutationObserver(() => {
+    hideBottomRightFabButton();
+  });
+  fabObserver.observe(document.body, { childList: true, subtree: true });
+
+  window.addEventListener('resize', hideBottomRightFabButton);
+</script>
+
+</body>
+</html>

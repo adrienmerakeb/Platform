@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>My Queues — In-Time</title>
+<link rel="stylesheet" href="/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+/* ─── TOKENS — Dusk Glass parity ─────────────────────────── */
+:root{
+  --v:#7c3aed;--v-s:#ede9fc;--v-d:#6d28d9;
+  --blue:#2563eb;--blue-s:#eff6ff;
+  --green:#16a34a;--green-s:#f0fdf4;
+  --amber:#d97706;--amber-s:#fffbeb;
+  --red:#dc2626;--red-s:#fef2f2;
+  --txt:#1a1825;--muted:#6b6880;--hint:#9b98aa;
+  --surf:#fff;--bg:#f4f3f8;--bord:#e2e0ea;--bord-f:#7c3aed;
+  --gray:#f0eff5;--gray-m:#d4d2de;
+  --r:14px;--ri:9px;
+  --sh:0 2px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --ring:0 0 0 3px rgba(124,58,237,.18);
+  --font:'DM Sans',sans-serif;
+
+  /* capsule geometry */
+  --panel-w:260px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:var(--font);background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55;overflow-x:hidden}
+
+/* ─── SHELL ──────────────────────────────────────────────── */
+.shell{max-width:720px;margin:0 auto;padding:24px 20px 120px;margin-top:50px;}
+
+/* ─── PAGE HEADER ────────────────────────────────────────── */
+.pg-hd{margin-bottom:20px}
+.pg-hd h1{font-size:22px;font-weight:700;color:var(--txt);margin-bottom:4px}
+.pg-hd p{font-size:13.5px;color:var(--muted)}
+
+/* ─── TOOLBAR ────────────────────────────────────────────── */
+.toolbar{
+  background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);
+  box-shadow:var(--sh);padding:14px 16px;margin-bottom:14px;
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px;
+}
+.tb-group{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tb-group label{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
+.tb-input{
+  padding:7px 11px;border:1.5px solid var(--bord);border-radius:var(--ri);
+  font-family:var(--font);font-size:13px;color:var(--txt);background:var(--surf);
+  outline:none;transition:border-color .18s,box-shadow .18s;
+}
+.tb-input:focus{border-color:var(--bord-f);box-shadow:var(--ring)}
+.tb-sel{
+  padding:7px 30px 7px 11px;border:1.5px solid var(--bord);border-radius:var(--ri);
+  font-family:var(--font);font-size:13px;color:var(--txt);background:var(--surf);
+  cursor:pointer;outline:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b6880' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;
+  transition:border-color .18s,box-shadow .18s;
+}
+.tb-sel:focus{border-color:var(--bord-f);box-shadow:var(--ring)}
+.tb-right{margin-left:auto;display:flex;gap:8px;flex-shrink:0}
+.tb-btn{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--font);font-size:13px;font-weight:600;
+  padding:7px 14px;border-radius:var(--ri);border:1.5px solid var(--bord);
+  cursor:pointer;transition:all .18s;background:var(--gray);color:var(--txt);white-space:nowrap;
+}
+.tb-btn:hover{background:var(--bord)}
+.tb-btn.primary{background:var(--v);color:#fff;border-color:var(--v-d);box-shadow:0 2px 8px rgba(124,58,237,.25)}
+.tb-btn.primary:hover{background:var(--v-d)}
+
+/* ─── LIST META ──────────────────────────────────────────── */
+.list-meta{font-size:12px;color:var(--hint);margin-bottom:10px;padding:0 2px;display:flex;justify-content:space-between}
+
+/* ─── ERROR BAR ──────────────────────────────────────────── */
+.errbar{background:var(--red-s);border:1.5px solid #fca5a5;border-radius:8px;padding:9px 13px;font-size:13px;color:var(--red);font-weight:500;margin-bottom:14px;display:none}
+.errbar.on{display:block}
+
+/* ═══════════════════════════════════════════════════════════
+   SWIPEABLE CAPSULE
+══════════════════════════════════════════════════════════════ */
+.capsule-wrap{
+  margin-bottom:16px;
+  overflow:hidden;
+  border-radius:var(--r);
+  box-shadow:var(--sh);
+  position:relative;
+  max-height:28vh;
+}
+
+/* The sliding track: [EDIT | CORE | DELETE]
+   Core must equal the wrapper width so panels sit outside.
+   We achieve this with flex:none on every child and an
+   explicit core width via --core-w set by JS on mount.      */
+.capsule-track{
+  display:flex;
+  align-items:stretch;
+  /* no explicit width — children define total */
+  transform:translateX(calc(-1 * var(--panel-w)));
+  transition:transform .32s cubic-bezier(.4,0,.2,1);
+  will-change:transform;
+}
+.capsule-track.dragging{transition:none}
+
+/* panels — all stretch to same height via flex */
+.cap-edit,.cap-delete,.cap-core{flex:none;align-self:stretch}
+
+.cap-edit{
+  width:var(--panel-w);
+  background:linear-gradient(135deg,#312e81 0%,#4c1d95 100%);
+  color:#e2e0ea;
+  display:flex;flex-direction:column;
+  padding:16px 14px;
+  gap:5px;
+}
+/* Edit panel scrollable area — wrapping grid of compact tiles */
+.edit-scroll{
+  flex:1;overflow-y:auto;overflow-x:hidden;
+  display:flex;flex-wrap:wrap;align-content:flex-start;
+  gap:6px;
+  margin:0 -2px;padding:2px 2px;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent;
+}
+.edit-scroll::-webkit-scrollbar{width:4px}
+.edit-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:4px}
+
+.cap-core{
+  /* width set via --core-w JS variable, fallback to 100vw */
+  width:var(--core-w, 100vw);
+  max-width:var(--core-w, 100vw);
+  background:var(--surf);
+  border-left:4px solid var(--arch-color,var(--bord));
+  position:relative;
+  overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:var(--gray-m) transparent;
+}
+.cap-delete{
+  width:var(--panel-w);
+  background:linear-gradient(135deg,#7f1d1d 0%,#991b1b 100%);
+  color:#fecaca;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:24px 20px;gap:12px;text-align:center;
+}
+
+/* ─── Status-based core backgrounds ─── */
+.cap-core.status-wip{
+  background:linear-gradient(135deg, #fffbeb 0%, #fef3c7 40%, var(--surf) 100%);
+  border-style:dashed;
+}
+.cap-core.status-released{
+  background:var(--surf);
+}
+
+/* ─── EDIT PANEL INTERNALS ───────────────────────────────── */
+.edit-title{
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+  color:rgba(255,255,255,.50);margin-bottom:2px;flex-shrink:0;
+}
+.edit-btn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;
+  width:calc(50% - 3px);  /* 2 per row */
+  padding:10px 4px 8px;border-radius:10px;border:1.5px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.05);color:#e0def4;
+  font-family:var(--font);font-size:10px;font-weight:600;
+  cursor:pointer;transition:all .18s;text-decoration:none;
+  text-align:center;line-height:1.2;
+  min-height:0;
+}
+.edit-btn:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.24);color:#fff}
+.edit-btn .eb-icon{font-size:18px;line-height:1}
+.edit-btn .eb-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:block}
+
+/* ─── DELETE PANEL INTERNALS ─────────────────────────────── */
+.del-icon{font-size:32px;opacity:.9}
+.del-title{font-size:14px;font-weight:700;color:#fca5a5}
+.del-desc{font-size:12px;color:rgba(254,202,202,.7);line-height:1.4;max-width:200px}
+.del-confirm{
+  padding:10px 22px;border-radius:var(--ri);border:2px solid #fca5a5;
+  background:rgba(220,38,38,.2);color:#fca5a5;font-family:var(--font);
+  font-size:13px;font-weight:700;cursor:pointer;transition:all .18s;
+}
+.del-confirm:hover{background:var(--red);color:#fff;border-color:var(--red)}
+
+/* ─── CORE PANEL INTERNALS ───────────────────────────────── */
+.core-pad{padding:18px 20px 16px 16px}
+
+/* Status badge (top-right of core) */
+.core-status{
+  position:absolute;top:12px;right:14px;
+  font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  padding:3px 10px;border-radius:20px;z-index:1;
+}
+.core-status.wip{background:var(--amber-s);color:var(--amber);border:1.5px solid #fcd34d}
+.core-status.released{background:var(--green-s);color:var(--green);border:1.5px solid #86efac}
+
+/* Immutable info top section */
+.imm-name{font-size:17px;font-weight:700;color:var(--txt);margin-bottom:2px;padding-right:90px;line-height:1.3}
+.imm-sub{font-size:12.5px;color:var(--muted);margin-bottom:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.imm-sub strong{color:var(--txt);font-weight:600}
+
+.imm-chips{
+  display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;
+}
+.ichip{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;
+  white-space:nowrap;
+}
+.ichip.arch{border:1.5px solid currentColor}
+.ichip.arch-A{color:#0891b2;background:#ecfeff}
+.ichip.arch-B{color:var(--v);background:var(--v-s)}
+.ichip.arch-C{color:var(--amber);background:var(--amber-s)}
+.ichip.arch-D{color:var(--green);background:var(--green-s)}
+.ichip.formula{border:1px solid var(--bord);background:var(--gray);color:var(--muted)}
+.ichip.formula.live{background:var(--green-s);color:var(--green);border-color:#86efac}
+.ichip.formula.adv{background:var(--blue-s);color:var(--blue);border-color:#bfdbfe}
+.ichip.formula.mixed{background:var(--amber-s);color:var(--amber);border-color:#fcd34d}
+.ichip.mode{border:1px solid var(--bord);background:var(--gray);color:var(--muted)}
+
+/* separator */
+.cap-sep{border:none;border-top:1px solid var(--bord);margin:0}
+
+/* Module links (contextual) */
+.mod-links{
+  display:flex;flex-wrap:wrap;gap:7px;padding:12px 20px 12px 16px;
+}
+.mod-link{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:7px 13px;border-radius:var(--ri);border:1.5px solid var(--bord);
+  background:var(--surf);color:var(--txt);
+  font-family:var(--font);font-size:12px;font-weight:600;
+  cursor:pointer;transition:all .18s;text-decoration:none;white-space:nowrap;
+}
+.mod-link:hover{
+  background:var(--v-s);border-color:var(--v);color:var(--v);
+  transform:translateY(-1px);box-shadow:0 2px 8px rgba(124,58,237,.10);
+}
+.mod-link .ml-icon{font-size:14px}
+
+/* Bottom action bar */
+.cap-actions{
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+  padding:12px 20px 110px 10px;
+  border-top:1px solid var(--bord);
+  background-size:cover;background-position:center;
+  position:relative;
+  transition:background .3s ease;
+}
+.act-btn{
+  display:inline-flex;align-items:center;gap:4px;
+  font-family:var(--font);font-size:12px;font-weight:600;
+  padding:6px 12px;border-radius:var(--ri);border:1.5px solid rgba(0,0,0,.15);
+  cursor:pointer;transition:all .18s;
+  background:#f0eff5;color:var(--txt);
+  white-space:nowrap;text-decoration:none;
+  box-shadow:0 1px 3px rgba(0,0,0,.12);
+}
+.act-btn:hover{background:#fff;border-color:var(--v);color:var(--v);transform:translateY(-1px);box-shadow:0 2px 8px rgba(124,58,237,.18)}
+.act-btn.dup{background:#fffbeb;border-color:#fcd34d;color:var(--amber)}
+.act-btn.dup:hover{background:#fef3c7;transform:translateY(-1px)}
+
+/* Active/Inactive toggle */
+.act-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.togsw{display:flex;align-items:center;cursor:pointer}
+.togsw input{display:none}
+.togtr{width:38px;height:22px;border-radius:11px;background:var(--gray-m);position:relative;transition:background .2s}
+.togsw input:checked+.togtr{background:var(--green)}
+.togtr::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.togsw input:checked+.togtr::after{transform:translateX(16px)}
+.tog-label{font-size:11px;font-weight:600;color:var(--hint)}
+
+/* Swipe hint chevrons */
+.swipe-hint{
+  position:absolute;top:50%;transform:translateY(-50%);
+  font-size:18px;color:var(--hint);opacity:0;
+  pointer-events:none;transition:opacity .25s;
+  z-index:2;
+}
+.swipe-hint.left{left:6px}
+.swipe-hint.right{right:6px}
+.capsule-wrap:hover .swipe-hint{opacity:.45}
+
+/* ─── Draft capsule override ─────────────────────────────── */
+.capsule-wrap.draft{opacity:.88}
+.capsule-wrap.draft .cap-core{
+  border-style:dashed;
+  background:repeating-linear-gradient(
+    -45deg,
+    transparent, transparent 8px,
+    rgba(217,119,6,.03) 8px, rgba(217,119,6,.03) 16px
+  ),var(--surf);
+}
+.resume-btn{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--font);font-size:13px;font-weight:700;
+  padding:8px 16px;border-radius:var(--ri);border:1.5px solid var(--amber);
+  cursor:pointer;transition:all .18s;background:var(--amber-s);color:var(--amber);
+  white-space:nowrap;text-decoration:none;
+box-shadow:0 1px 3px rgba(0,0,0,.12);}
+.resume-btn:hover{background:var(--amber);color:#fff}
+
+/* ─── EMPTY STATE ────────────────────────────────────────── */
+.empty{
+  text-align:center;padding:52px 24px;background:var(--surf);
+  border-radius:var(--r);border:1.5px dashed var(--bord);box-shadow:var(--sh);
+}
+.empty-icon{font-size:36px;display:block;margin-bottom:12px}
+.empty-title{font-size:16px;font-weight:700;color:var(--txt);margin-bottom:6px}
+.empty-desc{font-size:13.5px;color:var(--muted)}
+
+/* ─── MODALS ─────────────────────────────────────────────── */
+.overlay{position:fixed;inset:0;background:rgba(10,8,30,.5);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:3000}
+.mbox{max-width:420px;width:92vw;background:var(--surf);border-radius:var(--r);box-shadow:0 20px 60px rgba(0,0,0,.2);padding:24px 26px 20px;border:1px solid var(--bord)}
+.mbox h3{font-size:16px;font-weight:700;color:var(--txt);margin-bottom:8px}
+.mbox p{font-size:13.5px;color:var(--muted);line-height:1.55;margin-bottom:4px}
+.merr{margin-top:8px;font-size:13px;color:var(--red);display:none}
+.mft{margin-top:18px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.mbtn{display:inline-flex;align-items:center;justify-content:center;gap:5px;font-family:var(--font);font-size:13.5px;font-weight:600;padding:9px 20px;border-radius:var(--ri);border:none;cursor:pointer;transition:all .18s}
+.mbtn.sec{background:var(--gray);color:var(--txt);border:1.5px solid var(--bord)}
+.mbtn.sec:hover{background:var(--bord)}
+.mbtn.danger{background:var(--red);color:#fff}
+.mbtn.danger:hover{background:#b91c1c}
+.mbtn.primary{background:var(--v);color:#fff}
+.mbtn.primary:hover{background:var(--v-d)}
+
+/* ─── TOAST ──────────────────────────────────────────────── */
+#toast{
+  position:fixed;bottom:86px;left:50%;transform:translateX(-50%) translateY(10px);
+  background:var(--txt);color:#fff;font-size:13.5px;font-weight:500;
+  padding:9px 20px;border-radius:999px;box-shadow:0 4px 18px rgba(0,0,0,.2);
+  opacity:0;transition:opacity .2s,transform .2s;z-index:9999;pointer-events:none;white-space:nowrap;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ─── RESPONSIVE ─────────────────────────────────────────── */
+@media(max-width:600px){
+  :root{--panel-w:200px}
+  .shell{padding:16px 12px 120px}
+  .toolbar{padding:10px 12px;gap:8px}
+  .core-pad{padding:14px 14px 12px 12px}
+  .mod-links,.cap-actions{padding:10px 14px 10px 12px}
+  .imm-name{font-size:15px}
+  .edit-btn{padding:7px 3px 6px;font-size:9px}
+  .edit-btn .eb-icon{font-size:16px}
+  .cap-edit{padding:12px 10px;gap:4px}
+  .edit-scroll{gap:4px}
+}
+
+/* ─── LIMIT MODAL ────────────────────────────────────────── */
+.limit-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(10,8,30,.52);backdrop-filter:blur(3px);
+  z-index:5000;align-items:center;justify-content:center;
+}
+.limit-overlay.on{display:flex}
+.limit-box{
+  background:var(--surf);border-radius:var(--r);
+  box-shadow:0 20px 60px rgba(0,0,0,.22);
+  padding:28px 26px 22px;max-width:380px;width:92%;
+  border:1.5px solid var(--bord);
+}
+.limit-box h3{font-size:16px;font-weight:700;color:var(--txt);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.limit-box p{font-size:13.5px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+.limit-close{
+  display:block;width:100%;padding:10px;
+  background:var(--v);color:#fff;border:none;
+  border-radius:var(--ri);font-family:var(--font);
+  font-size:14px;font-weight:600;cursor:pointer;transition:background .15s;
+}
+.limit-close:hover{background:var(--v-d)}
+
+/* ─── VISITOR DRAWER ─────────────────────────────────────── */
+.vdrawer-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(10,8,30,.45);backdrop-filter:blur(3px);
+  z-index:1200;
+}
+.vdrawer-overlay.on{display:block}
+.vdrawer{
+  position:fixed;top:0;right:0;bottom:0;
+  width:min(780px,96vw);
+  background:var(--bg);
+  z-index:1201;
+  display:flex;flex-direction:column;
+  transform:translateX(105%);
+  transition:transform .32s cubic-bezier(.4,0,.2,1);
+  box-shadow:-6px 0 40px rgba(0,0,0,.18);
+  border-left:1px solid var(--bord);
+}
+.vdrawer.open{transform:translateX(0)}
+.vdrawer-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:13px 18px;
+  background:var(--v);
+  color:#fff;
+  flex-shrink:0;
+}
+.vdrawer-title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+.vdrawer-close{
+  width:30px;height:30px;border-radius:50%;border:none;
+  background:rgba(255,255,255,.18);color:#fff;cursor:pointer;
+  font-size:15px;display:flex;align-items:center;justify-content:center;
+  transition:background .15s;
+}
+.vdrawer-close:hover{background:rgba(255,255,255,.32)}
+.vdrawer iframe{
+  flex:1;border:none;width:100%;background:var(--bg);
+}
+</style>
+</head>
+<body>
+
+<div id="top-band" class="top-band"></div>
+
+<div class="shell">
+
+  <div class="pg-hd" style="text-align:center">
+    <h1>Manage my virtual queues</h1>
+    <p>Manage, configure and monitor all your queues here.</p>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <div class="tb-group">
+      <label for="searchInput">Search</label>
+      <input id="searchInput" class="tb-input" type="search" placeholder="Name or venue…" style="min-width:160px">
+    </div>
+    <div class="tb-group">
+      <label for="statusSel">Status</label>
+      <select id="statusSel" class="tb-sel">
+        <option value="all">All</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+    </div>
+    <div class="tb-group">
+      <label for="modeSel">Mode</label>
+      <select id="modeSel" class="tb-sel">
+        <option value="all">All modes</option>
+        <option value="LIVE_ONLY">Live-flow</option>
+        <option value="ADVANCE_ONLY">In advance</option>
+        <option value="MIXED">Mixed</option>
+      </select>
+    </div>
+    <div class="tb-group">
+      <label for="archSel">Type</label>
+      <select id="archSel" class="tb-sel">
+        <option value="all">All types</option>
+        <option value="A">A — Resource</option>
+        <option value="B">B — Individual</option>
+        <option value="C">C — Wave</option>
+        <option value="D">D — Continuous</option>
+      </select>
+    </div>
+    <div class="tb-right">
+      <button class="tb-btn" id="refreshBtn" type="button">↻ Refresh</button>
+      <button class="tb-btn primary" id="newQueueBtn" type="button">＋ New queue</button>
+    </div>
+  </div>
+
+  <div id="errbar" class="errbar"></div>
+
+  <div class="list-meta">
+    <span id="countLabel">Loading…</span>
+    <span id="refreshLabel"></span>
+  </div>
+
+  <div id="queueList"></div>
+
+</div><!-- /.shell -->
+
+<!-- QR MODAL (with print button) -->
+<div class="overlay" id="qrModal">
+  <div class="mbox" style="max-width:360px;text-align:center">
+    <h3>Queue QR code</h3>
+    <p id="qrModalLabel" style="font-size:13px;color:var(--muted);margin-bottom:10px"></p>
+    <img id="qrImg" src="" alt="QR code" style="max-width:220px;width:100%;border-radius:10px;border:1px solid var(--bord);margin:0 auto 12px;display:block">
+    <p style="font-size:12px;color:var(--hint)">Scan with a phone to open the visitor page.</p>
+    <div class="mft" style="justify-content:center;gap:10px">
+      <button class="mbtn sec" id="qrCloseBtn">Close</button>
+      <button class="mbtn primary" id="qrPrintBtn">🖨 Print</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="/js/drawer.js"></script>
+<script src="/js/intime-theme.js"></script>
+<script src="/js/fab.js"></script>
+
+<script type="module">
+
+/* ═══════════════════════════════════
+   CONSTANTS
+══════════════════════════════════════ */
+const EDIT_PAGE    = '/modules/In-Time/manage/page 1.html';
+const EDIT_PAGE_12 = '/modules/In-Time/manage/page 1-2.html';
+
+const ARCH_LABEL = { A:'Resource', B:'Individual', C:'Wave', D:'Continuous' };
+const ARCH_COLOR = { A:'#0891b2', B:'#7c3aed', C:'#d97706', D:'#16a34a' };
+
+const FORMULA_LABEL = { LIVE_ONLY:'Live-flow', ADVANCE_ONLY:'In advance', MIXED:'Mixed' };
+const FORMULA_TAG   = { LIVE_ONLY:'live', ADVANCE_ONLY:'adv', MIXED:'mixed' };
+
+const CALL_LOGIC = {
+  single_next: 'Single next',
+  batch:       'Batch call',
+  auto:        'Auto-advance',
+};
+
+/* Edit-panel items: each maps to an edit-page section.
+   `show` is a function(q) => bool controlling visibility per queue. */
+const EDIT_ITEMS = [
+  { icon:'🕐', label:'Operating time',     step:'s0',   show: q => true },
+  { icon:'⚙️', label:'Capacity',           step:'s2b',  show: q => true },
+  { icon:'👥', label:'Access rules',       step:'s3',   show: q => true },
+  { icon:'🎫', label:'Admission',          step:'s4',   show: q => true },
+  { icon:'⏱',  label:'Time transparency',  step:'s5',   show: q => true },
+  { icon:'🔔', label:'Notifications',      step:'s6',   show: q => true },
+  { icon:'✅', label:'Verification',       step:'s7',   show: q => true },
+  { icon:'📅', label:'Calendar sync',      step:'s8',   show: q => q.archetype === 'B' },
+  { icon:'🌊', label:'Wave config',        step:'s2b',  show: q => q.archetype === 'C' },
+  { icon:'🔄', label:'Release config',     step:'s2b',  show: q => q.archetype === 'D' },
+  { icon:'👤', label:'Operators',          step:'s_op', show: q => true },
+  { icon:'🎨', label:'Look & feel',        step:'s9',   show: q => true },
+];
+
+/* ═══════════════════════════════════
+   STATE
+══════════════════════════════════════ */
+let allQueues = [];
+const filters = { search:'', status:'all', formula:'all', arch:'all' };
+
+/* ═══════════════════════════════════
+   HELPERS
+══════════════════════════════════════ */
+function esc(s){
+  const d = document.createElement('div');
+  d.textContent = String(s ?? '');
+  return d.innerHTML;
+}
+function editUrl(id, step){
+  return `${EDIT_PAGE_12}?edit=${encodeURIComponent(id)}&step=${encodeURIComponent(step || 's0')}`;
+}
+function copyQUrl(id){
+  return `${EDIT_PAGE}?copy=${encodeURIComponent(id)}`;
+}
+
+let _toastTimer;
+function toast(msg, ms=2400){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+}
+
+function setErr(msg){
+  const el = document.getElementById('errbar');
+  el.textContent = msg || '';
+  el.classList.toggle('on', !!msg);
+}
+
+async function apiFetch(url, opts={}){
+  const res  = await fetch(url, { credentials:'same-origin', ...opts });
+  const ct   = res.headers.get('content-type') || '';
+  if (!ct.includes('application/json')){
+    const txt = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status} — expected JSON. ${txt.slice(0,100)}`);
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok)            throw new Error((data && data.error) || `HTTP ${res.status}`);
+  if (data?.ok === false)  throw new Error(data.error || 'API error');
+  return data ?? { ok:true };
+}
+
+/* ═══════════════════════════════════
+   RENDER
+══════════════════════════════════════ */
+function renderQueues(){
+  const list = document.getElementById('queueList');
+
+  let items = allQueues.slice();
+
+  if (filters.search){
+    const t = filters.search.toLowerCase();
+    items = items.filter(q =>
+      (q.name||'').toLowerCase().includes(t) ||
+      (q.venue_name||'').toLowerCase().includes(t)
+    );
+  }
+  if (filters.status  === 'active')   items = items.filter(q =>  !!q.is_active);
+  if (filters.status  === 'inactive') items = items.filter(q => !q.is_active);
+  if (filters.formula !== 'all')      items = items.filter(q => q.booking_formula === filters.formula);
+  if (filters.arch    !== 'all')      items = items.filter(q => q.archetype       === filters.arch);
+
+  document.getElementById('countLabel').textContent =
+    `${items.length} of ${allQueues.length} queue${allQueues.length !== 1 ? 's' : ''}`;
+
+  if (!items.length){
+    list.innerHTML = `
+      <div class="empty">
+        <span class="empty-icon">📭</span>
+        <div class="empty-title">${allQueues.length ? 'No queues match the filters.' : 'No queues yet.'}</div>
+        <div class="empty-desc">${allQueues.length ? 'Try adjusting the filters above.' : 'Create your first virtual queue to get started.'}</div>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = items.map(capsuleHTML).join('');
+  items.forEach(q => wireCapsule(q));
+}
+
+/* ═══════════════════════════════════
+   CAPSULE HTML
+══════════════════════════════════════ */
+function capsuleHTML(q){
+  const arch    = q.archetype || '';
+  const formula = q.booking_formula || 'LIVE_ONLY';
+  const active  = !!q.is_active;
+  const color   = ARCH_COLOR[arch] || '#e2e0ea';
+  const isDraft = q.status === 'draft';
+  const isWip   = isDraft || q.queue_status === 'wip';
+  const statusClass = isWip ? 'status-wip' : 'status-released';
+  const statusLabel = isWip ? 'WIP' : 'Released';
+
+  /* Parse JSON columns from DB */
+  let channels = q.channels || [];
+  if (typeof q.channels_json === 'string') try { channels = JSON.parse(q.channels_json); } catch(_){}
+  else if (Array.isArray(q.channels_json)) channels = q.channels_json;
+
+  let calling = q.calling || {};
+  if (typeof q.calling_json === 'string') try { calling = JSON.parse(q.calling_json); } catch(_){}
+  else if (q.calling_json && typeof q.calling_json === 'object') calling = q.calling_json;
+
+  /* sub line */
+  const subParts = [];
+  if (q.venue_name)     subParts.push(`<strong>${esc(q.venue_name)}</strong>`);
+  if (q.timezone)       subParts.push(`🕐 ${esc(q.timezone)}`);
+  if (q.home_region)    subParts.push(`🌍 ${esc(q.home_region)}`);
+  const sub = subParts.join(' &nbsp;·&nbsp; ');
+
+  /* formula tag class */
+  const fTag   = FORMULA_TAG[formula] || '';
+  const fLabel = FORMULA_LABEL[formula] || formula;
+
+  /* call logic label */
+  const callLabel = CALL_LOGIC[calling?.live] || calling?.live || '—';
+
+  /* ──── EDIT PANEL ──── */
+  const editItems = EDIT_ITEMS
+    .filter(ei => ei.show(q))
+    .map(ei => `<a class="edit-btn" href="${editUrl(q.id, ei.step)}" title="Edit: ${ei.label}">
+      <span class="eb-icon">${ei.icon}</span><span class="eb-label">${ei.label}</span>
+    </a>`).join('');
+
+  /* ──── MODULE LINKS (contextual) ──── */
+  const mods = [];
+  if (q.identity_policy === 'LISTED')
+    mods.push({ icon:'👥', label:'Listed visitors', action:'allowlist' });
+  if (q.cal_sync)
+    mods.push({ icon:'🔄', label:'Cal sync config', action:'calsync' });
+  if (channels.length && channels.some(c => ['sms','wa','email'].includes(c)))
+    mods.push({ icon:'📨', label:'Comms channel',   action:'comms' });
+  if (q.payment_gate)
+    mods.push({ icon:'💳', label:'Payment gate',    action:'payment' });
+
+  const modsHTML = mods.length ? `
+    <hr class="cap-sep">
+    <div class="mod-links">
+      ${mods.map(m => `<button class="mod-link" data-action="${m.action}" data-id="${q.id}">
+        <span class="ml-icon">${m.icon}</span>${m.label}
+      </button>`).join('')}
+    </div>` : '';
+
+  /* ──── BOTTOM ACTIONS ──── */
+  const actionsHTML = isDraft ? `
+    <div class="cap-actions" id="cap-act-${q.id}" style="${q.wallpaper_data?`background-image:linear-gradient(rgba(10,6,30,.52),rgba(10,6,30,.52)),url(${JSON.stringify(q.wallpaper_data)});`:''}">
+      <a class="resume-btn" href="${EDIT_PAGE}?edit=${encodeURIComponent(q.id)}&draft=true&step=${encodeURIComponent(q.draft_step||'s0')}">
+        ▶ Resume setup
+      </a>
+    </div>` : `
+    <div class="cap-actions" id="cap-act-${q.id}" style="${q.wallpaper_data?`background-image:linear-gradient(rgba(10,6,30,.52),rgba(10,6,30,.52)),url(${JSON.stringify(q.wallpaper_data)});`:''}">
+      <a class="act-btn dup" href="${copyQUrl(q.id)}" title="Duplicate queue">⧉ Duplicate</a>
+      <button class="act-btn" type="button" data-action="scan" data-id="${q.id}" title="Open scan page">📷 Scan</button>
+      <button class="act-btn" type="button" data-action="qr" data-id="${q.id}" title="View QR code">📱 QR</button>
+      <button class="act-btn" type="button" data-action="calview" data-id="${q.id}" title="Calendar view">📅 Calendar</button>
+      <div class="act-right">
+        <span class="tog-label" style="${q.wallpaper_data?'color:#fff;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.5)':''}">${active ? 'Active' : 'Inactive'}</span>
+        <label class="togsw" title="${active?'Deactivate':'Activate'}">
+          <input type="checkbox" class="atog" data-id="${q.id}" ${active?'checked':''}>
+          <span class="togtr"></span>
+        </label>
+      </div>
+    </div>`;
+
+  /* ──── DELETE PANEL ──── */
+  const deleteHTML = `
+    <span class="del-icon">🗑</span>
+    <div class="del-title">Delete this queue?</div>
+    <div class="del-desc">This will permanently remove "${esc(q.name || 'Unnamed')}" and all associated data.</div>
+    <button class="del-confirm" data-id="${q.id}" data-name="${esc(q.name||'')}">Confirm delete</button>`;
+
+  /* ──── ASSEMBLE ──── */
+  return `
+<div class="capsule-wrap${isDraft?' draft':''}" id="cap-${q.id}" style="--arch-color:${color}">
+  <span class="swipe-hint left">‹</span>
+  <span class="swipe-hint right">›</span>
+  <div class="capsule-track" data-id="${q.id}">
+
+    <!-- EDIT PANEL -->
+    <div class="cap-edit">
+      <div class="edit-title">Quick edit</div>
+      <div class="edit-scroll">
+        ${editItems}
+      </div>
+    </div>
+
+    <!-- CORE -->
+    <div class="cap-core ${statusClass}">
+      <div class="core-pad">
+        <span class="core-status ${isWip?'wip':'released'}">${statusLabel}</span>
+        <div class="imm-name">${esc(q.name || 'Unnamed queue')}</div>
+        ${sub ? `<div class="imm-sub">${sub}</div>` : ''}
+        <div class="imm-chips">
+          ${arch ? `<span class="ichip arch arch-${arch}">${arch} — ${ARCH_LABEL[arch]||arch}</span>` : ''}
+          <span class="ichip formula ${fTag}">${fLabel}</span>
+          <span class="ichip mode">🎫 ${esc(q.admission_mode || 'Scan')}</span>
+          <span class="ichip mode">📞 ${callLabel}</span>
+        </div>
+      </div>
+      ${modsHTML}
+      ${actionsHTML}
+    </div>
+
+    <!-- DELETE PANEL -->
+    <div class="cap-delete">${deleteHTML}</div>
+
+  </div>
+</div>`;
+}
+
+/* ═══════════════════════════════════
+   WIRE CAPSULE — swipe + actions
+══════════════════════════════════════ */
+function wireCapsule(q){
+  const wrap  = document.getElementById(`cap-${q.id}`);
+  if (!wrap) return;
+  const track = wrap.querySelector('.capsule-track');
+  const core  = wrap.querySelector('.cap-core');
+
+  /* ── Set core width to match wrapper ── */
+  function setCoreWidth(){
+    const w = wrap.offsetWidth;
+    core.style.setProperty('--core-w', w + 'px');
+  }
+  setCoreWidth();
+  const ro = new ResizeObserver(setCoreWidth);
+  ro.observe(wrap);
+
+  /* ── Swipe / drag logic ── */
+  let panelW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--panel-w')) || 260;
+  let startX = 0, startY = 0, currentX = 0, isDragging = false, isScrolling = null;
+  let openState = 'center'; // 'center' | 'edit' | 'delete'
+
+  function getBaseOffset(){
+    if (openState === 'edit')   return 0;
+    if (openState === 'delete') return -2 * panelW;
+    return -panelW; // center
+  }
+
+  function snapTo(state){
+    openState = state;
+    track.classList.remove('dragging');
+    track.style.transform = `translateX(${getBaseOffset()}px)`;
+  }
+
+  function onStart(clientX, clientY, target){
+    if (target.closest('a,button,input,label,.togsw')) return;
+    isDragging = true;
+    isScrolling = null;
+    startX = clientX;
+    startY = clientY;
+    currentX = 0;
+    panelW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--panel-w')) || 260;
+    track.classList.add('dragging');
+  }
+  function onMove(clientX, clientY){
+    if (!isDragging) return;
+    const dx = clientX - startX;
+    const dy = clientY - startY;
+    /* determine intent on first significant move */
+    if (isScrolling === null && (Math.abs(dx) > 6 || Math.abs(dy) > 6)){
+      isScrolling = Math.abs(dy) > Math.abs(dx) * 1.2;
+    }
+    if (isScrolling) return; // let page scroll
+    currentX = dx;
+    const base = getBaseOffset();
+    let tx = base + currentX;
+    tx = Math.max(-2 * panelW, Math.min(0, tx));
+    track.style.transform = `translateX(${tx}px)`;
+  }
+  function onEnd(){
+    if (!isDragging) return;
+    isDragging = false;
+    if (isScrolling){ track.classList.remove('dragging'); return; }
+    const threshold = panelW * 0.25;
+    if (openState === 'center'){
+      if (currentX > threshold)        snapTo('edit');
+      else if (currentX < -threshold)  snapTo('delete');
+      else                             snapTo('center');
+    } else if (openState === 'edit'){
+      if (currentX < -threshold)       snapTo('center');
+      else                             snapTo('edit');
+    } else if (openState === 'delete'){
+      if (currentX > threshold)        snapTo('center');
+      else                             snapTo('delete');
+    }
+  }
+
+  /* Touch events */
+  track.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    onStart(t.clientX, t.clientY, e.target);
+  }, {passive:true});
+  track.addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    if (isDragging && isScrolling === false) e.preventDefault();
+    onMove(t.clientX, t.clientY);
+  }, {passive:false});
+  track.addEventListener('touchend',    onEnd);
+  track.addEventListener('touchcancel', onEnd);
+
+  /* Mouse events */
+  track.addEventListener('mousedown', e => {
+    onStart(e.clientX, e.clientY, e.target);
+    if (isDragging) e.preventDefault();
+  });
+  const onMouseMove = e => { if(isDragging){ e.preventDefault(); onMove(e.clientX, e.clientY); }};
+  const onMouseUp   = () => { if(isDragging) onEnd(); };
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup',   onMouseUp);
+
+  /* ── Active toggle ── */
+  const atog = wrap.querySelector('.atog');
+  atog?.addEventListener('change', () => handleToggle(q.id, atog.checked));
+
+  /* ── Delegated action buttons ── */
+  wrap.addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const bid    = btn.dataset.id;
+    if (action === 'scan')      openScanPage(bid);
+    if (action === 'qr')        openQrModal(bid);
+    if (action === 'allowlist') openAllowlist(bid);
+    if (action === 'calview')   openCalView(bid);
+    if (action === 'calsync')   openCalSync(bid);
+    if (action === 'comms')     openComms(bid);
+    if (action === 'payment')   openPayment(bid);
+  });
+
+  /* ── Delete confirm (inline in panel) ── */
+  wrap.querySelector('.del-confirm')?.addEventListener('click', async (e) => {
+    const bid   = e.target.dataset.id;
+    if (!bid) return;
+    try {
+      await apiFetch(`/api/intime/queues/${encodeURIComponent(bid)}`, {
+        method  : 'DELETE',
+        headers : { Accept:'application/json' },
+      });
+      allQueues = allQueues.filter(x => String(x.id) !== String(bid));
+      renderQueues();
+      toast('Queue deleted.');
+    } catch (err) {
+      toast('Error: ' + err.message);
+      snapTo('center');
+    }
+  });
+}
+
+/* ═══════════════════════════════════
+   LIMIT MODAL
+══════════════════════════════════════ */
+function showLimitModal(title, bodyHtml){
+  document.getElementById('limitTitle').innerHTML = '⚠️ ' + title;
+  document.getElementById('limitBody').innerHTML  = bodyHtml;
+  document.getElementById('limitOverlay').classList.add('on');
+}
+
+/* ═══════════════════════════════════
+   LIMITS
+══════════════════════════════════════ */
+const MAX_QUEUES = 12;
+const MAX_ACTIVE = 3;
+
+function activeCount(){
+  return allQueues.filter(q => !!q.is_active).length;
+}
+
+/* ═══════════════════════════════════
+   ACTIVE TOGGLE
+══════════════════════════════════════ */
+async function handleToggle(id, newActive){
+  const wrap  = document.getElementById(`cap-${id}`);
+  const label = wrap?.querySelector('.tog-label');
+  const atog  = wrap?.querySelector('.atog');
+
+  /* Guard: cap active queues at MAX_ACTIVE */
+  if (newActive && activeCount() >= MAX_ACTIVE){
+    /* Revert the checkbox immediately */
+    if (atog) atog.checked = false;
+    showLimitModal(
+      'Maximum active queues reached',
+      `You can have at most <strong>${MAX_ACTIVE} simultaneous active queues</strong>. ` +
+      `Please deactivate another queue before activating this one.`
+    );
+    return;
+  }
+
+  function applyVisual(a){
+    if (label) label.textContent = a ? 'Active' : 'Inactive';
+  }
+  applyVisual(newActive);
+
+  try {
+    /* Use the standard queue PATCH endpoint — works without a dedicated /status route */
+    await apiFetch(`/api/intime/queues/${encodeURIComponent(id)}`, {
+      method  : 'PATCH',
+      headers : { 'Content-Type':'application/json', Accept:'application/json' },
+      body    : JSON.stringify({ status: newActive ? 'active' : 'inactive' }),
+    });
+    const q = allQueues.find(q => String(q.id) === String(id));
+    if (q) q.is_active = !!newActive;
+    toast(newActive ? 'Queue activated.' : 'Queue deactivated.');
+  } catch (err) {
+    applyVisual(!newActive);
+    if (atog) atog.checked = !newActive;
+    toast('Error: ' + err.message);
+  }
+}
+
+/* ═══════════════════════════════════
+   SCAN PAGE
+══════════════════════════════════════ */
+function openScanPage(id){
+  window.location.href = `page 3.html?queue=${encodeURIComponent(id)}`;
+}
+
+/* ═══════════════════════════════════
+   QR MODAL (with print)
+══════════════════════════════════════ */
+let _qrCurrentLabel = '';
+function openQrModal(id){
+  const q = allQueues.find(q => String(q.id) === String(id));
+  _qrCurrentLabel = q ? (q.name || 'Queue') : id;
+  document.getElementById('qrModalLabel').textContent = _qrCurrentLabel;
+  document.getElementById('qrImg').src = `/api/intime/queues/${encodeURIComponent(id)}/qr?ts=${Date.now()}`;
+  document.getElementById('qrModal').style.display = 'flex';
+}
+document.getElementById('qrCloseBtn').addEventListener('click', () => {
+  document.getElementById('qrModal').style.display = 'none';
+  document.getElementById('qrImg').src = '';
+});
+document.getElementById('qrModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('qrModal')){
+    document.getElementById('qrModal').style.display = 'none';
+    document.getElementById('qrImg').src = '';
+  }
+});
+document.getElementById('qrPrintBtn').addEventListener('click', () => {
+  const img = document.getElementById('qrImg');
+  if (!img.src || img.src.endsWith('=')) return;
+  const win = window.open('', '_blank', 'width=420,height=520');
+  win.document.synchsynchwrisynchsynchte(`<!DOCTYPE html><html><head><title>QR — ${esc(_qrCurrentLabel)}</title>
+    <style>body{margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:100vh;font-family:'DM Sans',sans-serif;text-align:center}
+    img{max-width:280px;margin:24px 0}h2{font-size:18px;margin:0}p{color:#666;font-size:13px}</style></head>
+    <body><h2>${esc(_qrCurrentLabel)}</h2><img src="${img.src}" alt="QR code">
+    <p>Scan to join queue</p>
+    <script>window.onload=()=>{window.print();}<\/script></body></html>`);
+  win.document.close();
+});
+
+/* ═══════════════════════════════════
+   MODULE LINKS
+══════════════════════════════════════ */
+function openAllowlist(id){
+  const q = allQueues.find(q => String(q.id) === String(id));
+  document.getElementById('vdrawer-qname').textContent = q ? (q.name || 'Queue') : id;
+  const iframe = document.getElementById('vdrawer-iframe');
+  iframe.src = `functionalities/list visitors.html?queue=${encodeURIComponent(id)}`;
+  document.getElementById('vdrawer-overlay').classList.add('on');
+  requestAnimationFrame(() => document.getElementById('vdrawer').classList.add('open'));
+}
+
+window.closeVisitorDrawer = function(){
+  const drawer  = document.getElementById('vdrawer');
+  const overlay = document.getElementById('vdrawer-overlay');
+  if (!drawer.classList.contains('open')) return;
+  drawer.classList.remove('open');
+  overlay.classList.remove('on');
+  // Auto-reload queue list so any changes are reflected
+  loadQueues();
+  // Clear iframe after transition so it stops background requests
+  setTimeout(() => { document.getElementById('vdrawer-iframe').src = ''; }, 360);
+};
+function openCalView(id){
+  window.location.href = `/modules/In-Time/manage/functionalities/calendar view.html?queue=${encodeURIComponent(id)}`;
+}
+function openCalSync(id){
+  window.location.href = `/modules/In-Time/manage/functionalities/calendar sync.html?queue=${encodeURIComponent(id)}`;
+}
+function openComms(id){
+  window.location.href = `/modules/In-Time/manage/functionalities/notifications.html?queue=${encodeURIComponent(id)}`;
+}
+function openPayment(id){
+  window.location.href = `/modules/In-Time/manage/functionalities/payment gates.html?queue=${encodeURIComponent(id)}`;
+}
+
+/* ═══════════════════════════════════
+   LOAD QUEUES
+══════════════════════════════════════ */
+async function loadQueues(){
+  document.getElementById('countLabel').textContent = 'Loading…';
+  setErr('');
+  try {
+    const data = await apiFetch('/api/intime/queues', {
+      method  : 'GET',
+      headers : { Accept:'application/json' },
+    });
+    allQueues = Array.isArray(data?.queues) ? data.queues : (Array.isArray(data) ? data : []);
+    renderQueues();
+    document.getElementById('refreshLabel').textContent =
+      'Updated ' + new Date().toLocaleTimeString();
+  } catch (err) {
+    document.getElementById('countLabel').textContent = 'Error loading.';
+    setErr(err.message || 'Could not load queues.');
+  }
+}
+
+/* ═══════════════════════════════════
+   FILTERS
+══════════════════════════════════════ */
+document.getElementById('searchInput').addEventListener('input', e => { filters.search  = e.target.value.trim(); renderQueues(); });
+document.getElementById('statusSel').addEventListener('change',  e => { filters.status  = e.target.value;        renderQueues(); });
+document.getElementById('modeSel').addEventListener('change',    e => { filters.formula = e.target.value;        renderQueues(); });
+document.getElementById('archSel').addEventListener('change',    e => { filters.arch    = e.target.value;        renderQueues(); });
+document.getElementById('refreshBtn').addEventListener('click',  () => loadQueues());
+document.getElementById('newQueueBtn').addEventListener('click', () => {
+  if (allQueues.length >= MAX_QUEUES){
+    showLimitModal(
+      'Queue limit reached',
+      `You have reached the maximum of <strong>${MAX_QUEUES} virtual queues</strong>. ` +
+      `Please delete an existing queue before creating a new one.`
+    );
+    return;
+  }
+  window.location.href = EDIT_PAGE;
+});
+
+/* ═══════════════════════════════════
+   BOOT
+══════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.Drawer?.mount) window.Drawer.mount({ mode:'host' });
+  if (window.FAB?.mount)    window.FAB.mount({
+    useTopBand:true, useBottomBand:true,
+    home:  { title:'Home',     label:'🏠', onClick: () => window.Drawer?.open?.() },
+    config:{ title:'Page style', label:'⚙️', onClick: () => openStylePanel() },
+    onBack: () => { if (document.getElementById('vdrawer')?.classList.contains('open')){ window.closeVisitorDrawer(); } else { history.length > 1 ? history.back() : location.href = '/pages/host/dashboard.html'; } },
+  });
+  loadQueues();
+
+  // Wire drawer close via proper module-scope listeners
+  document.getElementById('vdrawer-overlay')?.addEventListener('click', () => window.closeVisitorDrawer());
+  document.getElementById('vdrawer-close-btn')?.addEventListener('click', () => window.closeVisitorDrawer());
+
+  // Close drawer on Escape key
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') window.closeVisitorDrawer();
+  });
+});
+/* ═══════════════════════════════════
+   PAGE-LEVEL SWIPE NAVIGATION
+   Swipe left  → page 3.html  (Scan)
+   Swipe right → main.html    (Main)
+══════════════════════════════════════ */
+(function(){
+  const THRESHOLD = 60;   // min horizontal distance to trigger
+  const MAX_VERT  = 80;   // max vertical drift allowed
+  let sx = null, sy = null;
+
+  document.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+  }, { passive: true });
+
+  document.addEventListener('touchend', e => {
+    if (sx === null) return;
+    const dx = e.changedTouches[0].clientX - sx;
+    const dy = Math.abs(e.changedTouches[0].clientY - sy);
+    sx = sy = null;
+    if (dy > MAX_VERT) return;           // too much vertical drift
+    if (Math.abs(dx) < THRESHOLD) return; // too short
+    if (dx < 0) {
+      window.location.href = 'page 3.html'; // swipe left → Scan
+    } else {
+      window.location.href = '../main.html'; // swipe right → Main
+    }
+  }, { passive: true });
+})();
+
+</script>
+
+
+<!-- Limit modal -->
+<div class="limit-overlay" id="limitOverlay" onclick="this.classList.remove('on')">
+  <div class="limit-box" onclick="event.stopPropagation()">
+    <h3 id="limitTitle">⚠️ Limit reached</h3>
+    <p id="limitBody"></p>
+    <button class="limit-close" onclick="document.getElementById('limitOverlay').classList.remove('on')">Got it</button>
+  </div>
+</div>
+
+
+<!-- Visitor allowlist drawer -->
+<div class="vdrawer-overlay" id="vdrawer-overlay"></div>
+<div class="vdrawer" id="vdrawer">
+  <div class="vdrawer-hd">
+    <span class="vdrawer-title">👥 Listed visitors — <span id="vdrawer-qname"></span></span>
+    <button class="vdrawer-close" id="vdrawer-close-btn" title="Close">✕</button>
+  </div>
+  <iframe id="vdrawer-iframe" src="" title="Visitor list manager"></iframe>
+</div>
+
+</body>
+</html>

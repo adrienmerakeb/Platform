@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin | WanderPal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg: #0f1224;
+      --glass: rgba(255,255,255,.08);
+      --border: rgba(255,255,255,.35);
+      --text: #f4f4f4;
+      --muted: #cfd3ff;
+      --accent: #ffffff;
+      --danger: #ff4d4f;
+      --warn: #ffb020;
+      --ok: #68d391;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;min-height:100vh;display:flex;flex-direction:column;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+      color:var(--text);
+      background: url("/wallpapers/test - hills.jpg") center/cover fixed, var(--bg);
+    }
+    header{
+      display:flex;justify-content:space-between;align-items:center;gap:16px;
+      padding:14px 18px; position:sticky; top:0; z-index:50;
+      background: linear-gradient(to bottom, rgba(0,0,0,.45), rgba(0,0,0,0));
+    }
+    .brand{display:flex;align-items:center;gap:10px}
+    .logo{width:32px;height:32px;border-radius:9px;background:#fff;opacity:.9}
+    .title{margin:0;font-weight:700;letter-spacing:.3px}
+    .btn{
+      border:1px solid var(--border); background:var(--glass); color:var(--text);
+      padding:8px 12px; border-radius:10px; cursor:pointer;
+    }
+    .btn.small{padding:6px 10px;font-size:12px;border-radius:8px}
+    .btn.primary{background:#fff;color:#111;border-color:#fff}
+    .btn.ghost{background:transparent}
+    .btn.danger{border-color:var(--danger); color:#fff; background:rgba(255,77,79,.18)}
+    .btn.warn{border-color:var(--warn);  color:#fff; background:rgba(255,176,32,.18)}
+    .btn.ok{  border-color:var(--ok);    color:#111; background:rgba(104,211,145,.26)}
+    .wrap{width:min(1800px, 94vw); margin:18px auto 36px; }
+    .card{
+      background:transparent; border:2px solid rgba(255,255,255,.55);
+      backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%);
+      border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,.35);
+    }
+    .pad{padding:18px}
+    .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+    .field{display:grid; gap:6px}
+    input[type="text"], input[type="password"], input[type="number"], select{
+      width:100%; padding:10px 10px;
+      border:none; border-bottom:3px solid rgba(255,255,255,.95);
+      background:transparent; color:#fff; outline:none;
+    }
+    select{border-radius:8px;border-bottom:none;background:rgba(0,0,0,.28);}
+    .muted{color:var(--muted)}
+    .tabs{display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 6px}
+    .tab{
+      border:1px solid var(--border); background:var(--glass);
+      padding:8px 12px; border-radius:999px; cursor:pointer; user-select:none;
+    }
+    .tab.active{background:#fff;color:#111;border-color:#fff}
+
+    /* Top-level tabs (Users / Services) */
+    .top-tabs{margin-top:4px;margin-bottom:10px}
+    .top-tab{
+      border:1px solid var(--border); background:var(--glass);
+      padding:8px 14px; border-radius:999px; cursor:pointer; user-select:none;
+      font-weight:600;
+    }
+    .top-tab.active{background:#fff;color:#111;border-color:#fff}
+
+    .toolbar{
+      display:flex; gap:10px; align-items:center; justify-content:space-between; margin:8px 0 12px; flex-wrap:wrap;
+    }
+    .left-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .search{
+      border:1px solid var(--border); background:var(--glass);
+      border-radius:10px; padding:8px 10px; color:#fff; width:260px;
+    }
+    table{
+      width:100%; border-collapse:separate; border-spacing:0;
+      overflow:hidden; border-radius:12px; background:rgba(255,255,255,.04);
+    }
+    thead th{
+      text-align:left; font-weight:700; padding:10px 12px; background:rgba(255,255,255,.09);
+      border-bottom:1px solid var(--border); cursor:pointer; user-select:none; white-space:nowrap;
+    }
+    tbody td{ padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.12); vertical-align:top }
+    tbody tr:hover{ background:rgba(255,255,255,.06) }
+    .pill{
+      display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px;
+      background:#fff; color:#111; margin:1px 3px 1px 0
+    }
+    .hidden{display:none !important}
+    .center{display:grid; place-items:center; min-height:50vh}
+    .footnote{opacity:.8; font-size:12px; margin-top:8px}
+    .badge-suspended{
+      display:inline-block;padding:2px 8px;border-radius:999px;
+      background:rgba(255,77,79,.18);border:1px solid var(--danger);
+      color:#fff;font-size:12px
+    }
+    .badge-active{
+      display:inline-block;padding:2px 8px;border-radius:999px;
+      background:rgba(104,211,145,.26);border:1px solid var(--ok);
+      color:#111;font-size:12px
+    }
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+
+    /* modal (assign) */
+    .modal.hidden { display:none; }
+    .modal {
+      position:fixed; inset:0; background:rgba(0,0,0,.45);
+      display:flex; align-items:center; justify-content:center;
+    }
+    .modal-content {
+      padding:20px; border-radius:14px; min-width:300px;
+      background:rgba(0,0,0,.6);
+      border:2px solid rgba(255,255,255,.55);
+      backdrop-filter: blur(12px);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo" aria-hidden="true"></div>
+      <h1 class="title">WanderPal — Admin</h1>
+    </div>
+    <div>
+      <button id="btnLogout" class="btn hidden">Logout</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- LOGIN CARD -->
+    <section id="loginCard" class="card">
+      <div class="pad">
+        <h2 style="margin:6px 0 12px">Admin Login</h2>
+        <p class="muted" style="margin:0 0 14px">
+          Use credentials configured in <code>.env</code>
+          (<code>ADMIN_USER</code> / <code>ADMIN_PASSWORD</code>).
+        </p>
+        <form id="loginForm" class="grid-2">
+          <div class="field">
+            <label>Username</label>
+            <input id="adminUser" type="text" placeholder="admin" required />
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input id="adminPass" type="password" placeholder="••••••••" required />
+          </div>
+          <div></div>
+          <div style="display:flex; gap:8px; justify-content:flex-end">
+            <button type="submit" class="btn primary">Login</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- DASHBOARD CARD -->
+    <section id="dashCard" class="card hidden" aria-live="polite">
+      <div class="pad">
+        <!-- Top-level nav: Users vs Services -->
+        <div class="tabs top-tabs" role="tablist">
+          <div class="top-tab active" data-main="users" role="tab" aria-selected="true">Users</div>
+          <div class="top-tab" data-main="services" role="tab" aria-selected="false">Services</div>
+        </div>
+
+        <!-- USERS PANE -->
+        <section id="usersPane">
+          <div class="tabs" role="tablist">
+            <div class="tab active" data-tab="visitors" role="tab" aria-selected="true">Visitors</div>
+            <div class="tab" data-tab="hosts" role="tab" aria-selected="false">Hosts</div>
+            <div class="tab" data-tab="partners" role="tab" aria-selected="false">Partners</div>
+          </div>
+
+          <!-- Toolbar -->
+          <div class="toolbar">
+            <div class="left-tools">
+              <input id="searchBox" class="search" type="text" placeholder="Search in table…" />
+              <button id="btnReload" class="btn">Reload</button>
+              <!-- DEV ONLY: Shows bcrypt hashes and uses /api/admin/dev-users -->
+              <button id="btnDevHashes" class="btn warn" title="DEV ONLY — remove for production">
+                DEV: Show hashes
+              </button>
+            </div>
+            <div class="muted" id="rowCount">0 items</div>
+          </div>
+
+          <!-- Tables -->
+          <div id="tableVisitors"></div>
+          <div id="tableHosts" class="hidden"></div>
+          <div id="tablePartners" class="hidden"></div>
+
+          <div class="footnote">
+            Tip: click a header to sort. Search filters only the current tab.
+            <br />
+            <strong>Note:</strong> “Suspend/Restore/Delete” affect accounts immediately.
+            Suspended accounts cannot log in until restored.
+          </div>
+        </section>
+
+        <!-- SERVICES PANE -->
+        <section id="servicesPane" class="hidden">
+          <h2 style="margin:10px 0 10px;">Service Management</h2>
+
+          <div class="card" style="padding:20px;margin-top:6px;margin-bottom:16px;">
+            <button id="scan-modules-btn" class="btn">Scan /public/modules for new services</button>
+            <div id="scan-result" style="margin-top:10px;font-size:14px;"></div>
+          </div>
+
+          <div class="card" style="padding:20px;margin-top:6px;">
+            <table style="width:100%;border-collapse:collapse;" id="services-table">
+              <thead>
+                <tr>
+                  <th style="text-align:left;">Key</th>
+                  <th style="text-align:left;">Display Name</th>
+                  <th>Status</th>
+                  <th>Order</th>
+                  <th>Icon Base</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+            <div class="footnote">
+              “Assign” links a service to a given account (role + numeric ID).  
+              Scan will discover folders under <code>/public/modules</code> (back-end can upsert them into <code>services</code>).
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <div id="loading" class="center hidden"><div>Loading…</div></div>
+
+    <!-- Assign popup -->
+    <div id="assign-popup" class="modal hidden">
+      <div class="modal-content">
+        <h3 style="margin-top:0">Assign Service</h3>
+        <label>Role</label>
+        <select id="assign-role" style="width:100%;margin:6px 0 10px">
+          <option value="visitor">Visitor</option>
+          <option value="guide">Guide</option>
+          <option value="host">Host</option>
+          <option value="partner">Partner</option>
+        </select>
+
+        <label>Account ID</label>
+        <input id="assign-id" type="number" placeholder="Numeric account ID"
+               class="search" style="width:100%;margin:6px 0 12px">
+
+        <div style="display:flex; gap:8px; justify-content:flex-end">
+          <button id="assign-cancel" class="btn">Cancel</button>
+          <button id="assign-confirm" class="btn primary">Assign</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- USERS JS -->
+  <script>
+    // ------- UI refs -------
+    const loginCard   = document.getElementById('loginCard');
+    const dashCard    = document.getElementById('dashCard');
+    const btnLogout   = document.getElementById('btnLogout');
+    const loginForm   = document.getElementById('loginForm');
+    const adminUser   = document.getElementById('adminUser');
+    const adminPass   = document.getElementById('adminPass');
+    const searchBox   = document.getElementById('searchBox');
+    const rowCount    = document.getElementById('rowCount');
+    const btnReload   = document.getElementById('btnReload');
+    const btnDevHashes= document.getElementById('btnDevHashes');
+
+    const usersPane   = document.getElementById('usersPane');
+    const servicesPane= document.getElementById('servicesPane');
+    const mainTabs    = Array.from(document.querySelectorAll('.top-tab'));
+
+    const tabEls = Array.from(document.querySelectorAll('.tab')); // Visitors/Hosts/Partners tabs
+    const panes = {
+      visitors: document.getElementById('tableVisitors'),
+      hosts: document.getElementById('tableHosts'),
+      partners: document.getElementById('tablePartners')
+    };
+
+    // ------- State -------
+    let data = { visitors: [], hosts: [], partners: [] };
+    let activeTab = 'visitors';
+    let activeMain = 'users';
+    let sortState = {
+      visitors: { key:null, asc:true, showHash:false },
+      hosts:    { key:null, asc:true, showHash:false },
+      partners: { key:null, asc:true, showHash:false }
+    };
+    let devMode = false; // toggled by DEV button; shows password_hash and uses /api/admin/dev-users
+
+    // ------- Helpers -------
+    function show(el){ el.classList.remove('hidden'); }
+    function hide(el){ el.classList.add('hidden'); }
+    function setSessionUI(isLogged){
+      if (isLogged){ hide(loginCard); show(dashCard); show(btnLogout); }
+      else { show(loginCard); hide(dashCard); hide(btnLogout); }
+    }
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // Format services column (CSV or JSON array) into pills
+    function fmtServicesCSV(value){
+      if (!value) return '';
+      let arr = [];
+      if (Array.isArray(value)) arr = value;
+      else if (typeof value === 'string') {
+        try {
+          const maybe = JSON.parse(value);
+          if (Array.isArray(maybe)) arr = maybe;
+          else arr = value.split(',').map(s => s.trim()).filter(Boolean);
+        } catch {
+          arr = value.split(',').map(s => s.trim()).filter(Boolean);
+        }
+      }
+      return arr.map(s => `<span class="pill">${escapeHtml(String(s))}</span>`).join(' ');
+    }
+
+    function statusBadgeSuspended(val){
+      const v = Number(val||0) ? 1 : 0;
+      return v
+        ? `<span class="badge-suspended">Suspended</span>`
+        : `<span class="badge-active">Active</span>`;
+    }
+
+    function buildHeaders(tab){
+      const showHash = sortState[tab].showHash;
+      if (tab === 'visitors') {
+        return [
+          {key:'id', label:'ID'},
+          {key:'name', label:'Name'},
+          {key:'email', label:'Email'},
+          ...(showHash ? [{key:'password_hash', label:'Hash (DEV)'}] : []),
+          {key:'role', label:'Role'},
+          {key:'status', label:'Status'},
+          {key:'services', label:'Services'},
+          {key:'has_guide_profile', label:'Guide?'},
+          {key:'suspended', label:'State'},
+          {key:'created_at', label:'Created'},
+          {key:'_actions', label:'Actions'} // not sortable
+        ];
+      } else if (tab === 'hosts') {
+        return [
+          {key:'id', label:'ID'},
+          {key:'company_name', label:'Company'},
+          {key:'email', label:'Email'},
+          ...(showHash ? [{key:'password_hash', label:'Hash (DEV)'}] : []),
+          {key:'host_type', label:'Sector'},
+          {key:'services', label:'Services'},
+          {key:'website', label:'Website'},
+          {key:'vat_id', label:'VAT/Tax'},
+          {key:'suspended', label:'State'},
+          {key:'created_at', label:'Created'},
+          {key:'_actions', label:'Actions'}
+        ];
+      } else {
+        return [
+          {key:'id', label:'ID'},
+          {key:'company_name', label:'Company'},
+          {key:'email', label:'Email'},
+          ...(showHash ? [{key:'password_hash', label:'Hash (DEV)'}] : []),
+          {key:'services', label:'Services'},
+          {key:'website', label:'Website'},
+          {key:'vat_id', label:'VAT/Tax'},
+          {key:'suspended', label:'State'},
+          {key:'created_at', label:'Created'},
+          {key:'_actions', label:'Actions'}
+        ];
+      }
+    }
+
+    function buildRowCells(tab, r){
+      const showHash = sortState[tab].showHash;
+      if (tab === 'visitors') {
+        return [
+          r.id,
+          escapeHtml(r.name ?? ''),
+          escapeHtml(r.email ?? ''),
+          ...(showHash ? [escapeHtml(r.password_hash ?? '')] : []),
+          r.role ?? '',
+          r.status ?? '',
+          fmtServicesCSV(r.services),
+          r.has_guide_profile ? 'Yes' : 'No',
+          statusBadgeSuspended(r.suspended),
+          r.created_at ?? '',
+          actionButtons('visitor', r)
+        ];
+      } else if (tab === 'hosts') {
+        return [
+          r.id,
+          escapeHtml(r.company_name ?? ''),
+          escapeHtml(r.email ?? ''),
+          ...(showHash ? [escapeHtml(r.password_hash ?? '')] : []),
+          escapeHtml(r.host_type ?? ''),
+          fmtServicesCSV(r.services),
+          escapeHtml(r.website ?? ''),
+          escapeHtml(r.vat_id ?? ''),
+          statusBadgeSuspended(r.suspended),
+          r.created_at ?? '',
+          actionButtons('host', r)
+        ];
+      } else {
+        return [
+          r.id,
+          escapeHtml(r.company_name ?? ''),
+          escapeHtml(r.email ?? ''),
+          ...(showHash ? [escapeHtml(r.password_hash ?? '')] : []),
+          fmtServicesCSV(r.services),
+          escapeHtml(r.website ?? ''),
+          escapeHtml(r.vat_id ?? ''),
+          statusBadgeSuspended(r.suspended),
+          r.created_at ?? '',
+          actionButtons('partner', r)
+        ];
+      }
+    }
+
+    function actionButtons(role, r){
+      const id = r.id;
+      const email = r.email || '';
+      const isSuspended = Number(r.suspended||0) === 1;
+      return `
+        <div class="actions">
+          ${isSuspended
+            ? `<button class="btn small ok" data-action="restore" data-role="${role}" data-id="${id}" data-email="${escapeHtml(email)}">Restore</button>`
+            : `<button class="btn small warn" data-action="suspend" data-role="${role}" data-id="${id}" data-email="${escapeHtml(email)}">Suspend</button>`
+          }
+          <button class="btn small danger" data-action="delete" data-role="${role}" data-id="${id}" data-email="${escapeHtml(email)}">Delete</button>
+        </div>
+      `;
+    }
+
+    function renderTable(tab){
+      const pane = panes[tab];
+      const q = searchBox.value.trim().toLowerCase();
+      const rows = data[tab] || [];
+
+      // Filter
+      const filtered = !q ? rows : rows.filter(r =>
+        Object.values(r).some(v => (v==null?'':String(v)).toLowerCase().includes(q))
+      );
+
+      // Sorting
+      const s = sortState[tab];
+      if (s.key && s.key !== '_actions'){
+        const k = s.key;
+        filtered.sort((a,b)=>{
+          const av = a[k] ?? '';
+          const bv = b[k] ?? '';
+          if (av < bv) return s.asc ? -1 : 1;
+          if (av > bv) return s.asc ?  1 : -1;
+          return 0;
+        });
+      } else {
+        // default sort by created_at desc if present
+        if (filtered.length && 'created_at' in filtered[0]) {
+          filtered.sort((a,b)=> String(b.created_at||'').localeCompare(String(a.created_at||'')));
+        }
+      }
+
+      // Headers
+      const headers = buildHeaders(tab);
+      pane.innerHTML = `
+        <table>
+          <thead><tr>
+            ${headers.map(h => `<th data-key="${h.key}">${h.label}${s.key===h.key ? (s.asc?' ▲':' ▼') : ''}</th>`).join('')}
+          </tr></thead>
+          <tbody>
+            ${filtered.map(r => `<tr>${buildRowCells(tab, r).map(td => `<td>${td}</td>`).join('')}</tr>`).join('')}
+          </tbody>
+        </table>
+      `;
+      rowCount.textContent = `${filtered.length} items`;
+    }
+
+    function renderActive(){
+      Object.entries(panes).forEach(([k,el]) => (k===activeTab ? show(el) : hide(el)));
+      tabEls.forEach(t => {
+        const is = t.dataset.tab === activeTab;
+        t.classList.toggle('active', is);
+        t.setAttribute('aria-selected', is ? 'true' : 'false');
+      });
+      renderTable(activeTab);
+    }
+
+    async function fetchAll(){
+      const r = await fetch('/api/admin/users', { credentials:'include' });
+      if (!r.ok) throw new Error('Not authorized');
+      data = await r.json();
+      normalizeData();
+    }
+
+    async function fetchDev(){
+      const r = await fetch('/api/admin/dev-users', { credentials:'include' });
+      if (!r.ok) throw new Error('Not authorized');
+      data = await r.json();
+      normalizeData(true);
+    }
+
+    function normalizeData(enableHashes=false){
+      (data.visitors||[]).forEach(v => v.has_guide_profile = !!v.has_guide_profile);
+      sortState.visitors.showHash = !!enableHashes;
+      sortState.hosts.showHash    = !!enableHashes;
+      sortState.partners.showHash = !!enableHashes;
+    }
+
+    async function refreshData(){
+      if (devMode) await fetchDev();
+      else await fetchAll();
+    }
+
+    // ------- Event delegation for actions + header sorting -------
+    function bindDelegatesOnce(){
+      document.addEventListener('click', async (e) => {
+        // Row action buttons
+        const btn = e.target.closest('button[data-action]');
+        if (btn) {
+          const action = btn.getAttribute('data-action');    // 'delete' | 'suspend' | 'restore'
+          const role   = btn.getAttribute('data-role');      // 'visitor' | 'host' | 'partner'
+          const id     = btn.getAttribute('data-id');        // numeric id
+          const email  = btn.getAttribute('data-email') || '';
+
+          try{
+            if (action === 'delete') {
+              if (!confirm(`Delete ${role} account ${email || id}? This cannot be undone.`)) return;
+              const r = await fetch('/api/admin/user', {
+                method: 'DELETE',
+                headers: {'Content-Type':'application/json'},
+                credentials:'include',
+                body: JSON.stringify({ role, id })
+              });
+              const j = await r.json().catch(()=>({}));
+              if (!r.ok) throw new Error(j.error || 'Delete failed');
+            } else if (action === 'suspend') {
+              if (!confirm(`Suspend ${role} account ${email || id}?`)) return;
+              const r = await fetch('/api/admin/user/suspend', {
+                method: 'PATCH',
+                headers: {'Content-Type':'application/json'},
+                credentials:'include',
+                body: JSON.stringify({ role, id })
+              });
+              const j = await r.json().catch(()=>({}));
+              if (!r.ok) throw new Error(j.error || 'Suspend failed');
+            } else if (action === 'restore') {
+              const r = await fetch('/api/admin/user/restore', {
+                method: 'PATCH',
+                headers: {'Content-Type':'application/json'},
+                credentials:'include',
+                body: JSON.stringify({ role, id })
+              });
+              const j = await r.json().catch(()=>({}));
+              if (!r.ok) throw new Error(j.error || 'Restore failed');
+            }
+            await refreshData();
+            renderActive();
+          }catch(err){
+            alert(err.message || 'Action failed');
+          }
+          return;
+        }
+
+        // Header sorting (only active pane)
+        const th = e.target.closest('th[data-key]');
+        if (th) {
+          const paneEl = panes[activeTab];
+          if (!paneEl.contains(th)) return;
+          const key = th.getAttribute('data-key');
+          if (!key || key === '_actions') return;
+          const s = sortState[activeTab];
+          if (s.key === key) s.asc = !s.asc; else { s.key = key; s.asc = true; }
+          renderTable(activeTab);
+        }
+      });
+    }
+    bindDelegatesOnce();
+
+    // ------- Top-level tabs (Users / Services) -------
+    function renderMain(){
+      if (activeMain === 'users') {
+        show(usersPane);
+        hide(servicesPane);
+      } else {
+        hide(usersPane);
+        show(servicesPane);
+        // ensure services list is loaded
+        loadServices().catch(()=>{});
+      }
+      mainTabs.forEach(t=>{
+        const is = t.dataset.main === activeMain;
+        t.classList.toggle('active', is);
+        t.setAttribute('aria-selected', is ? 'true':'false');
+      });
+    }
+
+    mainTabs.forEach(t=>{
+      t.addEventListener('click', ()=>{
+        const val = t.dataset.main;
+        if (!val) return;
+        activeMain = val;
+        renderMain();
+      });
+    });
+
+    // ------- Events -------
+    loginForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const payload = { username: adminUser.value.trim(), password: adminPass.value };
+      const r = await fetch('/api/admin/login', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        credentials:'include',
+        body: JSON.stringify(payload)
+      });
+      if (!r.ok) {
+        const msg = (await r.json().catch(()=>({}))).error || 'Login failed';
+        alert(msg);
+        return;
+      }
+      await afterLogin();
+    });
+
+    btnLogout.addEventListener('click', async ()=>{
+      await fetch('/api/admin/logout', { method:'POST', credentials:'include' });
+      setSessionUI(false);
+      panes.visitors.innerHTML = panes.hosts.innerHTML = panes.partners.innerHTML = '';
+      adminPass.value = '';
+      adminUser.focus();
+      devMode = false;
+      sortState.visitors.showHash = sortState.hosts.showHash = sortState.partners.showHash = false;
+    });
+
+    tabEls.forEach(t=>{
+      t.addEventListener('click', ()=>{
+        activeTab = t.dataset.tab;
+        renderActive();
+      });
+    });
+
+    searchBox.addEventListener('input', ()=> renderActive());
+
+    btnReload.addEventListener('click', async ()=>{
+      await refreshData();
+      renderActive();
+    });
+
+    // DEV ONLY – remove this button + server endpoint before production
+    btnDevHashes.addEventListener('click', async ()=>{
+      try{
+        devMode = true;          // enable dev mode
+        await fetchDev();
+        renderActive();
+      }catch(e){
+        alert('DEV endpoint failed: ' + (e.message||''));
+      }
+    });
+
+    async function afterLogin(){
+      try {
+        await fetchAll();
+        setSessionUI(true);
+        activeMain = 'users';
+        activeTab = 'visitors';
+        renderMain();
+        renderActive();
+        await loadServices().catch(()=>{});
+      } catch {
+        setSessionUI(false);
+        alert('Unable to load admin data. Are you logged in?');
+      }
+    }
+
+    // On load: try to auto-load if cookie exists
+    (async ()=>{
+      try {
+        const r = await fetch('/api/admin/users', { credentials:'include' });
+        if (r.ok) {
+          data = await r.json();
+          normalizeData(false);
+          setSessionUI(true);
+          activeMain = 'users';
+          renderMain();
+          renderActive();
+          await loadServices().catch(()=>{});
+        } else {
+          setSessionUI(false);
+        }
+      } catch {
+        setSessionUI(false);
+      }
+    })();
+  </script>
+
+   <!-- SERVICES JS -->
+  <script>
+    async function loadServices() {
+      const tbody = document.querySelector('#services-table tbody');
+      tbody.innerHTML = '<tr><td colspan="6">Loading…</td></tr>';
+
+      let folderKeys = [];
+
+      // 1) Get existing module folders (from /public/modules)
+      try {
+        const scanRes = await fetch('/api/admin/scan-modules', {
+          method: 'GET',
+          credentials: 'include'
+        });
+        const scanJson = await scanRes.json().catch(() => ({ modules: [] }));
+        folderKeys = (scanJson.modules || []).map(m => m.service_key);
+      } catch (err) {
+        console.warn('[admin] scan-modules failed, falling back to DB only:', err);
+      }
+
+      // 2) Get all services from DB
+      let services = [];
+      try {
+        const res = await fetch('/api/admin/services', {
+          method: 'GET',
+          credentials: 'include'
+        });
+        if (!res.ok) throw new Error('Not authorized');
+        const json = await res.json().catch(() => ({}));
+        services = json.services || [];
+      } catch (err) {
+        console.error('[admin] /api/admin/services error:', err);
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="color:#ffb0b0;">
+              Error loading services. Check server logs.
+            </td>
+          </tr>`;
+        return;
+      }
+
+      // 3) Filter services to only those that have a matching folder (if any)
+      let visibleServices = services;
+      if (folderKeys.length) {
+        visibleServices = services.filter(s => folderKeys.includes(s.service_key));
+      }
+
+      tbody.innerHTML = '';
+
+      if (!visibleServices.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="opacity:.8;padding:10px;">
+              No services found. Make sure you have sub-folders under <code>/public/modules</code>
+              or that the <code>services</code> table is populated.
+            </td>
+          </tr>`;
+        return;
+      }
+
+      visibleServices.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${s.service_key}</td>
+          <td><input class="inline-edit"
+                     data-key="${s.service_key}"
+                     data-field="display_name"
+                     value="${s.display_name || ''}"></td>
+          <td>
+            <select class="svc-status" data-key="${s.service_key}">
+              <option value="active"    ${s.status === 'active' ? 'selected' : ''}>Active</option>
+              <option value="suspended" ${s.status === 'suspended' ? 'selected' : ''}>Suspended</option>
+            </select>
+          </td>
+          <td><input type="number"
+                     class="svc-pos"
+                     data-key="${s.service_key}"
+                     value="${s.position ?? 100}"
+                     style="width:70px;"></td>
+          <td><input class="inline-edit"
+                     data-key="${s.service_key}"
+                     data-field="icon_base"
+                     value="${s.icon_base || ''}"
+                     placeholder="/public/modules/services/name"></td>
+          <td style="text-align:right;">
+            <button class="btn small assign-btn" data-key="${s.service_key}">Assign</button>
+            <button class="btn small danger delete-btn" data-key="${s.service_key}">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Initial load
+    loadServices().catch(() => {});
+
+    // Inline edit fields
+    document.addEventListener('change', async (e) => {
+      if (
+        e.target.classList.contains('inline-edit') ||
+        e.target.classList.contains('svc-status') ||
+        e.target.classList.contains('svc-pos')
+      ) {
+        const key = e.target.dataset.key;
+        const parentRow = e.target.closest('tr');
+
+        const display_name = parentRow.querySelector('[data-field="display_name"]')?.value;
+        const icon_base    = parentRow.querySelector('[data-field="icon_base"]')?.value;
+        const status       = parentRow.querySelector('.svc-status')?.value;
+        const position     = parentRow.querySelector('.svc-pos')?.value;
+
+        await fetch(`/api/admin/services/${key}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ display_name, icon_base, status, position })
+        });
+
+        loadServices().catch(() => {});
+      }
+    });
+
+    document.addEventListener('click', async (e) => {
+      if (e.target.classList.contains('delete-btn')) {
+        const key = e.target.dataset.key;
+        if (!confirm(`Delete service "${key}"? This will remove it for all accounts.`)) return;
+
+        await fetch(`/api/admin/services/${key}`, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+        loadServices().catch(() => {});
+      }
+    });
+
+    let assignKey = null;
+
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('assign-btn')) {
+        assignKey = e.target.dataset.key;
+        document.getElementById('assign-popup').classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('assign-cancel').onclick = () => {
+      document.getElementById('assign-popup').classList.add('hidden');
+      assignKey = null;
+    };
+
+    document.getElementById('assign-confirm').onclick = async () => {
+      const role = document.getElementById('assign-role').value;
+      const account_id = Number(document.getElementById('assign-id').value);
+      if (!assignKey || !role || !account_id) {
+        alert('Please fill role and account id.');
+        return;
+      }
+      await fetch('/api/admin/account-services', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ role, account_id, service_key: assignKey, action: 'assign' })
+      });
+      alert('Assigned.');
+      document.getElementById('assign-popup').classList.add('hidden');
+      assignKey = null;
+    };
+
+    document.getElementById('scan-modules-btn').onclick = async () => {
+      const res = await fetch('/api/admin/scan-modules', {
+        method: 'GET',
+        credentials: 'include'
+      });
+      const j = await res.json();
+      const out = (j.modules || []).map(m => `• ${m.service_key}`).join('<br>');
+      document.getElementById('scan-result').innerHTML =
+        `<b>Found:</b><br>${out || '(none)'}`;
+
+      // After scanning, reload table so it reflects current folders
+      loadServices().catch(() => {});
+    };
+  </script>
+
+</body>
+</html>

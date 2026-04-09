@@ -1,0 +1,64 @@
+{
+  "appTitle": "WanderPal",
+  "langLabel": "Lingua",
+
+  "loginTitle": "Accedi",
+  "registerTitle": "Registrati",
+
+  "email": "Indirizzo e-mail",
+  "password": "Password",
+  "createPassword": "Crea una password",
+  "namePlaceholder": "Nome",
+  "companyName": "Nome azienda",
+  "website": "Sito ufficiale",
+
+  "remember": "Ricordami",
+  "forgot": "Password dimenticata?",
+  "forgotTitle": "Reimposta password",
+  "forgotDesc": "Inserisci la tua e-mail e ti invieremo un link.",
+  "forgotCancel": "Annulla",
+  "forgotSend": "Invia",
+  "forgotSuccess": "Se esiste un account, abbiamo inviato il link di reimpostazione.",
+  "forgotError": "Impossibile elaborare la richiesta.",
+
+  "loginBtn": "Accedi",
+  "registerBtn": "Registrati",
+  "or": "oppure",
+  "noAccount": "Non hai un account?",
+  "signup": "Iscriviti",
+  "haveAccount": "Hai già un account?",
+  "signin": "Accedi",
+
+  "invalidCreds": "Credenziali non valide",
+  "suspendedMsg": "Questo account è sospeso. Contatta il supporto.",
+
+  "networkError": "Errore di rete",
+  "registerSuccess": "Account creato. Ora puoi effettuare l’accesso.",
+  "registerFail": "Impossibile creare l’account (e-mail già in uso?)",
+
+  "hostTitle": "Host",
+  "hostLogin": "Host — Accesso",
+  "hostRegister": "Host — Registrazione",
+  "hostForgotTitle": "Reimposta password Host",
+  "hostForgotDesc": "Riceverai un link se questa e-mail è registrata come host.",
+
+  "partnerTitle": "Partner",
+  "partnerLogin": "Partner — Accesso",
+  "partnerRegister": "Partner — Registrazione",
+  "partnerForgotTitle": "Reimposta password Partner",
+  "partnerForgotDesc": "Riceverai un link se questa e-mail è registrata come partner.",
+
+  "chooseSector": "Scegli settore",
+  "recommendedServices": "Servizi consigliati",
+
+  "museum": "Museo / Galleria / Monumento",
+  "doctor": "Medico / Clinica / Dentista",
+  "salon": "Bellezza / Spa / Parrucchiere",
+  "event": "Organizzatore di eventi / Sede",
+  "restaurant": "Ristorante / Caffè / Bar",
+  "hotel": "Hotel / Guesthouse / BnB",
+  "retail": "Negozio / Centro commerciale",
+  "sports": "Centro sportivo / Palestra / Stadio",
+  "public": "PA / Banca / Posta",
+  "other": "Altro"
+}

@@ -1,0 +1,4331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Edit Queue — In-Time</title>
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+:root{
+  --v:#7c3aed;--v-s:#ede9fc;--v-d:#6d28d9;
+  --blue:#2563eb;--blue-s:#eff6ff;
+  --green:#16a34a;--green-s:#f0fdf4;
+  --amber:#d97706;--amber-s:#fffbeb;
+  --red:#dc2626;--red-s:#fef2f2;
+  --txt:#1a1825;--muted:#6b6880;--hint:#9b98aa;
+  --surf:#fff;--bg:#f4f3f8;--bord:#e2e0ea;--bord-f:#7c3aed;
+  --gray:#f0eff5;--gray-m:#d4d2de;
+  --r:14px;--ri:9px;
+  --sh:0 2px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --ring:0 0 0 3px rgba(124,58,237,.18);
+  --font:'DM Sans',sans-serif;
+  --nav-h:68px;
+  --savebar-h:78px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{
+  min-height:100%;
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--txt);
+  font-size:15px;
+  line-height:1.55;
+  scroll-behavior:smooth;
+}
+body{padding-bottom:calc(var(--savebar-h) + 28px)}
+
+/* ─── SHELL ──────────────────────────────────────────────── */
+.shell{
+  max-width:860px;
+  margin:0 auto;
+  padding:22px 20px 40px;
+}
+
+/* ─── TOP BAND ───────────────────────────────────────────── */
+#top-band.top-band{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:0 20px;
+}
+.topband-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.topband-btn{
+  background:transparent;
+  border:1.5px solid rgba(255,255,255,.25);
+  color:rgba(255,255,255,.8);
+  padding:6px 14px;
+  border-radius:8px;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  letter-spacing:.03em;
+  transition:all .18s;
+}
+.topband-btn:hover{background:rgba(255,255,255,.12)}
+.topband-btn.back{border-color:rgba(255,255,255,.18)}
+
+/* ─── PAGE HEADER ───────────────────────────────────────── */
+.page-head{
+  margin:8px 0 16px;
+}
+.page-head h1{
+  font-size:24px;
+  font-weight:700;
+  color:var(--txt);
+  line-height:1.2;
+  margin-bottom:5px;
+}
+.page-head p{
+  font-size:13.5px;
+  color:var(--muted);
+}
+.queue-mini-meta{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:10px;
+}
+.qchip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1.5px solid var(--bord);
+  background:var(--surf);
+  font-size:12px;
+  font-weight:600;
+  color:var(--muted);
+}
+.qchip.locked{
+  background:#faf5ff;
+  border-color:#e9d5ff;
+  color:#7e22ce;
+}
+
+/* ─── SECTION NAV ───────────────────────────────────────── */
+.section-nav-wrap{
+  position:sticky;
+  top:8%;
+  z-index:40;
+  margin-bottom:18px;
+}
+.section-nav{
+  background:rgba(255,255,255,.88);
+  backdrop-filter:blur(10px);
+  border:1px solid var(--bord);
+  border-radius:18px;
+  box-shadow:var(--sh);
+  padding:10px;
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.section-nav::-webkit-scrollbar{display:none}
+.snav-btn{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:9px 13px;
+  border-radius:12px;
+  border:1.5px solid var(--bord);
+  background:var(--surf);
+  color:var(--muted);
+  font-size:12.5px;
+  font-weight:700;
+  cursor:pointer;
+  transition:all .18s;
+  white-space:nowrap;
+}
+.snav-btn:hover{
+  border-color:var(--v);
+  color:var(--v);
+  background:var(--v-s);
+}
+.snav-btn.active{
+  border-color:var(--v);
+  color:var(--v);
+  background:var(--v-s);
+  box-shadow:0 0 0 1px var(--v);
+}
+.snav-btn.locked{
+  background:linear-gradient(180deg,#fbfbfd 0%, #f1f1f5 100%);
+  color:var(--hint);
+  border-color:#dfdde7;
+}
+.snav-btn.locked:hover{
+  background:#f6f5fa;
+  color:#7c758f;
+  border-color:#cdc9d9;
+}
+.snav-ico{font-size:14px;line-height:1}
+
+/* ─── SECTION / CARD ────────────────────────────────────── */
+.section-block{
+  margin-bottom:18px;
+  scroll-margin-top:130px;
+}
+.card{
+  background:var(--surf);
+  border-radius:var(--r);
+  box-shadow:var(--sh);
+  border:1px solid var(--bord);
+  overflow:hidden;
+}
+.card-hd{
+  padding:22px 24px 16px;
+  border-bottom:1px solid var(--bord);
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.card-hd-main h2{
+  font-size:19px;
+  font-weight:700;
+  color:var(--txt);
+  line-height:1.2;
+  margin-bottom:5px;
+}
+.card-hd-main .lead{
+  font-size:13px;
+  color:var(--muted);
+  line-height:1.5;
+}
+.card-bd{padding:20px 24px}
+.card.locked .card-bd{
+  background:linear-gradient(180deg,#fcfcfd 0%, #f8f7fb 100%);
+}
+.sec-state{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 10px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.03em;
+  text-transform:uppercase;
+}
+.sec-state.editable{
+  color:var(--v);
+  background:var(--v-s);
+  border:1px solid #d8c8fb;
+}
+.sec-state.locked{
+  color:#7c758f;
+  background:#f3f2f7;
+  border:1px solid #ddd9e6;
+}
+
+/* ─── SAVE BAR ──────────────────────────────────────────── */
+.savebar{
+  position:fixed;
+  left:0;right:0;bottom:0;
+  z-index:80;
+  background:rgba(255,255,255,.92);
+  backdrop-filter:blur(12px);
+  border-top:1px solid var(--bord);
+  box-shadow:0 -10px 30px rgba(0,0,0,.08);
+}
+.savebar-inner{
+  max-width:980px;
+  margin:0 auto;
+  min-height:var(--savebar-h);
+  padding:12px 20px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.save-meta{
+  min-width:240px;
+}
+.save-title{
+  font-size:13px;
+  font-weight:700;
+  color:var(--txt);
+}
+.save-sub{
+  font-size:12px;
+  color:var(--muted);
+  margin-top:2px;
+}
+.save-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.save-status{
+  font-size:12px;
+  font-weight:700;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid var(--bord);
+  background:var(--gray);
+  color:var(--muted);
+}
+.save-status.unsaved{
+  color:var(--amber);
+  background:var(--amber-s);
+  border-color:#fcd34d;
+}
+.save-status.saved{
+  color:var(--green);
+  background:var(--green-s);
+  border-color:#86efac;
+}
+.save-status.error{
+  color:var(--red);
+  background:var(--red-s);
+  border-color:#fca5a5;
+}
+
+/* ─── FORMS ─────────────────────────────────────────────── */
+.f{margin-bottom:18px}
+.f:last-child{margin-bottom:0}
+.lbl{
+  display:block;
+  font-size:13px;
+  font-weight:700;
+  color:var(--txt);
+  margin-bottom:5px;
+}
+.req{color:var(--v);margin-left:2px}
+.hint{font-size:12px;color:var(--hint);margin-top:4px;line-height:1.4}
+
+input[type=text],input[type=email],input[type=url],input[type=number],input[type=time],input[type=date],textarea,select{
+  width:100%;
+  padding:10px 13px;
+  border:1.5px solid var(--bord);
+  border-radius:var(--ri);
+  font-family:var(--font);
+  font-size:14px;
+  color:var(--txt);
+  background:var(--surf);
+  outline:none;
+  transition:border-color .18s,box-shadow .18s,background .18s;
+}
+input:focus,textarea:focus,select:focus{
+  border-color:var(--bord-f);
+  box-shadow:var(--ring);
+}
+select{
+  cursor:pointer;
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b6880' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 12px center;
+  padding-right:34px;
+}
+textarea{resize:vertical;min-height:74px}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row .f{flex:1;min-width:140px;margin-bottom:0}
+.sep{height:1px;background:var(--bord);margin:18px 0}
+
+/* ─── READ-ONLY / LOCKED VIEWS ──────────────────────────── */
+.readonly-box{
+  background:#faf9fc;
+  border:1.5px solid #e5e1ee;
+  border-radius:12px;
+  padding:14px 15px;
+}
+.readonly-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px 12px;
+}
+.readonly-item{
+  background:var(--surf);
+  border:1px solid var(--bord);
+  border-radius:10px;
+  padding:10px 12px;
+}
+.readonly-k{
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:var(--hint);
+  margin-bottom:4px;
+}
+.readonly-v{
+  font-size:13px;
+  font-weight:700;
+  color:var(--txt);
+}
+.readonly-v.muted{
+  color:var(--muted);
+  font-weight:600;
+}
+.lock-note{
+  margin-top:12px;
+  font-size:12.5px;
+  color:#7c758f;
+  line-height:1.5;
+}
+
+/* ─── CHIPS ─────────────────────────────────────────────── */
+.dchips{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.dchip{
+  flex:1;
+  min-width:140px;
+  background:var(--gray);
+  border:1.5px solid var(--bord);
+  border-radius:9px;
+  padding:10px 13px;
+}
+.dchip-lbl{
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:var(--hint);
+  margin-bottom:4px;
+}
+.dchip-val{
+  font-size:13px;
+  font-weight:700;
+  color:var(--txt);
+}
+.dchip-val.empty{
+  color:var(--hint);
+  font-weight:500;
+  font-style:italic;
+}
+.imm{
+  display:inline-flex;
+  align-items:center;
+  font-size:10px;
+  font-weight:800;
+  color:#86198f;
+  background:#fdf4ff;
+  border:1px solid #e879f9;
+  padding:1px 7px;
+  border-radius:20px;
+  margin-left:5px;
+  vertical-align:middle;
+}
+
+/* ─── MAP ───────────────────────────────────────────────── */
+#map{
+  height:220px;
+  border-radius:10px;
+  border:1.5px solid var(--bord);
+  overflow:hidden;
+  margin-top:8px;
+}
+.coords-preview{margin-top:6px;font-size:12px;color:var(--muted)}
+.coords-toggle-row{margin-top:10px;display:flex;justify-content:flex-end}
+#advancedCoords{display:none;gap:12px;margin-top:8px;flex-wrap:wrap}
+#advancedCoords label{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  flex:1 1 140px;
+}
+#advancedCoords input{width:100%}
+
+/* ─── CALLOUTS ──────────────────────────────────────────── */
+.co{border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;margin-bottom:14px}
+.co:last-child{margin-bottom:0}
+.co strong{font-weight:800}
+.co-note{background:#f0f9ff;border:1px solid #bae6fd;color:#0369a1}
+.co-warn{background:var(--amber-s);border:1px solid #fcd34d;color:#92400e}
+.co-info{background:var(--v-s);border:1px solid #c4b5fd;color:#5b21b6}
+.co-lock{background:#fdf4ff;border:1px solid #e879f9;color:#86198f}
+.co-ok{background:var(--green-s);border:1px solid #86efac;color:#14532d}
+.co-danger{background:var(--red-s);border:1px solid #fca5a5;color:var(--red)}
+
+/* ─── TOGGLES ───────────────────────────────────────────── */
+.togrow{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding:13px 0;
+  border-bottom:1px solid var(--bord);
+}
+.togrow:first-child{padding-top:0}
+.togrow:last-child{border-bottom:none}
+.togi{flex:1}
+.tog-title{font-size:14px;font-weight:700;color:var(--txt)}
+.tog-desc{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.45}
+.togsw{display:flex;align-items:center;flex-shrink:0;cursor:pointer}
+.togsw input{display:none}
+.togtr{
+  width:42px;height:24px;border-radius:12px;background:var(--gray-m);
+  position:relative;transition:background .2s
+}
+.togsw input:checked+.togtr{background:var(--v)}
+.togtr::after{
+  content:'';
+  position:absolute;
+  width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;
+  transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.18)
+}
+.togsw input:checked+.togtr::after{transform:translateX(18px)}
+
+/* ─── CHOICE CARDS ──────────────────────────────────────── */
+.cgrid{display:grid;gap:10px}
+.c2{grid-template-columns:repeat(2,1fr)}
+.c4{grid-template-columns:repeat(4,1fr)}
+.copt{
+  position:relative;
+  display:block;
+  cursor:pointer;
+  border:2px solid var(--bord);
+  border-radius:var(--r);
+  padding:15px 13px;
+  transition:all .18s;
+  background:var(--surf);
+  user-select:none;
+}
+.copt input{position:absolute;opacity:0;width:0;height:0}
+.copt:hover{border-color:var(--v);background:var(--v-s)}
+.copt.on{border-color:var(--v);background:var(--v-s);box-shadow:0 0 0 1px var(--v)}
+.cchk{
+  width:16px;height:16px;border-radius:50%;border:2px solid var(--gray-m);
+  display:flex;align-items:center;justify-content:center;margin-bottom:9px;transition:all .15s
+}
+.copt.on .cchk{background:var(--v);border-color:var(--v)}
+.copt.on .cchk::after{content:'';width:5px;height:5px;border-radius:50%;background:#fff}
+.cicon{font-size:26px;display:block;margin-bottom:7px}
+.ctitle{font-size:13.5px;font-weight:700;color:var(--txt);margin-bottom:3px}
+.cdesc{font-size:12px;color:var(--muted);line-height:1.4}
+.cex{font-size:11px;color:var(--hint);margin-top:5px;font-style:italic}
+
+/* ─── CH COLLAPSIBLE / CONDITIONAL ─────────────────────── */
+.collbtn{
+  display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;
+  color:var(--v);background:none;border:none;cursor:pointer;padding:0
+}
+.collarr{transition:transform .2s;display:inline-block}
+.collbtn.open .collarr{transform:rotate(90deg)}
+.collbody{display:none}
+.collbody.on{display:block}
+.cond{display:none}
+.cond.on{display:block}
+
+/* ─── SCHEDULE UI ───────────────────────────────────────── */
+.shortcuts{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:8px;
+  margin-bottom:18px;
+}
+.sc{
+  display:flex;align-items:center;gap:9px;padding:10px 13px;border-radius:10px;
+  border:1.5px solid var(--bord);cursor:pointer;font-size:13px;font-weight:600;
+  color:var(--muted);background:var(--surf);transition:all .18s;user-select:none
+}
+.sc.on{border-color:var(--v);background:var(--v-s);color:var(--v)}
+.sc input{display:none}
+.sc-icon{font-size:17px;flex-shrink:0}
+
+.daychips{display:flex;gap:7px;flex-wrap:wrap}
+.dc{
+  display:inline-flex;align-items:center;cursor:pointer;border-radius:8px;padding:7px 11px;
+  font-size:13px;font-weight:700;transition:all .15s;border:1.5px solid var(--bord);
+  background:var(--gray);color:var(--muted);user-select:none
+}
+.dc.on{background:var(--v-s);border-color:var(--v);color:var(--v)}
+
+.srow{display:flex;align-items:flex-start;gap:8px;padding:9px 0;border-bottom:1px solid var(--bord);flex-wrap:wrap}
+.srow:last-child{border-bottom:none}
+.sname{width:36px;font-size:13px;font-weight:800;padding-top:10px;flex-shrink:0}
+.sname.off{color:var(--hint);text-decoration:line-through}
+.stimes{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.stimes span{font-size:12px;color:var(--muted)}
+.sbrks{width:100%;padding-left:44px;margin-top:4px;display:flex;flex-direction:column;gap:5px}
+.brk{display:flex;align-items:center;gap:6px}
+.brk span{font-size:12px;color:var(--muted);white-space:nowrap}
+.erow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid var(--bord)}
+.erow:last-child{border-bottom:none}
+.empty-exc{
+  text-align:center;padding:14px;color:var(--hint);font-size:13px;background:var(--gray);
+  border-radius:8px;border:1.5px dashed var(--bord);margin-bottom:6px
+}
+
+/* ─── ACCESS OPTIONS ────────────────────────────────────── */
+.popt{
+  display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;
+  border:1.5px solid var(--bord);cursor:pointer;margin-bottom:8px;background:var(--surf);
+  transition:all .18s;user-select:none
+}
+.popt:last-child{margin-bottom:0}
+.popt.on{border-color:var(--v);background:var(--v-s)}
+.pbox{
+  width:18px;height:18px;border-radius:4px;border:2px solid var(--gray-m);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s
+}
+.popt.on .pbox{background:var(--v);border-color:var(--v)}
+.popt.on .pbox::after{content:'✓';color:#fff;font-size:10px;font-weight:800}
+.picon{font-size:20px}
+.pinfo{flex:1}
+.ptitle{font-size:13.5px;font-weight:700;color:var(--txt)}
+.pdesc{font-size:12px;color:var(--muted);margin-top:1px}
+
+/* ─── SLOT CARDS / CHART WRAPPERS ──────────────────────── */
+.slotcard{
+  background:var(--gray);
+  border:1.5px solid var(--bord);
+  border-radius:12px;
+  padding:15px 17px;
+  margin-bottom:10px;
+}
+.slothdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.slotnum{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--hint)}
+
+/* ─── TAGS ──────────────────────────────────────────────── */
+.tag{
+  display:inline-flex;align-items:center;font-size:10.5px;font-weight:800;
+  text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:20px
+}
+.tag-adv{background:#eff6ff;color:var(--blue);border:1px solid #bfdbfe}
+.tag-live{background:var(--green-s);color:var(--green);border:1px solid #86efac}
+.tag-all{background:var(--v-s);color:var(--v);border:1px solid #c4b5fd}
+
+/* ─── CHANNEL SECTIONS ──────────────────────────────────── */
+.chsec{border:1.5px solid var(--bord);border-radius:12px;overflow:hidden;margin-bottom:10px}
+.chhdr{
+  display:flex;align-items:center;justify-content:space-between;padding:13px 16px;
+  cursor:pointer;user-select:none;transition:background .15s
+}
+.chhdr:hover{background:var(--gray)}
+.chhdr.on{background:var(--v-s)}
+.chlbl{display:flex;align-items:center;gap:10px}
+.chicon{font-size:20px}
+.chname{font-size:14px;font-weight:700;color:var(--txt)}
+.chbody{padding:14px 16px;border-top:1px solid var(--bord);background:var(--surf);display:none}
+.chbody.on{display:block}
+
+/* ─── EXTRA FIELD / RESELLER ───────────────────────────── */
+.efrow{
+  background:var(--gray);border:1.5px solid var(--bord);border-radius:10px;padding:13px 15px;
+  margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap
+}
+.efrow .f{margin-bottom:0;flex:1;min-width:120px}
+.resrow{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.resrow .f{flex:1;min-width:120px;margin-bottom:0}
+
+/* ─── LOOK & FEEL PREVIEW ───────────────────────────────── */
+.prev-shell{
+  background:linear-gradient(160deg,#1e1b2e 0%,#2d1f5e 100%);
+  border-radius:14px;
+  padding:20px;
+  margin-top:16px;
+  transition:background .25s ease, box-shadow .25s ease;
+}
+.prev-phone{
+  background:rgba(255,255,255,.06);
+  border-radius:12px;
+  padding:18px;
+  border:1px solid rgba(255,255,255,.12);
+  min-height:220px;
+  background-size:cover;
+  background-position:center;
+  background-repeat:no-repeat;
+  transition:background .25s ease, color .25s ease, border-color .25s ease;
+}
+.prev-qname{font-size:16px;font-weight:700;color:#fff;margin-bottom:4px;transition:color .25s ease}
+.prev-venue{font-size:12px;color:rgba(255,255,255,.6);margin-bottom:14px;transition:color .25s ease}
+.prev-status{
+  display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;
+  color:#4ade80;background:rgba(74,222,128,.1);padding:4px 10px;border-radius:20px;
+  margin-bottom:14px;transition:background .25s ease, color .25s ease
+}
+.prev-btn{
+  background:var(--v);color:#fff;width:100%;padding:12px;border-radius:10px;
+  text-align:center;font-weight:800;font-size:14px;transition:background .25s ease, color .25s ease
+}
+
+/* ─── ERROR / NOTICE ────────────────────────────────────── */
+.errbar{
+  background:var(--red-s);border:1.5px solid #fca5a5;border-radius:8px;
+  padding:9px 13px;font-size:13px;color:var(--red);font-weight:700;margin-top:14px;display:none
+}
+.errbar.on{display:block}
+.inline-note{
+  margin-top:10px;
+  font-size:12px;
+  color:var(--muted);
+}
+.unsupported-note{
+  margin-top:12px;
+  font-size:12px;
+  color:#8a4b00;
+  background:#fff7ed;
+  border:1px solid #fdba74;
+  border-radius:10px;
+  padding:10px 12px;
+}
+
+/* ─── BUTTONS ───────────────────────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  font-family:var(--font);font-size:14px;font-weight:700;padding:10px 22px;border-radius:9px;
+  border:none;cursor:pointer;transition:all .18s;white-space:nowrap;outline:none;text-decoration:none
+}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:none}
+.btn-p{background:var(--v);color:#fff;box-shadow:0 2px 8px rgba(124,58,237,.25)}
+.btn-p:hover{background:var(--v-d)}
+.btn-p:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn-s{background:var(--gray);color:var(--txt);border:1.5px solid var(--bord)}
+.btn-s:hover{background:var(--bord)}
+.btn-add{
+  display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:var(--v);
+  background:var(--v-s);border:1.5px dashed var(--v);padding:7px 13px;border-radius:8px;
+  cursor:pointer;transition:background .15s;margin-top:8px
+}
+.btn-add:hover{background:rgba(124,58,237,.12)}
+.btn-add.op-extended{color:#92400e;background:#fffbeb;border-color:#fbbf24;border-style:dashed}
+.btn-add.op-extended:hover{background:#fef3c7}
+.btn-rm{
+  background:none;border:none;cursor:pointer;color:var(--hint);font-size:15px;
+  padding:3px 5px;border-radius:4px;flex-shrink:0
+}
+.btn-rm:hover{color:var(--red)}
+.btn-link{
+  background:none;border:none;cursor:pointer;font-size:12px;color:var(--v);
+  padding:2px 4px;border-radius:4px
+}
+.btn-link:hover{background:var(--v-s)}
+
+/* ─── PLACEHOLDER NOTICE ────────────────────────────────── */
+.phnotice{
+  background:var(--blue-s);border:1.5px solid #bfdbfe;border-radius:10px;
+  padding:16px 18px;text-align:center
+}
+.phnotice .ph-icon{font-size:28px;margin-bottom:8px}
+.phnotice .ph-title{font-weight:800;font-size:14px;color:var(--blue);margin-bottom:4px}
+.phnotice .ph-desc{font-size:12.5px;color:#3b82f6}
+
+/* ─── MODAL ─────────────────────────────────────────────── */
+#op-fee-modal{
+  display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;
+  background:rgba(10,8,30,.55);backdrop-filter:blur(3px)
+}
+#op-fee-modal.on{display:flex}
+#op-fee-modal .modal-box{
+  background:var(--surf);border:1.5px solid #fbbf24;border-radius:16px;
+  padding:28px 28px 22px;max-width:440px;width:92%;box-shadow:0 24px 60px rgba(0,0,0,.3)
+}
+#op-fee-modal .modal-icon{font-size:28px;margin-bottom:12px}
+#op-fee-modal .modal-title{font-weight:800;font-size:16px;color:#b45309;margin-bottom:8px}
+#op-fee-modal .modal-body{font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:22px}
+#op-fee-modal .modal-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+#op-fee-modal .btn-modal-cancel{
+  background:transparent;border:1.5px solid var(--bord);color:var(--muted);
+  padding:9px 18px;border-radius:9px;font-size:13px;cursor:pointer;font-weight:700
+}
+#op-fee-modal .btn-modal-cancel:hover{border-color:var(--v);color:var(--v)}
+#op-fee-modal .btn-modal-confirm{
+  background:linear-gradient(135deg,#f59e0b,#d97706);border:none;color:#1a0a00;
+  padding:9px 22px;border-radius:9px;font-size:13px;cursor:pointer;font-weight:800
+}
+#op-fee-modal .btn-modal-confirm:hover{background:linear-gradient(135deg,#fbbf24,#f59e0b)}
+
+/* ─── RESPONSIVE ────────────────────────────────────────── */
+@media(max-width:760px){
+  .shell{padding:18px 12px 34px}
+  .card-hd,.card-bd{padding-left:16px;padding-right:16px}
+  .readonly-grid{grid-template-columns:1fr}
+  .c2,.c4{grid-template-columns:1fr}
+  .savebar-inner{padding-left:12px;padding-right:12px}
+  .section-nav-wrap{top:6%}
+}
+</style>
+</head>
+<body>
+
+<div id="top-band" class="top-band">
+  <div class="topband-actions">
+    <button type="button" class="topband-btn back" id="backToQueuesBtn">← Back to queues</button>
+  </div>
+  <div class="topband-actions">
+    <button type="button" class="topband-btn" id="reloadQueueBtn">↻ Reload</button>
+  </div>
+</div>
+
+<div class="shell">
+
+  <div class="page-head">
+    <h1 id="pageTitle">Edit queue</h1>
+    <p>Review and update the parts of your queue that are editable. Locked items remain visible for reference.</p>
+    <div class="queue-mini-meta" id="queueMiniMeta"></div>
+  </div>
+
+  <div class="section-nav-wrap">
+    <div class="section-nav" id="sectionNav" role="navigation" aria-label="Queue edit sections"></div>
+  </div>
+
+  <div id="globalErr" class="errbar"></div>
+
+  <!-- SECTION: Identity & Schedule -->
+  <section class="section-block" id="sec-identity">
+    <div class="card">
+      <div class="card-hd">
+        <div class="card-hd-main">
+          <h2>Identity &amp; schedule</h2>
+          <p class="lead">Update the queue name, public-facing identity, entrance location, and operating schedule.</p>
+        </div>
+        <span class="sec-state editable">Editable</span>
+      </div>
+      <div class="card-bd">
+
+        <div class="f">
+          <label class="lbl" for="f-qname">Queue name <span class="req">*</span></label>
+          <input type="text" id="f-qname" placeholder="e.g. Dr. Martin's Practice Queue" maxlength="80">
+        </div>
+
+        <div class="f">
+          <label class="lbl" for="f-venue">Venue / business name <span class="req">*</span></label>
+          <input type="text" id="f-venue" placeholder="e.g. Dr. Martin's Medical Practice">
+        </div>
+
+        <div style="margin-bottom:18px">
+          <button type="button" class="collbtn" onclick="coll('int-lbl',this)">
+            <span class="collarr">›</span> Edit internal label (optional)
+          </button>
+          <div class="collbody" id="int-lbl" style="margin-top:10px">
+            <div class="f">
+              <label class="lbl" for="f-internal">Internal label</label>
+              <input type="text" id="f-internal" placeholder="e.g. Ground floor reception">
+              <p class="hint">Only visible to you in the dashboard.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="f">
+          <label class="lbl" for="f-addr">Queue location / entrance point</label>
+          <input type="text" id="f-addr" placeholder="Start typing an address…" autocomplete="off">
+          <p class="hint">You can adjust the entrance point. Timezone and home region remain locked after creation.</p>
+        </div>
+
+        <div id="map"></div>
+        <p class="coords-preview">Selected: <span id="coordsPreview">None</span></p>
+
+        <div class="coords-toggle-row">
+          <button type="button" class="btn btn-s" id="toggleCoordsBtn">Show GPS coordinates</button>
+        </div>
+
+        <div id="advancedCoords">
+          <label class="lbl">
+            Latitude
+            <input type="number" step="0.000001" id="f-lat">
+          </label>
+          <label class="lbl">
+            Longitude
+            <input type="number" step="0.000001" id="f-lng">
+          </label>
+        </div>
+
+        <div class="dchips">
+          <div class="dchip">
+            <div class="dchip-lbl">Timezone <span class="imm">🔒 locked</span></div>
+            <div class="dchip-val empty" id="chip-tz">—</div>
+          </div>
+          <div class="dchip">
+            <div class="dchip-lbl">Home region <span class="imm">🔒 locked</span></div>
+            <div class="dchip-val empty" id="chip-region">—</div>
+          </div>
+          <div class="dchip">
+            <div class="dchip-lbl">Currency</div>
+            <div class="dchip-val" id="chip-currency">
+              <select id="f-currency">
+                <option value="EUR">EUR — Euro</option>
+                <option value="USD">USD — US Dollar</option>
+                <option value="GBP">GBP — Pound Sterling</option>
+                <option value="CAD">CAD — Canadian $</option>
+                <option value="AUD">AUD — Australian $</option>
+                <option value="JPY">JPY — Japanese Yen</option>
+                <option value="CHF">CHF — Swiss Franc</option>
+                <option value="BRL">BRL — Real</option>
+                <option value="INR">INR — Rupee</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="row">
+          <div class="f">
+            <label class="lbl" for="f-lang">Language <span class="req">*</span></label>
+            <select id="f-lang">
+              <option value="en">English</option>
+              <option value="fr">Français</option>
+              <option value="es">Español</option>
+              <option value="de">Deutsch</option>
+              <option value="pt">Português</option>
+              <option value="it">Italiano</option>
+              <option value="nl">Nederlands</option>
+              <option value="ar">العربية</option>
+              <option value="zh">中文</option>
+              <option value="ja">日本語</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="lbl" style="margin-bottom:10px">Operating hours</div>
+        <p class="hint" style="margin-bottom:12px">Choose a common pattern to pre-fill your schedule, or build a custom one.</p>
+
+        <div class="shortcuts" id="shortcuts">
+          <label class="sc on" data-pat="wd9_5">
+            <input type="radio" name="sched_pat" value="wd9_5" checked>
+            <span class="sc-icon">📅</span>
+            <span>Weekdays<br><small style="font-weight:400;opacity:.8">9:00 – 17:00</small></span>
+          </label>
+          <label class="sc" data-pat="wd9_6">
+            <input type="radio" name="sched_pat" value="wd9_6">
+            <span class="sc-icon">📅</span>
+            <span>Weekdays<br><small style="font-weight:400;opacity:.8">9:00 – 18:00</small></span>
+          </label>
+          <label class="sc" data-pat="wd_sat">
+            <input type="radio" name="sched_pat" value="wd_sat">
+            <span class="sc-icon">📆</span>
+            <span>Weekdays + Sat<br><small style="font-weight:400;opacity:.8">9:00 – 17:00</small></span>
+          </label>
+          <label class="sc" data-pat="custom">
+            <input type="radio" name="sched_pat" value="custom">
+            <span class="sc-icon">✏️</span>
+            <span>Custom<br><small style="font-weight:400;opacity:.8">Per day</small></span>
+          </label>
+        </div>
+
+        <div id="sched-same">
+          <div class="row" style="margin-bottom:12px">
+            <div class="f" style="max-width:140px">
+              <label class="lbl">Opens</label>
+              <input type="time" id="f-open" value="09:00">
+            </div>
+            <div class="f" style="max-width:140px">
+              <label class="lbl">Closes</label>
+              <input type="time" id="f-close" value="17:00">
+            </div>
+            <div class="f" style="max-width:180px">
+              <label class="lbl">Last booking cutoff</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="number" id="f-cutoff" min="0" max="240" value="30" style="width:75px">
+                <span style="font-size:12px;color:var(--muted)">min before close</span>
+              </div>
+            </div>
+          </div>
+          <div class="lbl" style="margin-bottom:8px">Open days</div>
+          <div class="daychips" id="day-chips"></div>
+        </div>
+
+        <div id="sched-custom" style="display:none">
+          <div id="per-day-rows"></div>
+          <div class="row" style="margin-top:12px">
+            <div class="f" style="max-width:200px">
+              <label class="lbl">Last booking cutoff</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="number" id="f-cutoff2" min="0" max="240" value="30" style="width:75px">
+                <span style="font-size:12px;color:var(--muted)">min before close</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px">
+          <button type="button" class="collbtn" onclick="coll('break-sec',this)" style="margin-bottom:8px">
+            <span class="collarr">›</span> Add breaks (lunch, etc.)
+          </button>
+          <div class="collbody" id="break-sec">
+            <div id="break-list"></div>
+            <button type="button" class="btn-add" onclick="addBreak()">+ Add break</button>
+          </div>
+        </div>
+
+        <div style="margin-top:14px">
+          <button type="button" class="collbtn" onclick="coll('exc-sec',this)" style="margin-bottom:8px">
+            <span class="collarr">›</span> Holidays &amp; exceptions (optional)
+          </button>
+          <div class="collbody" id="exc-sec">
+            <div style="margin-bottom:16px">
+              <div class="lbl" style="margin-bottom:8px">Holiday closures</div>
+              <div id="holiday-list"></div>
+              <button type="button" class="btn-add" onclick="addHoliday()">+ Add holiday</button>
+            </div>
+            <div style="margin-bottom:10px">
+              <div class="lbl" style="margin-bottom:8px">Special hours</div>
+              <div id="special-list"></div>
+              <button type="button" class="btn-add" onclick="addSpecial()">+ Add special day</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="unsupported-note">
+          Schedule editing is fully available in the UI. Persisting advanced schedule internals may require additional backend wiring if your API does not yet store the full schedule object.
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION: Queue Type (locked) -->
+  <section class="section-block" id="sec-queue-type">
+    <div class="card locked">
+      <div class="card-hd">
+        <div class="card-hd-main">
+          <h2>Queue type</h2>
+          <p class="lead">This queue’s structural model is locked after creation. You can still review it here.</p>
+        </div>
+        <span class="sec-state locked">🔒 Locked</span>
+      </div>
+      <div class="card-bd">
+        <div class="readonly-box">
+          <div class="readonly-grid">
+            <div class="readonly-item">
+              <div class="readonly-k">Archetype</div>
+              <div class="readonly-v" id="ro-archetype">—</div>
+            </div>
+            <div class="readonly-item">
+              <div class="readonly-k">Booking mode</div>
+              <div class="readonly-v" id="ro-formula">—</div>
+            </div>
+            <div class="readonly-item">
+              <div class="readonly-k">Timezone</div>
+              <div class="readonly-v muted" id="ro-timezone">—</div>
+            </div>
+            <div class="readonly-item">
+              <div class="readonly-k">Home region</div>
+              <div class="readonly-v muted" id="ro-region">—</div>
+            </div>
+          </div>
+          <p class="lock-note" id="queueTypeExplain">
+            This section summarises the queue model. To change the structural model, duplicate the queue and create a new version.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION: Capacity -->
+  <section class="section-block" id="sec-capacity">
+    <div class="card">
+      <div class="card-hd">
+        <div class="card-hd-main">
+          <h2>Capacity</h2>
+          <p class="lead" id="capacityLead">Only the capacity model relevant to this queue type is shown below.</p>
+        </div>
+        <span class="sec-state editable">Editable</span>
+      </div>
+      <div class="card-bd" id="capacityBody"></div>
+    </div>
+  </section>
+
+  <!-- SECTION: Access -->
+  <section class="section-block" id="sec-access">
+    <div class="card">
+      <div class="card-hd">
+        <div class="card-hd-main">
+          <h2>Access</h2>
+          <p class="lead">Choose which visitor types may book this queue.</p>
+        </div>
+        <span class="sec-state editable">Editable</span>
+      </div>
+      <div class="card-bd">
+        <div id="pub-opts"></div>
+
+        <div class="cond" id="listed-rules">
+          <div class="sep"></div>
+          <div class="lbl" style="margin-bottom:10px">📋 Listed visitor settings</div>
+          <div class="togrow">
+            <div class="togi">
+              <div class="tog-title">Enable access request workflow</div>
+              <div class="tog-desc">Visitors not on the list can request access. You approve or deny them from your dashboard.</div>
+            </div>
+            <label class="togsw"><input type="checkbox" id="tog-access-req"><span class="togtr"></span></label>
+          </div>
+          <div class="togrow">
+            <div class="togi">
+              <div class="tog-title">Bulk invite support</div>
+              <div class="tog-desc">Upload a CSV of email addresses to add multiple visitors to your allowlist at once.</div>
+            </div>
+            <label class="togsw"><input type="checkbox" id="tog-bulk" checked><span class="togtr"></span></label>
+          </div>
+        </div>
+
+        <div class="unsupported-note">
+          Advanced allowlist workflows may need additional backend endpoints if you want full persistence beyond the queue’s high-level identity policy.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION: Admission -->
+  <section class="section-block" id="sec-admission">
+    <div class="card">
+      <div class="card-hd">
+        <div class="card-hd-main">
+          <h2>Admission</h2>
+          <p class="lead">Define how visitors confirm arrival and how queue calls are handled.</p>
+        </div>
+        <span class="sec-state editable">Editable</span>
+      </div>
+      <div class="card-bd">
+        <div class="lbl" style="margin-bottom:10px">Admission mode</div>
+        <div class="cgrid c2" id="adm-cards">
+          <label class="copt on" data-v="scan">
+            <input type="radio" name="adm" value="scan" checked>
+            <div class="cchk"></div>
+            <div class="ctitle">📷 Scan at entry <span style="font-size:11px;color:var(--green);font-weight:800;margin-left:4px">Recommended</span></div>
+            <div class="cdesc">Visitor scans a QR code on arrival to confirm their presence.</div>
+          </label>
+          <label class="copt" data-v="no_scan">
+            <input type="radio" name="adm" value="no_scan">
+            <div class="cchk"></div>
+            <div class="ctitle">⏱ No-scan (auto-complete)</div>
+            <div class="cdesc">Bookings auto-complete after the configured last-call window.</div>
+          </label>
+        </div>
+
+        <div class="cond on" id="scan-fallback-opt">
+          <div class="togrow" style="padding-top:8px">
+            <div class="togi">
+              <div class="tog-title">Add scan fallback</div>
+              <div class="tog-desc">If a visitor’s scan is missed, their booking auto-completes after a window instead of being marked no-show.</div>
+            </div>
+            <label class="togsw"><input type="checkbox" id="tog-fallback"><span class="togtr"></span></label>
+          </div>
+        </div>
+
+        <div class="discourage" id="noscan-warn">
+          ⚠️ <strong>Not recommended for wave-based queues.</strong> Without scanning, staff cannot accurately count who has entered each wave.
+        </div>
+
+        <div class="cond" id="noscan-config">
+          <div class="row" style="margin-top:10px">
+            <div class="f" style="max-width:220px">
+              <label class="lbl">Last-call window</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="number" id="f-noscan-win" min="1" max="120" value="10" style="width:78px">
+                <span style="font-size:13px;color:var(--muted)">minutes</span>
+              </div>
+              <p class="hint">Booking auto-completes after this window from the scheduled time.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="lbl" style="margin-bottom:10px">Calling logic</div>
+        <div id="calling-body"></div>
+      </div>
+    </div>
+  </section>
+  <!-- SECTION: Time Transparency -->
+  <section class="section-block" id="sec-time">
+    <div class="card">
+      <div class="card-hd">
+        <div class="card-hd-main">
+          <h2>Time transparency</h2>
+          <p class="lead">Only the time information options relevant to this queue model are shown.</p>
+        </div>
+        <span class="sec-state editable">Editable</span>
+      </div>
+      <div class="card-bd" id="timeBody"></div>
+    </div>
+  </section>
+
+  <!-- SECTION: Communication Channels -->
+  <section class="section-block" id="sec-channels">
+    <div class="card">
+      <div class="card-hd">
+        <div class="card-hd-main">
+          <h2>Communication channels</h2>
+          <p class="lead">Choose how visitors receive confirmations, reminders, and queue updates.</p>
+        </div>
+        <span class="sec-state editable">Editable</span>
+      </div>
+      <div class="card-bd">
+
+        <div class="chsec">
+          <div class="chhdr on" id="ch-email-hdr" onclick="toggleCh('email',this)">
+            <div class="chlbl"><span class="chicon">📧</span><span class="chname">Email</span></div>
+            <label class="togsw">
+              <input type="checkbox" id="ch-email" checked onchange="onChTog('email',this)">
+              <span class="togtr"></span>
+            </label>
+          </div>
+          <div class="chbody on" id="ch-email-body">
+            <div class="f">
+              <label class="lbl">Sender email address</label>
+              <input type="email" id="f-sender" placeholder="practice@example.com">
+              <p class="hint">Pre-filled from your host profile. Visitors see this as the sender.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="chsec">
+          <div class="chhdr on" id="ch-inapp-hdr" onclick="toggleCh('inapp',this)">
+            <div class="chlbl"><span class="chicon">🔔</span><span class="chname">In-app notifications</span></div>
+            <label class="togsw">
+              <input type="checkbox" id="ch-inapp" checked onchange="onChTog('inapp',this)">
+              <span class="togtr"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="chsec">
+          <div class="chhdr" id="ch-sms-hdr" onclick="toggleCh('sms',this)">
+            <div class="chlbl"><span class="chicon">💬</span><span class="chname">SMS</span></div>
+            <label class="togsw">
+              <input type="checkbox" id="ch-sms" onchange="onChTog('sms',this)">
+              <span class="togtr"></span>
+            </label>
+          </div>
+          <div class="chbody" id="ch-sms-body">
+            <div class="phnotice">
+              <div class="ph-icon">💬</div>
+              <div class="ph-title">SMS gateway — coming soon</div>
+              <div class="ph-desc">SMS delivery requires a gateway provider connection. Configuration will be available here once the feature launches.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chsec">
+          <div class="chhdr" id="ch-wa-hdr" onclick="toggleCh('wa',this)">
+            <div class="chlbl"><span class="chicon">📱</span><span class="chname">WhatsApp</span></div>
+            <label class="togsw">
+              <input type="checkbox" id="ch-wa" onchange="onChTog('wa',this)">
+              <span class="togtr"></span>
+            </label>
+          </div>
+          <div class="chbody" id="ch-wa-body">
+            <div class="phnotice">
+              <div class="ph-icon">📱</div>
+              <div class="ph-title">WhatsApp Business API — setup walkthrough</div>
+              <div class="ph-desc">Connecting WhatsApp requires a Meta Business account and API credentials. A setup flow will be added here later.</div>
+            </div>
+            <div class="co co-info" style="margin-top:12px">
+              <strong>Note:</strong> Mass messaging via WhatsApp requires Meta-approved message templates.
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION: Verification / Payment -->
+  <section class="section-block" id="sec-verification">
+    <div class="card">
+      <div class="card-hd">
+        <div class="card-hd-main">
+          <h2 id="verifTitle">Verification &amp; additional data</h2>
+          <p class="lead" id="verifLead">Only the verification/payment options relevant to this queue model are shown below.</p>
+        </div>
+        <span class="sec-state editable">Editable</span>
+      </div>
+      <div class="card-bd" id="verifBody"></div>
+    </div>
+  </section>
+
+  <!-- SECTION: Calendar -->
+  <section class="section-block" id="sec-calendar">
+    <div class="card">
+      <div class="card-hd">
+        <div class="card-hd-main">
+          <h2>Calendar synchronisation</h2>
+          <p class="lead">This section is mainly relevant for one-at-a-time queues. It remains visible here for consistency.</p>
+        </div>
+        <span class="sec-state editable" id="calendarState">Editable</span>
+      </div>
+      <div class="card-bd" id="calendarBody">
+        <div class="togrow" style="padding-top:0">
+          <div class="togi">
+            <div class="tog-title">Enable calendar sync</div>
+            <div class="tog-desc">Import busy times from Google Calendar, Outlook, or CalDAV to prevent conflicts.</div>
+          </div>
+          <label class="togsw">
+            <input type="checkbox" id="tog-cal" onchange="document.getElementById('cal-config').classList.toggle('on',this.checked)">
+            <span class="togtr"></span>
+          </label>
+        </div>
+
+        <div class="cond" id="cal-config">
+          <div class="sep" style="margin:14px 0 16px"></div>
+
+          <div class="f">
+            <label class="lbl">Calendar provider</label>
+            <div class="cgrid c2" id="calendarProviderCards">
+              <label class="copt" data-v="google">
+                <input type="radio" name="cal_prov" value="google">
+                <div class="cchk"></div>
+                <div class="ctitle">📅 Google</div>
+                <div class="cdesc">Sync against Google Calendar busy times.</div>
+              </label>
+              <label class="copt" data-v="microsoft">
+                <input type="radio" name="cal_prov" value="microsoft">
+                <div class="cchk"></div>
+                <div class="ctitle">📆 Microsoft</div>
+                <div class="cdesc">Sync against Outlook / Microsoft 365 calendars.</div>
+              </label>
+              <label class="copt" data-v="caldav">
+                <input type="radio" name="cal_prov" value="caldav">
+                <div class="cchk"></div>
+                <div class="ctitle">🗓 CalDAV</div>
+                <div class="cdesc">Use a CalDAV-compatible calendar source.</div>
+              </label>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:12px">
+            <div class="f" style="max-width:220px">
+              <label class="lbl">Sync horizon</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="number" id="f-horizon" min="7" max="365" value="90" style="width:78px">
+                <span style="font-size:13px;color:var(--muted)">days ahead</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="togrow" style="margin-top:8px">
+            <div class="togi">
+              <div class="tog-title">Allow manual refresh</div>
+              <div class="tog-desc">Trigger a sync manually from your dashboard at any time.</div>
+            </div>
+            <label class="togsw"><input type="checkbox" id="tog-manual-refresh" checked><span class="togtr"></span></label>
+          </div>
+
+          <div class="sep"></div>
+
+          <div class="lbl" style="margin-bottom:10px">Conflict policy</div>
+
+          <div class="togrow" style="padding-top:0">
+            <div class="togi">
+              <div class="tog-title">Review conflicts manually</div>
+              <div class="tog-desc">Conflicts appear in your dashboard for individual review.</div>
+            </div>
+            <label class="togsw"><input type="checkbox" id="tog-conf-review" checked><span class="togtr"></span></label>
+          </div>
+
+          <div class="togrow">
+            <div class="togi">
+              <div class="tog-title">Allow bulk resolution</div>
+              <div class="tog-desc">Apply a resolution to multiple conflicting bookings at once.</div>
+            </div>
+            <label class="togsw"><input type="checkbox" id="tog-bulk-res" checked><span class="togtr"></span></label>
+          </div>
+
+          <div class="togrow">
+            <div class="togi">
+              <div class="tog-title">Notify impacted visitors automatically</div>
+              <div class="tog-desc">Send a message to visitors when their booking changes due to a calendar conflict.</div>
+            </div>
+            <label class="togsw"><input type="checkbox" id="tog-notify-imp" checked><span class="togtr"></span></label>
+          </div>
+
+          <div class="co co-info" style="margin-top:14px">
+            <strong>ℹ️ Fixed bookings take priority.</strong> Live-flow slots wrap around confirmed calendar blocks automatically where supported by the queue model.
+          </div>
+        </div>
+
+        <div class="unsupported-note" id="calendarUnsupportedNote" style="display:none">
+          This queue model may not fully use calendar synchronisation operationally. The settings remain available for consistency, but backend/business-rule enforcement may depend on the archetype.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION: Operators -->
+  <section class="section-block" id="sec-operators">
+    <div class="card">
+      <div class="card-hd">
+        <div class="card-hd-main">
+          <h2>Team &amp; operators</h2>
+          <p class="lead">Manage staff accounts who can operate this queue day to day.</p>
+        </div>
+        <span class="sec-state editable">Editable</span>
+      </div>
+      <div class="card-bd">
+
+        <div style="margin-bottom:20px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <span style="font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)">Notification settings</span>
+            <div style="flex:1;height:1px;background:var(--bord)"></div>
+          </div>
+          <div class="togrow" style="padding:12px 14px;border:1.5px solid var(--bord);border-radius:10px;background:var(--surf)">
+            <div class="togi">
+              <div class="tog-title">Include desk ID / operator name in visitor reminders</div>
+              <div class="tog-desc">Useful for multi-desk venues. Applies to all operators on this queue.</div>
+            </div>
+            <label class="togsw"><input type="checkbox" id="tog-deskid"><span class="togtr"></span></label>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span style="font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)">Operator accounts</span>
+          <div style="flex:1;height:1px;background:var(--bord)"></div>
+        </div>
+
+        <div class="co co-info" style="margin-bottom:14px">
+          <strong>📋 How operator login works:</strong> Operators use the host login page with the same company context but their own credentials.
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+          <div style="background:var(--green-s);border:1px solid #86efac;border-radius:10px;padding:12px 14px">
+            <div style="font-weight:800;font-size:12px;color:var(--green);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">✅ Operators can</div>
+            <ul style="font-size:12.5px;color:#14532d;line-height:1.9;margin:0;padding-left:16px">
+              <li>Call next visitor</li>
+              <li>Scan &amp; validate arrivals</li>
+              <li>Mark no-show</li>
+              <li>View booking details</li>
+              <li>Send messages via queue channels</li>
+              <li>Release batches (wave / flow queues)</li>
+            </ul>
+          </div>
+          <div style="background:var(--red-s);border:1px solid #fca5a5;border-radius:10px;padding:12px 14px">
+            <div style="font-weight:800;font-size:12px;color:var(--red);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">🚫 Operators cannot</div>
+            <ul style="font-size:12.5px;color:#991b1b;line-height:1.9;margin:0;padding-left:16px">
+              <li>Change archetype</li>
+              <li>Change locked queue structure</li>
+              <li>Create or delete queues</li>
+              <li>Access subscription or integrations</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="co co-warn" style="margin-bottom:16px">
+          <strong>🔑 You are responsible</strong> for managing operator passwords and access. Use secure passwords and revoke access when needed.
+        </div>
+
+        <div id="op-list"></div>
+
+        <button type="button" class="btn-add" id="btn-add-op" onclick="addOperator()">
+          + Add operator
+        </button>
+        <div id="op-cap-msg" style="display:none;margin-top:8px;font-size:12.5px;color:var(--muted)"></div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION: Look & Feel -->
+  <section class="section-block" id="sec-look">
+    <div class="card">
+      <div class="card-hd">
+        <div class="card-hd-main">
+          <h2>Look &amp; feel</h2>
+          <p class="lead">Update the queue appearance and preview what visitors will see.</p>
+        </div>
+        <span class="sec-state editable">Editable</span>
+      </div>
+      <div class="card-bd">
+
+        <div class="togrow" style="padding-top:0">
+          <div class="togi">
+            <div class="tog-title">Use host default wallpaper</div>
+            <div class="tog-desc">Inherit the background wallpaper from your host profile.</div>
+          </div>
+          <label class="togsw">
+            <input type="checkbox" id="tog-host-wall" checked onchange="document.getElementById('wall-up').classList.toggle('on',!this.checked)">
+            <span class="togtr"></span>
+          </label>
+        </div>
+
+        <div class="cond" id="wall-up">
+          <div class="f" style="margin-top:8px">
+            <label class="lbl">Queue wallpaper</label>
+            <input type="file" id="f-wall" accept="image/*" style="padding:8px">
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="f">
+          <label class="lbl">Theme</label>
+          <div class="cgrid c2" id="themeCards">
+            <label class="copt on" data-v="default">
+              <input type="radio" name="theme" value="default" checked>
+              <div class="cchk"></div>
+              <div class="ctitle">🌙 Dusk Glass</div>
+              <div class="cdesc">Violet glass panels on dark gradient.</div>
+            </label>
+            <label class="copt" data-v="light">
+              <input type="radio" name="theme" value="light">
+              <div class="cchk"></div>
+              <div class="ctitle">☀️ Bright Clean</div>
+              <div class="cdesc">Light, minimal, high contrast.</div>
+            </label>
+            <label class="copt" data-v="nature">
+              <input type="radio" name="theme" value="nature">
+              <div class="cchk"></div>
+              <div class="ctitle">🌿 Nature</div>
+              <div class="cdesc">Earthy greens and warm tones.</div>
+            </label>
+            <label class="copt" data-v="bold">
+              <input type="radio" name="theme" value="bold">
+              <div class="cchk"></div>
+              <div class="ctitle">⚡ Bold</div>
+              <div class="cdesc">High energy, vibrant colors.</div>
+            </label>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div style="background:var(--v-s);border:1.5px solid var(--v);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:18px">👁️</span>
+          <div>
+            <div style="font-weight:800;font-size:13px;color:var(--v)">Queue Preview — What visitors will see</div>
+            <div style="font-size:12px;color:var(--muted)">This preview updates live when you change queue name, venue, theme, or wallpaper.</div>
+          </div>
+        </div>
+
+        <div class="prev-shell">
+          <div class="prev-phone">
+            <div class="prev-qname" id="prev-qname">Your Queue Name</div>
+            <div class="prev-venue" id="prev-venue">Your Venue · Location</div>
+            <div class="prev-status">● Open now</div>
+            <div class="prev-btn">Book my spot →</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+</div><!-- /shell -->
+
+<div class="savebar">
+  <div class="savebar-inner">
+    <div class="save-meta">
+      <div class="save-title">Save changes to this queue</div>
+      <div class="save-sub">The edit page is contextual: only sections relevant to this queue model are editable.</div>
+    </div>
+    <div class="save-actions">
+      <div class="save-status" id="saveStatus">No changes yet</div>
+      <button type="button" class="btn btn-s" id="discardBtn">Discard local changes</button>
+      <button type="button" class="btn btn-p" id="saveBtn">💾 Save changes</button>
+    </div>
+  </div>
+</div>
+
+<div id="op-fee-modal" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div class="modal-icon">💳</div>
+    <div class="modal-title">Extended operator capacity</div>
+    <div class="modal-body">
+      You've reached the <strong>5 included operators</strong> for this queue type.<br><br>
+      This queue supports up to <strong>60 operators</strong> total. Each operator beyond 5 incurs an additional monthly fee.
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-modal-cancel" onclick="cancelAddOperator()">Cancel</button>
+      <button type="button" class="btn-modal-confirm" onclick="confirmAddOperator()">Add operator anyway</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/fab.js"></script>
+<script>
+'use strict';
+
+/* ─────────────────────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────────────────────── */
+const S = {
+  queueId:null,
+  originalRaw:null,
+
+  queue_name:'',
+  internal_label:'',
+  venue_name:'',
+  address:'',
+  lat:null,
+  lng:null,
+  timezone:'',
+  home_region:'',
+  language:'en',
+  currency:'EUR',
+
+  sched_pat:'wd9_5',
+  schedule:{
+    sameHours:true,
+    globalOpen:'09:00',
+    globalClose:'17:00',
+    days:[
+      {n:'Mon',on:true, open:'09:00',close:'17:00',breaks:[]},
+      {n:'Tue',on:true, open:'09:00',close:'17:00',breaks:[]},
+      {n:'Wed',on:true, open:'09:00',close:'17:00',breaks:[]},
+      {n:'Thu',on:true, open:'09:00',close:'17:00',breaks:[]},
+      {n:'Fri',on:true, open:'09:00',close:'17:00',breaks:[]},
+      {n:'Sat',on:false,open:'09:00',close:'17:00',breaks:[]},
+      {n:'Sun',on:false,open:'09:00',close:'17:00',breaks:[]},
+    ],
+    cutoff:30,
+    breaks:[],
+    holidays:[],
+    specials:[]
+  },
+
+  arch:null,
+  formula:null,
+
+  slots:[],
+  wave_duration:15,
+  wave_capacity:20,
+  wave_cap_mode:'constant',
+  wave_var_scope:'all',
+  wave_schedule:[],
+
+  release_mode:'manual',
+  release_count:10,
+  release_interval:15,
+  fixed_release_scope:'all',
+  release_schedule:[],
+
+  publics:['anonymous','registered'],
+  access_req:false,
+  bulk_invite:true,
+
+  adm:'scan',
+  scan_fallback:false,
+  noscan_win:10,
+  calling:{live:'single_next',adv_lead:10},
+
+  show_eet:true,
+  show_ete:false,
+  early:{enabled:false,interval:30,max:3,window:30},
+
+  channels:['email','inapp'],
+  sender_email:'',
+  show_operator_name:true,
+  show_desk_id:false,
+
+  extra_fields:[],
+  payment_gate:false,
+  payment_mode:'best_attempt',
+  has_tickets:false,
+  resellers:[],
+
+  cal_sync:false,
+  cal_provider:null,
+  sync_horizon:90,
+  manual_refresh:true,
+  conf_review:true,
+  bulk_res:true,
+  notify_imp:true,
+
+  use_host_wall:true,
+  theme:'default',
+  preview_wallpaper:'',
+
+  operators:[],
+
+  dirty:false,
+  isSaving:false
+};
+
+const IMMUTABLE = {
+  archetype:true,
+  formula:true,
+  timezone:true,
+  home_region:true
+};
+
+const ARCH = {
+  A:{
+    label:'Several — distinct resources',
+    short:'Distinct resources',
+    explanation:'Multiple parallel resources each serve visitors simultaneously.'
+  },
+  B:{
+    label:'One at a time',
+    short:'One at a time',
+    explanation:'Each visitor is handled individually in a single lane.'
+  },
+  C:{
+    label:'Many at once — in batches',
+    short:'Wave-based venue',
+    explanation:'Visitors enter in timed waves with a defined capacity.'
+  },
+  D:{
+    label:'Continuous open flow',
+    short:'Continuous flow',
+    explanation:'Visitors join a running queue and are released dynamically.'
+  }
+};
+
+const FORMULA_LABELS = {
+  ADVANCE_ONLY:'Advance only',
+  LIVE_ONLY:'Live only',
+  MIXED:'Advance + live'
+};
+
+const PUBS = {
+  anonymous:{icon:'👻',title:'Anonymous visitors',desc:'Anyone can join without an account. Device-based limits apply.'},
+  registered:{icon:'👤',title:'Registered visitors',desc:'Visitors with an In-Time account.'},
+  listed:{icon:'📋',title:'Listed visitors only',desc:'Only visitors you have invited or explicitly approved.'}
+};
+
+const SECTION_META = [
+  {id:'identity', el:'sec-identity', label:'Identity', icon:'📝', editable:true},
+  {id:'queue-type', el:'sec-queue-type', label:'Type', icon:'🔒', editable:false},
+  {id:'capacity', el:'sec-capacity', label:'Capacity', icon:'📊', editable:true},
+  {id:'access', el:'sec-access', label:'Access', icon:'🚪', editable:true},
+  {id:'admission', el:'sec-admission', label:'Admission', icon:'📷', editable:true},
+  {id:'time', el:'sec-time', label:'Time info', icon:'⏱', editable:true},
+  {id:'channels', el:'sec-channels', label:'Channels', icon:'💬', editable:true},
+  {id:'verification', el:'sec-verification', label:'Verification', icon:'🪪', editable:true},
+  {id:'calendar', el:'sec-calendar', label:'Calendar', icon:'📅', editable:true},
+  {id:'operators', el:'sec-operators', label:'Operators', icon:'👥', editable:true},
+  {id:'look', el:'sec-look', label:'Look & feel', icon:'🎨', editable:true},
+];
+
+const GEO = {
+  FR:{tz:'Europe/Paris',region:'Europe — West',cur:'EUR',lang:'fr'},
+  GB:{tz:'Europe/London',region:'Europe — UK',cur:'GBP',lang:'en'},
+  US:{tz:'America/New_York',region:'Americas — NA',cur:'USD',lang:'en'},
+  DE:{tz:'Europe/Berlin',region:'Europe — Central',cur:'EUR',lang:'de'},
+  ES:{tz:'Europe/Madrid',region:'Europe — South',cur:'EUR',lang:'es'},
+  IT:{tz:'Europe/Rome',region:'Europe — South',cur:'EUR',lang:'it'},
+  CA:{tz:'America/Toronto',region:'Americas — NA',cur:'CAD',lang:'en'},
+  AU:{tz:'Australia/Sydney',region:'Asia-Pacific',cur:'AUD',lang:'en'},
+  JP:{tz:'Asia/Tokyo',region:'Asia-Pacific',cur:'JPY',lang:'ja'},
+  BR:{tz:'America/Sao_Paulo',region:'Americas — SA',cur:'BRL',lang:'pt'},
+};
+
+const PATS = {
+  wd9_5:{days:[1,1,1,1,1,0,0],open:'09:00',close:'17:00'},
+  wd9_6:{days:[1,1,1,1,1,0,0],open:'09:00',close:'18:00'},
+  wd_sat:{days:[1,1,1,1,1,1,0],open:'09:00',close:'17:00'}
+};
+
+const EF_TYPES = [
+  'Social security number',
+  'Nationality',
+  'Preferred language',
+  'Date of birth',
+  'Phone number',
+  'Insurance number',
+  'Reference code',
+  'Other (custom)'
+];
+
+let _map = null;
+let _marker = null;
+let _acTimer = null;
+let _slotId = 0;
+let _durId = 1000;
+let _efId = 0;
+let _resId = 0;
+let _opId = 0;
+let _activeSection = 'identity';
+
+/* ─────────────────────────────────────────────────────────────
+   HELPERS
+───────────────────────────────────────────────────────────── */
+function qs(id){ return document.getElementById(id); }
+
+function escHtml(s){
+  return String(s ?? '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function deepClone(v){
+  return JSON.parse(JSON.stringify(v));
+}
+
+function markDirty(on = true){
+  if(on) S.dirty = true;
+  renderSaveState();
+}
+
+function renderSaveState(mode){
+  const el = qs('saveStatus');
+  if(!el) return;
+  el.className = 'save-status';
+
+  if(mode === 'saving'){
+    el.textContent = 'Saving…';
+    return;
+  }
+  if(mode === 'saved'){
+    el.classList.add('saved');
+    el.textContent = 'Saved';
+    return;
+  }
+  if(mode === 'error'){
+    el.classList.add('error');
+    el.textContent = 'Save failed';
+    return;
+  }
+
+  if(S.dirty){
+    el.classList.add('unsaved');
+    el.textContent = 'Unsaved changes';
+  }else{
+    el.textContent = 'No changes yet';
+  }
+}
+
+function showGlobalErr(msg){
+  const el = qs('globalErr');
+  if(!el) return;
+  el.textContent = msg;
+  el.classList.add('on');
+}
+
+function clearGlobalErr(){
+  const el = qs('globalErr');
+  if(!el) return;
+  el.textContent = '';
+  el.classList.remove('on');
+}
+
+function coll(bodyId, btn){
+  const b = qs(bodyId);
+  if(!b) return;
+  const open = b.classList.toggle('on');
+  if(btn) btn.classList.toggle('open', open);
+}
+
+function guessCc(lat,lng){
+  if(lat>41&&lat<51&&lng>-5&&lng<9) return 'FR';
+  if(lat>50&&lat<59&&lng>-8&&lng<2) return 'GB';
+  if(lat>48&&lat<55&&lng>6&&lng<15) return 'DE';
+  if(lat>36&&lat<44&&lng>-9&&lng<3) return 'ES';
+  if(lat>37&&lat<47&&lng>7&&lng<19) return 'IT';
+  if(lat>25&&lat<70&&lng>-130&&lng<-60) return 'US';
+  if(lat>43&&lat<70&&lng>-85&&lng<-52) return 'CA';
+  if(lat>-44&&lat<-10&&lng>113&&lng<154) return 'AU';
+  if(lat>30&&lat<46&&lng>129&&lng<146) return 'JP';
+  if(lat>-34&&lat<5&&lng>-73&&lng<-34) return 'BR';
+  return 'US';
+}
+
+function activePublicOptions(){
+  if(S.arch === 'C' || S.arch === 'D') return ['anonymous','registered'];
+  return ['anonymous','registered','listed'];
+}
+
+function formulaLabel(v){
+  return FORMULA_LABELS[v] || v || '—';
+}
+
+function archetypeLabel(v){
+  return ARCH[v]?.label || v || '—';
+}
+
+function getQueueIdFromUrl(){
+  const params = new URLSearchParams(window.location.search);
+  return params.get('queue') || params.get('id') || params.get('edit');
+}
+
+function openSectionFromHash(){
+  const hash = (window.location.hash || '').replace(/^#/, '').trim();
+  if(!hash) return;
+  const target = SECTION_META.find(s => s.id === hash);
+  if(!target) return;
+  scrollToSection(target.id, false);
+}
+
+function scrollToSection(id, smooth = true){
+  const meta = SECTION_META.find(s => s.id === id);
+  if(!meta) return;
+  const el = qs(meta.el);
+  if(!el) return;
+  _activeSection = id;
+  renderSectionNav();
+  el.scrollIntoView({behavior:smooth ? 'smooth' : 'auto', block:'start'});
+  if(history.replaceState){
+    const url = new URL(window.location.href);
+    url.hash = id;
+    history.replaceState(null, '', url.toString());
+  }
+}
+/* ─────────────────────────────────────────────────────────────
+   NAV BAR / ADAPTIVE SECTIONS
+───────────────────────────────────────────────────────────── */
+function computeVisibleSections(){
+  const visible = new Set([
+    'identity',
+    'queue-type',
+    'capacity',
+    'access',
+    'admission',
+    'time',
+    'channels',
+    'verification',
+    'operators',
+    'look'
+  ]);
+
+  if (S.arch === 'B') {
+    visible.add('calendar');
+  } else if (S.arch === 'A' || S.arch === 'C' || S.arch === 'D') {
+    visible.add('calendar'); // visible for consistency, but flagged as partially unsupported where relevant
+  }
+
+  return visible;
+}
+
+function renderSectionNav(){
+  const nav = qs('sectionNav');
+  if(!nav) return;
+
+  const visible = computeVisibleSections();
+
+  nav.innerHTML = SECTION_META
+    .filter(sec => visible.has(sec.id))
+    .map(sec => {
+      const cls = [
+        'sec-pill',
+        sec.id === _activeSection ? 'active' : '',
+        sec.editable ? '' : 'locked'
+      ].filter(Boolean).join(' ');
+
+      return `
+        <button
+          type="button"
+          class="${cls}"
+          onclick="scrollToSection('${sec.id}')"
+          title="${sec.editable ? 'Go to section' : 'Immutable section'}"
+        >
+          <span class="sec-pill-icon">${sec.icon}</span>
+          <span>${sec.label}</span>
+          ${sec.editable ? '' : '<span style="font-size:11px">🔒</span>'}
+        </button>
+      `;
+    })
+    .join('');
+}
+
+function adaptSections(){
+  const capContext = qs('capacityContext');
+  const calState = qs('calendarState');
+  const calNote = qs('calendarUnsupportedNote');
+
+  if(capContext){
+    let html = '';
+
+    if(S.arch === 'B'){
+      html = `
+        <div class="ctx-chip">👤 One at a time</div>
+        <div class="ctx-chip">📅 Calendar section relevant</div>
+        <div class="ctx-chip">🚫 No wave configuration</div>
+        <div class="ctx-chip">🚫 No release configuration</div>
+      `;
+    } else if(S.arch === 'A'){
+      html = `
+        <div class="ctx-chip">🪑 Distinct resources</div>
+        <div class="ctx-chip">📦 Resource / slot types</div>
+        <div class="ctx-chip">🚫 No wave configuration</div>
+        <div class="ctx-chip">🚫 No release configuration</div>
+      `;
+    } else if(S.arch === 'C'){
+      html = `
+        <div class="ctx-chip">🏟️ Many at once</div>
+        <div class="ctx-chip">🌊 Wave configuration relevant</div>
+        <div class="ctx-chip">🚫 No calendar-style appointment config</div>
+        <div class="ctx-chip">🚫 No release configuration</div>
+      `;
+    } else if(S.arch === 'D'){
+      html = `
+        <div class="ctx-chip">🌊 Continuous flow</div>
+        <div class="ctx-chip">🔄 Release configuration relevant</div>
+        <div class="ctx-chip">🚫 No wave configuration</div>
+        <div class="ctx-chip">🚫 No appointment calendar config</div>
+      `;
+    }
+
+    capContext.innerHTML = html;
+  }
+
+  if(calState){
+    if(S.arch === 'B'){
+      calState.textContent = 'Editable';
+      calState.className = 'sec-state editable';
+    } else {
+      calState.textContent = 'Contextual';
+      calState.className = 'sec-state editable';
+    }
+  }
+
+  if(calNote){
+    calNote.style.display = S.arch === 'B' ? 'none' : 'block';
+  }
+
+  renderSectionNav();
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MAP / LOCATION
+───────────────────────────────────────────────────────────── */
+function initMap(){
+  if(_map) return;
+
+  _map = L.map('map').setView([48.8566, 2.3522], 4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OSM'
+  }).addTo(_map);
+
+  _map.on('click', e => {
+    setPin(e.latlng.lat, e.latlng.lng);
+    reverseGeocode(e.latlng.lat, e.latlng.lng);
+    markDirty();
+  });
+}
+
+function setPin(lat,lng,cc){
+  S.lat = lat;
+  S.lng = lng;
+
+  if(_marker) _marker.setLatLng([lat,lng]);
+  else _marker = L.marker([lat,lng]).addTo(_map);
+
+  _map.setView([lat,lng],14);
+
+  const info = GEO[cc || guessCc(lat,lng)] || {tz:'UTC',region:'Global',cur:'USD',lang:'en'};
+  S.timezone = S.timezone || info.tz;
+  S.home_region = S.home_region || info.region;
+
+  const tzEl = qs('chip-tz');
+  const rgEl = qs('chip-region');
+  const latEl = qs('f-lat');
+  const lngEl = qs('f-lng');
+  const prevEl = qs('coordsPreview');
+
+  if(tzEl){
+    tzEl.textContent = S.timezone || info.tz;
+    tzEl.classList.remove('empty');
+  }
+  if(rgEl){
+    rgEl.textContent = S.home_region || info.region;
+    rgEl.classList.remove('empty');
+  }
+
+  if(latEl) latEl.value = Number(lat).toFixed(6);
+  if(lngEl) lngEl.value = Number(lng).toFixed(6);
+  if(prevEl) prevEl.textContent = `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`;
+}
+
+async function doGeocode(q){
+  if(!q || q.length < 4) return;
+  try{
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`);
+    const d = await r.json();
+    if(d && d[0]){
+      const { lat, lon, display_name, address } = d[0];
+      S.address = display_name;
+      const cc = (address?.country_code || '').toUpperCase();
+      setPin(parseFloat(lat), parseFloat(lon), cc);
+      const addrEl = qs('f-addr');
+      if(addrEl) addrEl.value = display_name;
+      markDirty();
+    }
+  }catch(err){
+    console.warn('[geocode]', err);
+  }
+}
+
+async function reverseGeocode(lat,lng){
+  try{
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`);
+    const d = await r.json();
+    if(d?.display_name){
+      S.address = d.display_name;
+      const addrEl = qs('f-addr');
+      if(addrEl) addrEl.value = d.display_name;
+      markDirty();
+    }
+  }catch(err){
+    console.warn('[reverseGeocode]', err);
+  }
+}
+
+function wireLocationControls(){
+  const toggleBtn = qs('toggleCoordsBtn');
+  const advanced = qs('advancedCoords');
+  const latEl = qs('f-lat');
+  const lngEl = qs('f-lng');
+  const addrEl = qs('f-addr');
+
+  toggleBtn?.addEventListener('click', () => {
+    const show = advanced.style.display === 'none' || !advanced.style.display;
+    advanced.style.display = show ? 'flex' : 'none';
+    toggleBtn.textContent = show ? 'Hide GPS coordinates' : 'Show GPS coordinates';
+  });
+
+  addrEl?.addEventListener('input', () => {
+    clearTimeout(_acTimer);
+    _acTimer = setTimeout(() => doGeocode(addrEl.value), 600);
+    S.address = addrEl.value.trim();
+    markDirty();
+    updatePreview();
+  });
+
+  const manualUpdate = () => {
+    const lat = parseFloat(latEl?.value);
+    const lng = parseFloat(lngEl?.value);
+    if(Number.isFinite(lat) && Number.isFinite(lng)){
+      if(!_map) initMap();
+      _map.setView([lat,lng],15);
+      setPin(lat,lng);
+      reverseGeocode(lat,lng);
+      markDirty();
+    }
+  };
+
+  latEl?.addEventListener('input', manualUpdate);
+  lngEl?.addEventListener('input', manualUpdate);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   IDENTITY / IMMUTABLE SUMMARY
+───────────────────────────────────────────────────────────── */
+function renderImmutableSummary(){
+  const el = qs('immutableSummary');
+  if(!el) return;
+
+  el.innerHTML = `
+    <div class="imm-card">
+      <div class="imm-top">
+        <div class="imm-icon">🔒</div>
+        <div>
+          <div class="imm-title">Queue structure locked</div>
+          <div class="imm-desc">These properties define the queue model backbone and are view-only here.</div>
+        </div>
+      </div>
+      <div class="imm-grid">
+        <div class="imm-row">
+          <div class="imm-k">Archetype</div>
+          <div class="imm-v">${escHtml(archetypeLabel(S.arch))}</div>
+        </div>
+        <div class="imm-row">
+          <div class="imm-k">Booking mode</div>
+          <div class="imm-v">${escHtml(formulaLabel(S.formula))}</div>
+        </div>
+        <div class="imm-row">
+          <div class="imm-k">Timezone</div>
+          <div class="imm-v">${escHtml(S.timezone || '—')}</div>
+        </div>
+        <div class="imm-row">
+          <div class="imm-k">Home region</div>
+          <div class="imm-v">${escHtml(S.home_region || '—')}</div>
+        </div>
+      </div>
+      <div class="co co-lock" style="margin-top:14px">
+        <strong>Locked in edit mode:</strong> the queue archetype, booking mode, timezone, and home region are treated as structural fields and are not editable from this page.
+      </div>
+    </div>
+  `;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   FORM WIRING
+───────────────────────────────────────────────────────────── */
+function wireIdentityFields(){
+  const fields = [
+    ['f-qname', 'queue_name'],
+    ['f-venue', 'venue_name'],
+    ['f-internal', 'internal_label']
+  ];
+
+  fields.forEach(([id, key]) => {
+    qs(id)?.addEventListener('input', e => {
+      S[key] = e.target.value.trim();
+      markDirty();
+      updatePreview();
+    });
+  });
+
+  qs('f-lang')?.addEventListener('change', e => {
+    S.language = e.target.value;
+    markDirty();
+  });
+
+  qs('f-currency')?.addEventListener('change', e => {
+    S.currency = e.target.value;
+    markDirty();
+  });
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SCHEDULE
+───────────────────────────────────────────────────────────── */
+function applyPat(p){
+  S.sched_pat = p;
+
+  if(p === 'custom'){
+    qs('sched-same').style.display = 'none';
+    qs('sched-custom').style.display = 'block';
+    S.schedule.sameHours = false;
+    renderPerDayRows();
+    markDirty();
+    return;
+  }
+
+  qs('sched-same').style.display = 'block';
+  qs('sched-custom').style.display = 'none';
+  S.schedule.sameHours = true;
+
+  const pat = PATS[p];
+  S.schedule.globalOpen = pat.open;
+  S.schedule.globalClose = pat.close;
+
+  qs('f-open').value = pat.open;
+  qs('f-close').value = pat.close;
+
+  pat.days.forEach((on,i) => {
+    S.schedule.days[i].on = !!on;
+    S.schedule.days[i].open = pat.open;
+    S.schedule.days[i].close = pat.close;
+  });
+
+  renderDayChips();
+  renderPerDayRows();
+  markDirty();
+}
+
+function initSched(){
+  document.querySelectorAll('.sc').forEach(sc => {
+    const r = sc.querySelector('input');
+    if(!r) return;
+    sc.addEventListener('click', () => {
+      document.querySelectorAll('.sc').forEach(x => x.classList.remove('on'));
+      sc.classList.add('on');
+      r.checked = true;
+      applyPat(r.value);
+    });
+  });
+
+  renderDayChips();
+  renderPerDayRows();
+  renderBreaks();
+  renderHolidays();
+  renderSpecials();
+
+  qs('f-open')?.addEventListener('change', e => {
+    S.schedule.globalOpen = e.target.value;
+    markDirty();
+  });
+  qs('f-close')?.addEventListener('change', e => {
+    S.schedule.globalClose = e.target.value;
+    markDirty();
+  });
+  qs('f-cutoff')?.addEventListener('input', e => {
+    S.schedule.cutoff = parseInt(e.target.value, 10) || 30;
+    markDirty();
+  });
+  qs('f-cutoff2')?.addEventListener('input', e => {
+    S.schedule.cutoff = parseInt(e.target.value, 10) || 30;
+    markDirty();
+  });
+}
+
+function renderDayChips(){
+  const wrap = qs('day-chips');
+  if(!wrap) return;
+
+  wrap.innerHTML = S.schedule.days.map((d,i) => `
+    <span class="dc${d.on ? ' on' : ''}" onclick="toggleDay(${i}, !S.schedule.days[${i}].on)">${d.n}</span>
+  `).join('');
+}
+
+function toggleDay(i, v){
+  S.schedule.days[i].on = v;
+  renderDayChips();
+  renderPerDayRows();
+  markDirty();
+}
+
+function renderPerDayRows(){
+  const wrap = qs('per-day-rows');
+  if(!wrap) return;
+
+  wrap.innerHTML = S.schedule.days.map((d,i) => `
+    <div class="srow">
+      <span class="sname${!d.on ? ' off' : ''}">${d.n}</span>
+      <label class="togsw" style="margin-right:4px">
+        <input type="checkbox" ${d.on ? 'checked' : ''} onchange="toggleDay(${i}, this.checked)">
+        <span class="togtr"></span>
+      </label>
+      <div class="stimes" style="${!d.on ? 'opacity:.35;pointer-events:none;' : ''}">
+        <input type="time" value="${d.open}" style="width:100px" onchange="updateDayOpen(${i}, this.value)">
+        <span>–</span>
+        <input type="time" value="${d.close}" style="width:100px" onchange="updateDayClose(${i}, this.value)">
+        <button type="button" class="btn-link" onclick="addDayBreak(${i})">+ break</button>
+      </div>
+      <div class="sbrks" id="sbrk-${i}">
+        ${d.breaks.map((b,bi) => `
+          <div class="brk">
+            <span>Break:</span>
+            <input type="time" value="${b.from}" style="width:95px" onchange="updateDayBreakFrom(${i}, ${bi}, this.value)">
+            <span>–</span>
+            <input type="time" value="${b.to}" style="width:95px" onchange="updateDayBreakTo(${i}, ${bi}, this.value)">
+            <button class="btn-rm" onclick="removeDayBreak(${i}, ${bi})">✕</button>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateDayOpen(i, value){
+  S.schedule.days[i].open = value;
+  markDirty();
+}
+
+function updateDayClose(i, value){
+  S.schedule.days[i].close = value;
+  markDirty();
+}
+
+function addDayBreak(i){
+  S.schedule.days[i].breaks.push({from:'12:00',to:'13:00'});
+  renderPerDayRows();
+  markDirty();
+}
+
+function updateDayBreakFrom(i, bi, value){
+  S.schedule.days[i].breaks[bi].from = value;
+  markDirty();
+}
+
+function updateDayBreakTo(i, bi, value){
+  S.schedule.days[i].breaks[bi].to = value;
+  markDirty();
+}
+
+function removeDayBreak(i, bi){
+  S.schedule.days[i].breaks.splice(bi, 1);
+  renderPerDayRows();
+  markDirty();
+}
+
+let _brkId = 0;
+function addBreak(){
+  S.schedule.breaks.push({id:++_brkId, from:'12:00', to:'13:00', label:'Lunch break'});
+  renderBreaks();
+  markDirty();
+}
+
+function renderBreaks(){
+  const list = qs('break-list');
+  if(!list) return;
+
+  if(!S.schedule.breaks.length){
+    list.innerHTML = '<div class="empty-exc">No global breaks added yet.</div>';
+    return;
+  }
+
+  list.innerHTML = S.schedule.breaks.map((b,i) => `
+    <div class="erow">
+      <input type="text" value="${escHtml(b.label)}" placeholder="Break name" style="flex:1;min-width:90px" onchange="updateBreakLabel(${i}, this.value)">
+      <input type="time" value="${b.from}" style="width:100px" onchange="updateBreakFrom(${i}, this.value)">
+      <span style="font-size:12px;color:var(--muted)">–</span>
+      <input type="time" value="${b.to}" style="width:100px" onchange="updateBreakTo(${i}, this.value)">
+      <button class="btn-rm" onclick="removeBreak(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function updateBreakLabel(i, value){ S.schedule.breaks[i].label = value; markDirty(); }
+function updateBreakFrom(i, value){ S.schedule.breaks[i].from = value; markDirty(); }
+function updateBreakTo(i, value){ S.schedule.breaks[i].to = value; markDirty(); }
+function removeBreak(i){
+  S.schedule.breaks.splice(i,1);
+  renderBreaks();
+  markDirty();
+}
+
+function addHoliday(){
+  S.schedule.holidays.push({date:'',label:''});
+  renderHolidays();
+  markDirty();
+}
+
+function renderHolidays(){
+  const list = qs('holiday-list');
+  if(!list) return;
+
+  if(!S.schedule.holidays.length){
+    list.innerHTML = '<div class="empty-exc">No holiday closures added yet.</div>';
+    return;
+  }
+
+  list.innerHTML = S.schedule.holidays.map((h,i) => `
+    <div class="erow">
+      <input type="date" value="${h.date || ''}" style="width:148px" onchange="updateHolidayDate(${i}, this.value)">
+      <input type="text" value="${escHtml(h.label || '')}" placeholder="e.g. Christmas Day" style="flex:1;min-width:120px" onchange="updateHolidayLabel(${i}, this.value)">
+      <button class="btn-rm" onclick="removeHoliday(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function updateHolidayDate(i, value){ S.schedule.holidays[i].date = value; markDirty(); }
+function updateHolidayLabel(i, value){ S.schedule.holidays[i].label = value; markDirty(); }
+function removeHoliday(i){
+  S.schedule.holidays.splice(i,1);
+  renderHolidays();
+  markDirty();
+}
+
+function addSpecial(){
+  S.schedule.specials.push({date:'',open:'09:00',close:'18:00',label:''});
+  renderSpecials();
+  markDirty();
+}
+
+function renderSpecials(){
+  const list = qs('special-list');
+  if(!list) return;
+
+  if(!S.schedule.specials.length){
+    list.innerHTML = '<div class="empty-exc">No special hours added yet.</div>';
+    return;
+  }
+
+  list.innerHTML = S.schedule.specials.map((s,i) => `
+    <div class="erow">
+      <input type="date" value="${s.date || ''}" style="width:148px" onchange="updateSpecialDate(${i}, this.value)">
+      <input type="time" value="${s.open || '09:00'}" style="width:95px" onchange="updateSpecialOpen(${i}, this.value)">
+      <span style="font-size:12px;color:var(--muted)">–</span>
+      <input type="time" value="${s.close || '18:00'}" style="width:95px" onchange="updateSpecialClose(${i}, this.value)">
+      <input type="text" value="${escHtml(s.label || '')}" placeholder="Label" style="flex:1;min-width:80px" onchange="updateSpecialLabel(${i}, this.value)">
+      <button class="btn-rm" onclick="removeSpecial(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function updateSpecialDate(i, value){ S.schedule.specials[i].date = value; markDirty(); }
+function updateSpecialOpen(i, value){ S.schedule.specials[i].open = value; markDirty(); }
+function updateSpecialClose(i, value){ S.schedule.specials[i].close = value; markDirty(); }
+function updateSpecialLabel(i, value){ S.schedule.specials[i].label = value; markDirty(); }
+function removeSpecial(i){
+  S.schedule.specials.splice(i,1);
+  renderSpecials();
+  markDirty();
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CAPACITY
+───────────────────────────────────────────────────────────── */
+function newSlot(a){
+  _slotId++;
+  return {
+    id:_slotId,
+    name:a === 'B' ? 'Consultation' : 'Table',
+    duration:a === 'B' ? 30 : 60,
+    durations:a === 'A' ? [{id:++_durId, minutes:60}] : [],
+    capacity:a === 'A' ? 4 : 1,
+    occurrences:1
+  };
+}
+
+function renderCapacity(){
+  const body = qs('capacityBody');
+  if(!body) return;
+
+  if(S.arch === 'B'){
+    if(!S.slots.length) S.slots = [newSlot('B')];
+    body.innerHTML = `
+      <div class="co co-note" style="margin-bottom:14px">
+        <strong>Contextual rule:</strong> one-at-a-time queues show appointment types. No wave configuration is exposed here.
+      </div>
+      <div id="slot-list">${S.slots.map((s,i) => slotCardHTML(s,i,'B')).join('')}</div>
+      <button type="button" class="btn-add" onclick="addSlot('B')">+ Add appointment type</button>
+    `;
+    bindSlotEvents('B');
+    return;
+  }
+
+  if(S.arch === 'A'){
+    if(!S.slots.length) S.slots = [newSlot('A')];
+    body.innerHTML = `
+      <div class="co co-note" style="margin-bottom:14px">
+        <strong>Contextual rule:</strong> distinct-resource queues show resource types. No wave or release configuration is exposed here.
+      </div>
+      <div id="slot-list">${S.slots.map((s,i) => slotCardHTML(s,i,'A')).join('')}</div>
+      <button type="button" class="btn-add" onclick="addSlot('A')">+ Add resource type</button>
+    `;
+    bindSlotEvents('A');
+    return;
+  }
+
+  if(S.arch === 'C'){
+    body.innerHTML = `
+      <div class="co co-info" style="margin-bottom:14px">
+        <strong>Contextual rule:</strong> wave-based queues expose wave configuration only.
+      </div>
+
+      <div class="f" style="margin-bottom:14px">
+        <label class="lbl">Capacity mode</label>
+        <div class="cgrid c2">
+          <label class="copt${S.wave_cap_mode==='constant' ? ' on' : ''}">
+            <input type="radio" name="wcm" value="constant" ${S.wave_cap_mode==='constant' ? 'checked' : ''}>
+            <div class="cchk"></div>
+            <div class="ctitle">Constant all day</div>
+            <div class="cdesc">Same capacity for every wave.</div>
+          </label>
+          <label class="copt${S.wave_cap_mode==='variable' ? ' on' : ''}">
+            <input type="radio" name="wcm" value="variable" ${S.wave_cap_mode==='variable' ? 'checked' : ''}>
+            <div class="cchk"></div>
+            <div class="ctitle">Varies by time</div>
+            <div class="cdesc">Adjust capacity by hour for each operating day.</div>
+          </label>
+        </div>
+      </div>
+
+      <div class="row" style="margin-bottom:8px">
+        <div class="f">
+          <label class="lbl">Wave duration</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="number" id="f-wdur" min="5" max="240" value="${S.wave_duration}" style="width:78px">
+            <span style="font-size:13px;color:var(--muted)">minutes</span>
+          </div>
+        </div>
+        <div class="f">
+          <label class="lbl">Default capacity per wave</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="number" id="f-wcap" min="1" value="${S.wave_capacity}" style="width:78px">
+            <span style="font-size:13px;color:var(--muted)">visitors</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="wave-var-panel" class="cond${S.wave_cap_mode==='variable' ? ' on' : ''}">
+        <div class="f" style="margin-top:12px">
+          <label class="lbl">Variability model</label>
+          <div class="cgrid c2" style="margin-top:6px">
+            <label class="copt${S.wave_var_scope==='all' ? ' on' : ''}">
+              <input type="radio" name="wvs" value="all" ${S.wave_var_scope==='all' ? 'checked' : ''}>
+              <div class="cchk"></div>
+              <div class="ctitle">One model for all days</div>
+              <div class="cdesc">Same hourly pattern applies to every operating day.</div>
+            </label>
+            <label class="copt${S.wave_var_scope==='per_day' ? ' on' : ''}">
+              <input type="radio" name="wvs" value="per_day" ${S.wave_var_scope==='per_day' ? 'checked' : ''}>
+              <div class="cchk"></div>
+              <div class="ctitle">One model per day</div>
+              <div class="cdesc">Define a different hourly pattern for each day of the week.</div>
+            </label>
+          </div>
+        </div>
+
+        <div class="co co-info" style="margin:12px 0 10px">
+          <strong>Daily capacity schedule</strong> — drag the points on each chart to set the capacity for each hour of the day.
+        </div>
+
+        <div id="wave-day-charts"></div>
+      </div>
+    `;
+
+    bindWaveControls();
+    if(S.wave_cap_mode === 'variable') renderWaveCharts();
+    return;
+  }
+
+  if(S.arch === 'D'){
+    body.innerHTML = `
+      <div class="co co-info" style="margin-bottom:14px">
+        <strong>Contextual rule:</strong> continuous-flow queues expose release configuration only.
+      </div>
+
+      <div class="cgrid">
+        <label class="copt${S.release_mode==='manual' ? ' on' : ''}">
+          <input type="radio" name="rm" value="manual" ${S.release_mode==='manual' ? 'checked' : ''}>
+          <div class="cchk"></div>
+          <div class="ctitle">🖐 Manual release</div>
+          <div class="cdesc">You release visitors from your dashboard as space becomes available.</div>
+        </label>
+        <label class="copt${S.release_mode==='incremental' ? ' on' : ''}">
+          <input type="radio" name="rm" value="incremental" ${S.release_mode==='incremental' ? 'checked' : ''}>
+          <div class="cchk"></div>
+          <div class="ctitle">⏱ Scheduled incremental</div>
+          <div class="cdesc">Release a fixed count every X minutes automatically.</div>
+        </label>
+        <label class="copt${S.release_mode==='fixed' ? ' on' : ''}">
+          <input type="radio" name="rm" value="fixed" ${S.release_mode==='fixed' ? 'checked' : ''}>
+          <div class="cchk"></div>
+          <div class="ctitle">📅 Planned capacity releases</div>
+          <div class="cdesc">Define a planned release count for each hour of each operating day.</div>
+        </label>
+      </div>
+
+      <div id="rel-incremental" class="cond${S.release_mode==='incremental' ? ' on' : ''}">
+        <div class="row" style="margin-top:14px">
+          <div class="f" style="max-width:160px">
+            <label class="lbl">Count per release</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input type="number" id="f-rc" min="1" value="${S.release_count}" style="width:78px">
+              <span style="font-size:13px;color:var(--muted)">visitors</span>
+            </div>
+          </div>
+          <div class="f" style="max-width:180px">
+            <label class="lbl">Every</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input type="number" id="f-ri" min="5" value="${S.release_interval}" style="width:78px">
+              <span style="font-size:13px;color:var(--muted)">min</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="planned-releases-panel" class="cond${S.release_mode==='fixed' ? ' on' : ''}">
+        <div style="margin-top:16px">
+          <label class="lbl" style="margin-bottom:6px">Release schedule model</label>
+          <div class="cgrid c2" style="margin-top:6px">
+            <label class="copt${S.fixed_release_scope==='all' ? ' on' : ''}">
+              <input type="radio" name="frs" value="all" ${S.fixed_release_scope==='all' ? 'checked' : ''}>
+              <div class="cchk"></div>
+              <div class="ctitle">One template for all days</div>
+              <div class="cdesc">Same hourly release pattern applies to every operating day.</div>
+            </label>
+            <label class="copt${S.fixed_release_scope==='per_day' ? ' on' : ''}">
+              <input type="radio" name="frs" value="per_day" ${S.fixed_release_scope==='per_day' ? 'checked' : ''}>
+              <div class="cchk"></div>
+              <div class="ctitle">One template per day</div>
+              <div class="cdesc">Define a different hourly release pattern for each day of the week.</div>
+            </label>
+          </div>
+
+          <div class="row" style="margin-top:16px;margin-bottom:2px">
+            <div class="f" style="max-width:220px">
+              <label class="lbl">Count per release</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="number" id="f-rc-planned" min="1" value="${S.release_count}" style="width:78px">
+                <span style="font-size:13px;color:var(--muted)">visitors</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="co co-info" style="margin:12px 0 10px">
+            <strong>Planned releases schedule</strong> — drag the points on each chart to set the number of visitors to release each hour.
+          </div>
+
+          <div id="release-day-charts"></div>
+        </div>
+      </div>
+    `;
+
+    bindReleaseControls();
+    if(S.release_mode === 'fixed') renderReleaseCharts();
+  }
+}
+
+function slotCardHTML(st, idx, a){
+  if(a === 'A'){
+    if(!st.durations || !st.durations.length){
+      st.durations = [{id:++_durId, minutes:60}];
+    }
+
+    const durRows = st.durations.map((d,di) => `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <input type="number" class="slot-adur" data-slotid="${st.id}" data-durid="${d.id}" min="5" max="480" value="${d.minutes}" style="width:78px">
+        <span style="font-size:13px;color:var(--muted)">min</span>
+        ${di > 0 ? `<button type="button" class="btn-rm" style="margin-left:auto" onclick="removeDuration(${st.id}, ${d.id})">✕</button>` : ''}
+      </div>
+    `).join('');
+
+    return `
+      <div class="slotcard" id="slot-${st.id}">
+        <div class="slothdr">
+          <span class="slotnum">Resource type ${idx+1}</span>
+          ${idx > 0 ? `<button class="btn-rm" onclick="removeSlot(${st.id})">✕</button>` : ''}
+        </div>
+        <div class="row">
+          <div class="f">
+            <label class="lbl">Resource name</label>
+            <input type="text" class="slot-name" data-id="${st.id}" value="${escHtml(st.name)}" placeholder="e.g. Bowling lane, Table for 4, Pool table">
+          </div>
+          <div class="f" style="max-width:130px">
+            <label class="lbl">Indiv. per unit</label>
+            <input type="number" class="slot-cap" data-id="${st.id}" min="1" value="${st.capacity}" style="width:72px">
+          </div>
+          <div class="f" style="max-width:115px">
+            <label class="lbl">No. of units</label>
+            <input type="number" class="slot-occ" data-id="${st.id}" min="1" value="${st.occurrences}" style="width:72px">
+          </div>
+        </div>
+        <div class="f" style="margin-top:8px">
+          <label class="lbl">Slot duration(s)</label>
+          ${durRows}
+          <button type="button" class="btn-link" style="font-size:12px;margin-top:2px" onclick="addDuration(${st.id})">+ Add duration</button>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="slotcard" id="slot-${st.id}">
+      <div class="slothdr">
+        <span class="slotnum">${a === 'B' ? 'Appointment' : 'Resource'} type ${idx+1}</span>
+        ${idx > 0 ? `<button class="btn-rm" onclick="removeSlot(${st.id})">✕</button>` : ''}
+      </div>
+      <div class="row">
+        <div class="f">
+          <label class="lbl">Name</label>
+          <input type="text" class="slot-name" data-id="${st.id}" value="${escHtml(st.name)}" placeholder="${a === 'B' ? 'e.g. Consultation' : 'e.g. Table for 4'}">
+        </div>
+      </div>
+      <div class="f">
+        <label class="lbl">Duration</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="number" class="slot-dur" data-id="${st.id}" min="5" max="480" value="${st.duration}" style="width:78px">
+          <span style="font-size:13px;color:var(--muted)">minutes</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function bindSlotEvents(a){
+  document.querySelectorAll('.slot-name').forEach(el => {
+    el.addEventListener('input', () => {
+      const s = S.slots.find(x => String(x.id) === String(el.dataset.id));
+      if(s) s.name = el.value;
+      markDirty();
+    });
+  });
+
+  document.querySelectorAll('.slot-dur').forEach(el => {
+    el.addEventListener('input', () => {
+      const s = S.slots.find(x => String(x.id) === String(el.dataset.id));
+      if(s) s.duration = parseInt(el.value, 10) || 30;
+      markDirty();
+    });
+  });
+
+  document.querySelectorAll('.slot-cap').forEach(el => {
+    el.addEventListener('input', () => {
+      const s = S.slots.find(x => String(x.id) === String(el.dataset.id));
+      if(s) s.capacity = parseInt(el.value, 10) || 1;
+      markDirty();
+    });
+  });
+
+  document.querySelectorAll('.slot-occ').forEach(el => {
+    el.addEventListener('input', () => {
+      const s = S.slots.find(x => String(x.id) === String(el.dataset.id));
+      if(s) s.occurrences = parseInt(el.value, 10) || 1;
+      markDirty();
+    });
+  });
+
+  document.querySelectorAll('.slot-adur').forEach(el => {
+    el.addEventListener('input', () => {
+      const s = S.slots.find(x => String(x.id) === String(el.dataset.slotid));
+      if(s && s.durations){
+        const d = s.durations.find(x => String(x.id) === String(el.dataset.durid));
+        if(d) d.minutes = parseInt(el.value, 10) || 60;
+      }
+      markDirty();
+    });
+  });
+}
+
+function addSlot(a){
+  S.slots.push(newSlot(a));
+  renderCapacity();
+  markDirty();
+}
+
+function removeSlot(id){
+  S.slots = S.slots.filter(s => String(s.id) !== String(id));
+  renderCapacity();
+  markDirty();
+}
+
+function addDuration(slotId){
+  const s = S.slots.find(x => String(x.id) === String(slotId));
+  if(!s) return;
+  if(!s.durations) s.durations = [];
+  s.durations.push({id:++_durId, minutes:60});
+  renderCapacity();
+  markDirty();
+}
+
+function removeDuration(slotId, durId){
+  const s = S.slots.find(x => String(x.id) === String(slotId));
+  if(!s || !s.durations || s.durations.length <= 1) return;
+  s.durations = s.durations.filter(d => String(d.id) !== String(durId));
+  renderCapacity();
+  markDirty();
+}
+/* ─────────────────────────────────────────────────────────────
+   WAVE CHARTS
+───────────────────────────────────────────────────────────── */
+function getOperatingHours(){
+  const days = S.schedule.days.filter(d => d.on);
+  if(!days.length) return { start:9, end:18 };
+  const d = days[0];
+  const [sh] = String(d.open || '09:00').split(':').map(Number);
+  const [eh, em] = String(d.close || '17:00').split(':').map(Number);
+  return { start:sh, end:eh + (em > 0 ? 1 : 0) };
+}
+
+function ensureWaveSchedule(){
+  const days = S.schedule.days.filter(d => d.on);
+  const { start, end } = getOperatingHours();
+
+  function makeSegs(){
+    const segs = [];
+    for(let h = start; h <= end; h++) segs.push({ hour:h, cap:S.wave_capacity || 20 });
+    return segs;
+  }
+
+  if(S.wave_var_scope === 'all'){
+    if(!S.wave_schedule.find(ws => ws.day === 'All days')){
+      S.wave_schedule = [{ day:'All days', segments:makeSegs() }];
+    } else {
+      S.wave_schedule = S.wave_schedule.filter(ws => ws.day === 'All days');
+    }
+  } else {
+    days.forEach(d => {
+      if(!S.wave_schedule.find(ws => ws.day === d.n)){
+        S.wave_schedule.push({ day:d.n, segments:makeSegs() });
+      }
+    });
+    S.wave_schedule = S.wave_schedule.filter(ws => ws.day !== 'All days' && days.some(d => d.n === ws.day));
+  }
+}
+
+function bindWaveControls(){
+  document.querySelectorAll('input[name=wcm]').forEach(r => r.addEventListener('change', () => {
+    S.wave_cap_mode = r.value;
+    qs('wave-var-panel')?.classList.toggle('on', r.value === 'variable');
+    if(r.value === 'variable') renderWaveCharts();
+    markDirty();
+  }));
+
+  document.querySelectorAll('input[name=wvs]').forEach(r => r.addEventListener('change', () => {
+    S.wave_var_scope = r.value;
+    renderWaveCharts();
+    markDirty();
+  }));
+
+  qs('f-wdur')?.addEventListener('input', e => {
+    S.wave_duration = parseInt(e.target.value, 10) || 15;
+    markDirty();
+  });
+
+  qs('f-wcap')?.addEventListener('input', e => {
+    S.wave_capacity = parseInt(e.target.value, 10) || 20;
+    if(S.wave_cap_mode === 'variable') renderWaveCharts();
+    markDirty();
+  });
+}
+
+function renderWaveCharts(){
+  ensureWaveSchedule();
+  const container = qs('wave-day-charts');
+  if(!container) return;
+
+  container.innerHTML = '';
+  S.wave_schedule.forEach(ws => {
+    const safeDay = ws.day.replace(/\s+/g,'_');
+    const card = document.createElement('div');
+    card.className = 'slotcard';
+    card.style.cssText = 'margin-bottom:14px;padding:14px 16px';
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-weight:700;font-size:14px">${escHtml(ws.day)}</div>
+        <button type="button" class="btn-link" onclick="resetWaveDay('${escAttr(ws.day)}')">↺ Reset to default</button>
+      </div>
+      <div style="position:relative;user-select:none">
+        <canvas id="wc-${safeDay}" width="560" height="160"
+          style="width:100%;height:160px;cursor:crosshair;border-radius:8px;background:linear-gradient(180deg,#1e1b3a 0%,#16132e 100%)"></canvas>
+        <div id="wc-tooltip-${safeDay}"
+          style="position:absolute;pointer-events:none;display:none;background:rgba(30,27,58,.92);color:#e0e7ff;font-size:11px;padding:4px 8px;border-radius:6px;white-space:nowrap;z-index:10"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--muted)" id="wc-xlabel-${safeDay}"></div>
+    `;
+    container.appendChild(card);
+    drawWaveChart(ws.day);
+    bindWaveChart(ws.day);
+  });
+}
+
+function drawWaveChart(day){
+  const ws = S.wave_schedule.find(w => w.day === day);
+  if(!ws) return;
+
+  const dayId = day.replace(/\s+/g,'_');
+  const canvas = qs(`wc-${dayId}`);
+  if(!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const PAD = { l:38, r:12, t:14, b:28 };
+  const cw = W - PAD.l - PAD.r;
+  const ch = H - PAD.t - PAD.b;
+  const segs = ws.segments;
+  const maxCap = Math.max(...segs.map(s => s.cap), S.wave_capacity * 2, 10);
+  const minH = segs[0].hour;
+  const maxH = segs[segs.length - 1].hour;
+  const xOf = h => PAD.l + ((h - minH) / (maxH - minH || 1)) * cw;
+  const yOf = c => PAD.t + ch - (c / maxCap) * ch;
+
+  ctx.clearRect(0,0,W,H);
+
+  ctx.strokeStyle = 'rgba(99,91,167,0.18)';
+  ctx.lineWidth = 1;
+  [0,.25,.5,.75,1].forEach(t => {
+    const y = PAD.t + ch * t;
+    ctx.beginPath(); ctx.moveTo(PAD.l,y); ctx.lineTo(PAD.l+cw,y); ctx.stroke();
+    ctx.fillStyle = 'rgba(160,155,210,0.55)';
+    ctx.font = '10px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.round(maxCap*(1-t)), PAD.l - 4, y + 3.5);
+  });
+
+  const grad = ctx.createLinearGradient(0,PAD.t,0,PAD.t+ch);
+  grad.addColorStop(0,'rgba(99,91,255,0.35)');
+  grad.addColorStop(1,'rgba(99,91,255,0.04)');
+
+  ctx.beginPath();
+  ctx.moveTo(xOf(segs[0].hour), yOf(segs[0].cap));
+  for(let i=1;i<segs.length;i++){
+    const px = xOf(segs[i-1].hour), py = yOf(segs[i-1].cap);
+    const nx = xOf(segs[i].hour), ny = yOf(segs[i].cap);
+    const cx1 = px + (nx-px)*0.5, cx2 = nx - (nx-px)*0.5;
+    ctx.bezierCurveTo(cx1,py,cx2,ny,nx,ny);
+  }
+  ctx.lineTo(xOf(segs[segs.length-1].hour), PAD.t+ch);
+  ctx.lineTo(xOf(segs[0].hour), PAD.t+ch);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(xOf(segs[0].hour), yOf(segs[0].cap));
+  for(let i=1;i<segs.length;i++){
+    const px = xOf(segs[i-1].hour), py = yOf(segs[i-1].cap);
+    const nx = xOf(segs[i].hour), ny = yOf(segs[i].cap);
+    const cx1 = px + (nx-px)*0.5, cx2 = nx - (nx-px)*0.5;
+    ctx.bezierCurveTo(cx1,py,cx2,ny,nx,ny);
+  }
+  ctx.strokeStyle = 'rgba(139,92,246,0.9)';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  segs.forEach(seg => {
+    const x = xOf(seg.hour), y = yOf(seg.cap);
+    ctx.beginPath();
+    ctx.arc(x,y,5,0,Math.PI*2);
+    ctx.fillStyle = '#a78bfa';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  });
+
+  const xlabel = qs(`wc-xlabel-${dayId}`);
+  if(xlabel) xlabel.innerHTML = segs.map(s => `<span>${s.hour}:00</span>`).join('');
+}
+
+function bindWaveChart(day){
+  const dayId = day.replace(/\s+/g,'_');
+  const canvas = qs(`wc-${dayId}`);
+  const tooltip = qs(`wc-tooltip-${dayId}`);
+  if(!canvas) return;
+
+  const ws = S.wave_schedule.find(w => w.day === day);
+  let dragging = null;
+
+  function getCanvasPos(e){
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    return { x:cx*scaleX, y:cy*scaleY };
+  }
+
+  function hitTest(pos){
+    const segs = ws.segments;
+    const W = canvas.width, H = canvas.height;
+    const PAD = { l:38, r:12, t:14, b:28 };
+    const cw = W - PAD.l - PAD.r, ch = H - PAD.t - PAD.b;
+    const maxCap = Math.max(...segs.map(s => s.cap), S.wave_capacity*2, 10);
+    const minH = segs[0].hour, maxH = segs[segs.length-1].hour;
+    const xOf = h => PAD.l + ((h-minH)/(maxH-minH||1))*cw;
+    const yOf = c => PAD.t + ch - (c/maxCap)*ch;
+    for(let i=0;i<segs.length;i++){
+      const dx = pos.x - xOf(segs[i].hour);
+      const dy = pos.y - yOf(segs[i].cap);
+      if(Math.sqrt(dx*dx + dy*dy) < 12) return i;
+    }
+    return null;
+  }
+
+  function updateFromPos(idx, pos){
+    const segs = ws.segments;
+    const H = canvas.height;
+    const PAD = { l:38, r:12, t:14, b:28 };
+    const ch = H - PAD.t - PAD.b;
+    const maxCap = Math.max(...segs.map(s => s.cap), S.wave_capacity*2, 10);
+    const rawCap = Math.round(maxCap * (1 - (pos.y - PAD.t)/ch));
+    segs[idx].cap = Math.max(1, Math.min(rawCap, maxCap));
+    drawWaveChart(day);
+    if(tooltip){
+      tooltip.style.display = 'block';
+      tooltip.style.left = (pos.x / canvas.width * 100) + '%';
+      tooltip.style.top = Math.max(PAD.t, pos.y - 28) + 'px';
+      tooltip.textContent = `${segs[idx].hour}:00 → ${segs[idx].cap} visitors`;
+    }
+    markDirty();
+  }
+
+  canvas.addEventListener('mousedown', e => {
+    const idx = hitTest(getCanvasPos(e));
+    if(idx !== null){ dragging = idx; e.preventDefault(); }
+  });
+  canvas.addEventListener('mousemove', e => {
+    const pos = getCanvasPos(e);
+    if(dragging !== null){ updateFromPos(dragging, pos); return; }
+    canvas.style.cursor = hitTest(pos) !== null ? 'grab' : 'crosshair';
+    if(tooltip) tooltip.style.display = 'none';
+  });
+  canvas.addEventListener('mouseup', () => { dragging = null; if(tooltip) tooltip.style.display = 'none'; });
+  canvas.addEventListener('mouseleave', () => { dragging = null; if(tooltip) tooltip.style.display = 'none'; });
+
+  canvas.addEventListener('touchstart', e => {
+    const idx = hitTest(getCanvasPos(e));
+    if(idx !== null){ dragging = idx; e.preventDefault(); }
+  }, { passive:false });
+  canvas.addEventListener('touchmove', e => {
+    if(dragging !== null){ updateFromPos(dragging, getCanvasPos(e)); e.preventDefault(); }
+  }, { passive:false });
+  canvas.addEventListener('touchend', () => { dragging = null; if(tooltip) tooltip.style.display = 'none'; });
+}
+
+function resetWaveDay(day){
+  const ws = S.wave_schedule.find(w => w.day === day);
+  if(ws) ws.segments.forEach(s => s.cap = S.wave_capacity || 20);
+  drawWaveChart(day);
+  markDirty();
+}
+
+/* ─────────────────────────────────────────────────────────────
+   RELEASE CHARTS
+───────────────────────────────────────────────────────────── */
+function getReleaseOperatingHours(){
+  const days = S.schedule.days.filter(d => d.on);
+  if(!days.length) return { start:9, end:18 };
+  const d = days[0];
+  const [sh] = String(d.open || '09:00').split(':').map(Number);
+  const [eh, em] = String(d.close || '17:00').split(':').map(Number);
+  return { start:sh, end:eh + (em > 0 ? 1 : 0) };
+}
+
+function ensureReleaseSchedule(){
+  const days = S.schedule.days.filter(d => d.on);
+  const { start, end } = getReleaseOperatingHours();
+
+  function makeSegs(){
+    const segs = [];
+    for(let h = start; h <= end; h++) segs.push({ hour:h, count:S.release_count || 10 });
+    return segs;
+  }
+
+  if(S.fixed_release_scope === 'all'){
+    if(!S.release_schedule.find(rs => rs.day === 'All days')){
+      S.release_schedule = [{ day:'All days', segments:makeSegs() }];
+    } else {
+      S.release_schedule = S.release_schedule.filter(rs => rs.day === 'All days');
+    }
+  } else {
+    days.forEach(d => {
+      if(!S.release_schedule.find(rs => rs.day === d.n)){
+        S.release_schedule.push({ day:d.n, segments:makeSegs() });
+      }
+    });
+    S.release_schedule = S.release_schedule.filter(rs => rs.day !== 'All days' && days.some(d => d.n === rs.day));
+  }
+}
+
+function bindReleaseControls(){
+  document.querySelectorAll('input[name=rm]').forEach(r => r.addEventListener('change', () => {
+    S.release_mode = r.value;
+    qs('rel-incremental')?.classList.toggle('on', r.value === 'incremental');
+    qs('planned-releases-panel')?.classList.toggle('on', r.value === 'fixed');
+    if(r.value === 'fixed') renderReleaseCharts();
+    markDirty();
+  }));
+
+  document.querySelectorAll('input[name=frs]').forEach(r => r.addEventListener('change', () => {
+    S.fixed_release_scope = r.value;
+    renderReleaseCharts();
+    markDirty();
+  }));
+
+  qs('f-rc')?.addEventListener('input', e => {
+    S.release_count = parseInt(e.target.value, 10) || 10;
+    markDirty();
+  });
+
+  qs('f-ri')?.addEventListener('input', e => {
+    S.release_interval = parseInt(e.target.value, 10) || 15;
+    markDirty();
+  });
+
+  qs('f-rc-planned')?.addEventListener('input', e => {
+    S.release_count = parseInt(e.target.value, 10) || 10;
+    S.release_schedule.forEach(rs => drawReleaseChart(rs.day));
+    markDirty();
+  });
+}
+
+function renderReleaseCharts(){
+  ensureReleaseSchedule();
+  const container = qs('release-day-charts');
+  if(!container) return;
+
+  container.innerHTML = '';
+  S.release_schedule.forEach(rs => {
+    const safeDay = rs.day.replace(/\s+/g,'_');
+    const card = document.createElement('div');
+    card.className = 'slotcard';
+    card.style.cssText = 'margin-bottom:14px;padding:14px 16px';
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-weight:700;font-size:14px">${escHtml(rs.day)}</div>
+        <button type="button" class="btn-link" onclick="resetReleaseDay('${escAttr(rs.day)}')">↺ Reset to default</button>
+      </div>
+      <div style="position:relative;user-select:none">
+        <canvas id="rc-${safeDay}" width="560" height="160"
+          style="width:100%;height:160px;cursor:crosshair;border-radius:8px;background:linear-gradient(180deg,#1e1b3a 0%,#16132e 100%)"></canvas>
+        <div id="rc-tooltip-${safeDay}"
+          style="position:absolute;pointer-events:none;display:none;background:rgba(30,27,58,.92);color:#e0e7ff;font-size:11px;padding:4px 8px;border-radius:6px;white-space:nowrap;z-index:10"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--muted)" id="rc-xlabel-${safeDay}"></div>
+    `;
+    container.appendChild(card);
+    drawReleaseChart(rs.day);
+    bindReleaseChart(rs.day);
+  });
+}
+
+function drawReleaseChart(day){
+  const rs = S.release_schedule.find(r => r.day === day);
+  if(!rs) return;
+
+  const dayId = day.replace(/\s+/g,'_');
+  const canvas = qs(`rc-${dayId}`);
+  if(!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const PAD = { l:38, r:12, t:14, b:28 };
+  const cw = W - PAD.l - PAD.r;
+  const ch = H - PAD.t - PAD.b;
+  const segs = rs.segments;
+  const maxCount = Math.max(S.release_count || 10, ...segs.map(s => s.count), 1);
+  const minH = segs[0].hour;
+  const maxH = segs[segs.length - 1].hour;
+  const xOf = h => PAD.l + ((h - minH) / (maxH - minH || 1)) * cw;
+  const yOf = v => PAD.t + ch - (v / maxCount) * ch;
+
+  ctx.clearRect(0,0,W,H);
+
+  ctx.strokeStyle = 'rgba(99,91,167,0.18)';
+  ctx.lineWidth = 1;
+  [0,.25,.5,.75,1].forEach(t => {
+    const y = PAD.t + ch * t;
+    ctx.beginPath(); ctx.moveTo(PAD.l,y); ctx.lineTo(PAD.l+cw,y); ctx.stroke();
+    ctx.fillStyle = 'rgba(160,155,210,0.6)';
+    ctx.font = '10px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.round(maxCount*(1-t)), PAD.l - 4, y + 3.5);
+  });
+
+  const grad = ctx.createLinearGradient(0,PAD.t,0,PAD.t+ch);
+  grad.addColorStop(0,'rgba(99,91,255,0.28)');
+  grad.addColorStop(1,'rgba(99,91,255,0.03)');
+
+  ctx.beginPath();
+  ctx.moveTo(xOf(segs[0].hour), yOf(segs[0].count));
+  for(let i=1;i<segs.length;i++) ctx.lineTo(xOf(segs[i].hour), yOf(segs[i].count));
+  ctx.lineTo(xOf(segs[segs.length-1].hour), PAD.t+ch);
+  ctx.lineTo(xOf(segs[0].hour), PAD.t+ch);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(xOf(segs[0].hour), yOf(segs[0].count));
+  for(let i=1;i<segs.length;i++) ctx.lineTo(xOf(segs[i].hour), yOf(segs[i].count));
+  ctx.strokeStyle = 'rgba(139,92,246,0.9)';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  segs.forEach(seg => {
+    const x = xOf(seg.hour), y = yOf(seg.count);
+    ctx.beginPath();
+    ctx.arc(x,y,5,0,Math.PI*2);
+    ctx.fillStyle = '#a78bfa';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  });
+
+  const xlabel = qs(`rc-xlabel-${dayId}`);
+  if(xlabel) xlabel.innerHTML = segs.map(s => `<span>${s.hour}:00</span>`).join('');
+}
+
+function bindReleaseChart(day){
+  const dayId = day.replace(/\s+/g,'_');
+  const canvas = qs(`rc-${dayId}`);
+  const tooltip = qs(`rc-tooltip-${dayId}`);
+  if(!canvas) return;
+
+  const rs = S.release_schedule.find(r => r.day === day);
+  let dragging = null;
+
+  function getCanvasPos(e){
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: ((e.touches ? e.touches[0].clientX : e.clientX) - rect.left) * scaleX,
+      y: ((e.touches ? e.touches[0].clientY : e.clientY) - rect.top) * scaleY
+    };
+  }
+
+  function hitTest(pos){
+    const segs = rs.segments;
+    const W = canvas.width, H = canvas.height;
+    const PAD = { l:38, r:12, t:14, b:28 };
+    const cw = W - PAD.l - PAD.r, ch = H - PAD.t - PAD.b;
+    const maxCount = Math.max(S.release_count || 10, ...segs.map(s => s.count), 1);
+    const minH = segs[0].hour, maxH = segs[segs.length-1].hour;
+    const xOf = h => PAD.l + ((h-minH)/(maxH-minH||1))*cw;
+    const yOf = v => PAD.t + ch - (v/maxCount)*ch;
+
+    for(let i=0;i<segs.length;i++){
+      const dx = pos.x - xOf(segs[i].hour);
+      const dy = pos.y - yOf(segs[i].count);
+      if(Math.sqrt(dx*dx + dy*dy) < 12) return i;
+    }
+    return null;
+  }
+
+  function updateFromPos(idx, pos){
+    const segs = rs.segments;
+    const H = canvas.height;
+    const PAD = { l:38, r:12, t:14, b:28 };
+    const ch = H - PAD.t - PAD.b;
+    const maxCount = Math.max(S.release_count || 10, ...segs.map(s => s.count), 1);
+    const rawCount = Math.round(maxCount * (1 - (pos.y - PAD.t)/ch));
+    segs[idx].count = Math.max(0, Math.min(rawCount, maxCount));
+    drawReleaseChart(day);
+    if(tooltip){
+      tooltip.style.display = 'block';
+      tooltip.style.left = (pos.x / canvas.width * 100) + '%';
+      tooltip.style.top = Math.max(PAD.t, pos.y - 28) + 'px';
+      tooltip.textContent = `${segs[idx].hour}:00 → ${segs[idx].count} releases`;
+    }
+    markDirty();
+  }
+
+  canvas.addEventListener('mousedown', e => {
+    const idx = hitTest(getCanvasPos(e));
+    if(idx !== null){ dragging = idx; e.preventDefault(); }
+  });
+  canvas.addEventListener('mousemove', e => {
+    const pos = getCanvasPos(e);
+    if(dragging !== null){ updateFromPos(dragging, pos); return; }
+    canvas.style.cursor = hitTest(pos) !== null ? 'grab' : 'crosshair';
+    if(tooltip) tooltip.style.display = 'none';
+  });
+  canvas.addEventListener('mouseup', () => { dragging = null; if(tooltip) tooltip.style.display = 'none'; });
+  canvas.addEventListener('mouseleave', () => { dragging = null; if(tooltip) tooltip.style.display = 'none'; });
+
+  canvas.addEventListener('touchstart', e => {
+    const idx = hitTest(getCanvasPos(e));
+    if(idx !== null){ dragging = idx; e.preventDefault(); }
+  }, { passive:false });
+  canvas.addEventListener('touchmove', e => {
+    if(dragging !== null){ updateFromPos(dragging, getCanvasPos(e)); e.preventDefault(); }
+  }, { passive:false });
+  canvas.addEventListener('touchend', () => { dragging = null; if(tooltip) tooltip.style.display = 'none'; });
+}
+
+function resetReleaseDay(day){
+  const rs = S.release_schedule.find(r => r.day === day);
+  if(rs) rs.segments.forEach(s => s.count = S.release_count || 10);
+  drawReleaseChart(day);
+  markDirty();
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ACCESS / ADMISSION / TIME / CHANNELS / VERIFICATION
+───────────────────────────────────────────────────────────── */
+const PUBS = {
+  anonymous:{ icon:'👻', title:'Anonymous visitors', desc:'Anyone can join without an account. Device-based limits apply.' },
+  registered:{ icon:'👤', title:'Registered visitors', desc:'Visitors with an In-Time account.' },
+  listed:{ icon:'📋', title:'Listed visitors only', desc:'Only visitors you’ve invited or explicitly approved.' },
+};
+
+function renderPublics(){
+  const avail = (S.arch === 'C' || S.arch === 'D')
+    ? ['anonymous','registered']
+    : ['anonymous','registered','listed'];
+
+  const wrap = qs('pub-opts');
+  if(!wrap) return;
+
+  wrap.innerHTML = avail.map(k => {
+    const d = PUBS[k];
+    const sel = S.publics.includes(k);
+    return `
+      <div class="popt${sel ? ' on' : ''}" onclick="togglePub('${k}')">
+        <div class="pbox"></div>
+        <span class="picon">${d.icon}</span>
+        <div class="pinfo">
+          <div class="ptitle">${d.title}</div>
+          <div class="pdesc">${d.desc}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  qs('listed-rules')?.classList.toggle('on', S.publics.includes('listed'));
+}
+
+function togglePub(k){
+  const i = S.publics.indexOf(k);
+  if(i >= 0) S.publics.splice(i,1);
+  else S.publics.push(k);
+  renderPublics();
+  markDirty();
+}
+
+function bindAccessFields(){
+  qs('tog-access-req')?.addEventListener('change', e => { S.access_req = !!e.target.checked; markDirty(); });
+  qs('tog-bulk')?.addEventListener('change', e => { S.bulk_invite = !!e.target.checked; markDirty(); });
+}
+
+function renderCalling(){
+  const body = qs('calling-body');
+  if(!body) return;
+
+  const a = S.arch;
+  const f = S.formula;
+  const hasAdv = ['ADVANCE_ONLY','MIXED','ADVANCE_PLUS','ADVANCE'].includes(f);
+  const hasLive = ['LIVE_ONLY','MIXED','LIVE_ETE'].includes(f);
+
+  let html = '';
+
+  if((a === 'A' || a === 'B') && hasLive){
+    html += `
+      <div class="co co-note" style="margin-bottom:10px">
+        <span class="tag tag-live">Live flow</span>&nbsp;
+        <strong>Single next call</strong> — the next visitor in the live queue is called as soon as you’re ready.
+      </div>
+    `;
+  }
+
+  if((a === 'A' || a === 'B') && hasAdv){
+    html += `
+      <div class="co co-note" style="margin-bottom:10px">
+        <span class="tag tag-adv">In advance</span>&nbsp;
+        <strong>Scheduled call lead</strong>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+          <label style="font-size:13px;color:var(--muted)">Lead time:</label>
+          <input type="number" id="f-adv-lead" min="0" max="60" value="${S.calling.adv_lead || 10}" style="width:72px">
+          <span style="font-size:13px;color:var(--muted)">min before slot</span>
+        </div>
+      </div>
+    `;
+  }
+
+  if(a === 'C'){
+    html = `
+      <div class="co co-note">
+        <span class="tag tag-all">All bookings</span>&nbsp;
+        <strong>Scheduled call lead</strong>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+          <label style="font-size:13px;color:var(--muted)">Lead time:</label>
+          <input type="number" id="f-adv-lead" min="0" max="60" value="${S.calling.adv_lead || 15}" style="width:72px">
+          <span style="font-size:13px;color:var(--muted)">min before wave</span>
+        </div>
+      </div>
+    `;
+  }
+
+  if(a === 'D'){
+    html = `
+      <div class="co co-note">
+        <span class="tag tag-live">Live flow</span>&nbsp;
+        <strong>Single next call</strong> — visitors are notified in queue order when released.
+      </div>
+    `;
+  }
+
+  body.innerHTML = html || `<p style="color:var(--muted);font-size:13px">No calling configuration needed for your selections.</p>`;
+
+  qs('f-adv-lead')?.addEventListener('input', e => {
+    S.calling.adv_lead = parseInt(e.target.value, 10) || 10;
+    markDirty();
+  });
+}
+
+function bindAdmissionFields(){
+  document.querySelectorAll('input[name=adm]').forEach(r => r.addEventListener('change', () => {
+    S.adm = r.value;
+    qs('scan-fallback-opt')?.classList.toggle('on', r.value === 'scan');
+    qs('noscan-config')?.classList.toggle('on', r.value === 'no_scan');
+    qs('noscan-warn')?.classList.toggle('on', r.value === 'no_scan' && S.arch === 'C');
+    markDirty();
+  }));
+
+  qs('tog-fallback')?.addEventListener('change', e => {
+    S.scan_fallback = !!e.target.checked;
+    markDirty();
+  });
+
+  qs('f-noscan-win')?.addEventListener('input', e => {
+    S.noscan_win = parseInt(e.target.value, 10) || 10;
+    markDirty();
+  });
+}
+
+function earlyEntryHtml(disabledForC){
+  const ee = S.early;
+  const note = disabledForC
+    ? `<br><span style="color:var(--amber);font-size:11.5px;font-weight:600">⚠️ Not recommended for wave-based queues.</span>`
+    : '';
+
+  return `
+    <div class="togrow">
+      <div class="togi">
+        <div class="tog-title">Offer an earlier spot</div>
+        <div class="tog-desc">When a slot opens ahead of a visitor’s scheduled time, proactively offer them the earlier option.${note}</div>
+      </div>
+      <label class="togsw"><input type="checkbox" id="tog-early" ${ee.enabled ? 'checked' : ''}><span class="togtr"></span></label>
+    </div>
+    <div id="early-cfg" class="cond${ee.enabled ? ' on' : ''}">
+      <div class="row" style="margin-top:10px">
+        <div class="f" style="max-width:175px">
+          <label class="lbl">Visibility window</label>
+          <div style="display:flex;align-items:center;gap:7px"><input type="number" id="f-ew" min="5" max="600" value="${ee.window || 30}" style="width:72px"><span style="font-size:12px;color:var(--muted)">min</span></div>
+        </div>
+        <div class="f" style="max-width:155px">
+          <label class="lbl">Max candidates</label>
+          <input type="number" id="f-em" min="1" max="50" value="${ee.max || 3}" style="width:72px">
+        </div>
+        <div class="f" style="max-width:195px">
+          <label class="lbl">Send request every</label>
+          <div style="display:flex;align-items:center;gap:7px"><input type="number" id="f-ei" min="5" max="300" value="${ee.interval || 30}" style="width:72px"><span style="font-size:12px;color:var(--muted)">seconds</span></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTimeTrans(){
+  const body = qs('s5-body');
+  if(!body) return;
+
+  const a = S.arch;
+  const f = S.formula;
+  const hasAdv = ['ADVANCE_ONLY','MIXED','ADVANCE'].includes(f);
+  const hasLive = ['LIVE_ONLY','MIXED'].includes(f);
+
+  let html = '';
+
+  if(a === 'C'){
+    html += `
+      <div class="co co-info"><strong>ℹ️ EET is the default for wave-based queues.</strong><br>
+      EET = the clock time of the visitor’s wave slot.</div>
+    `;
+    html += earlyEntryHtml(true);
+    body.innerHTML = html;
+    wireEarly();
+    return;
+  }
+
+  if(a === 'D'){
+    html += `
+      <div class="togrow" style="padding-top:0">
+        <div class="togi">
+          <div class="tog-title">Show ETE <span class="tag tag-live" style="margin-left:4px">Live flow</span></div>
+          <div class="tog-desc">Show visitors an estimated wait time alongside their queue number.</div>
+        </div>
+        <label class="togsw"><input type="checkbox" id="tog-ete" ${S.show_ete ? 'checked' : ''}><span class="togtr"></span></label>
+      </div>
+      <div class="co co-info" style="margin-top:14px">
+        <strong>ℹ️ Earlier spot offers are handled automatically</strong> for continuous-flow queues.
+      </div>
+    `;
+    body.innerHTML = html;
+    qs('tog-ete')?.addEventListener('change', e => { S.show_ete = !!e.target.checked; markDirty(); });
+    return;
+  }
+
+  if(hasAdv){
+    html += `
+      <div class="co co-info" style="margin-bottom:14px">
+        <strong>ℹ️ EET</strong> is the scheduled clock time of the visitor’s appointment.
+      </div>
+    `;
+  }
+
+  if(hasLive){
+    html += `
+      <div class="togrow" style="padding-top:0">
+        <div class="togi">
+          <div class="tog-title">Show ETE <span class="tag tag-live" style="margin-left:4px">Live flow</span></div>
+          <div class="tog-desc">Live wait-time estimate shown to visitors in the live queue.</div>
+        </div>
+        <label class="togsw"><input type="checkbox" id="tog-ete" ${S.show_ete ? 'checked' : ''}><span class="togtr"></span></label>
+      </div>
+    `;
+  }
+
+  html += `<div class="sep"></div>`;
+  html += earlyEntryHtml(false);
+  body.innerHTML = html;
+
+  wireEarly();
+  qs('tog-ete')?.addEventListener('change', e => { S.show_ete = !!e.target.checked; markDirty(); });
+}
+
+function wireEarly(){
+  qs('tog-early')?.addEventListener('change', function(){
+    S.early.enabled = !!this.checked;
+    qs('early-cfg')?.classList.toggle('on', !!this.checked);
+    markDirty();
+  });
+  qs('f-ew')?.addEventListener('input', e => { S.early.window = parseInt(e.target.value, 10) || 30; markDirty(); });
+  qs('f-em')?.addEventListener('input', e => { S.early.max = parseInt(e.target.value, 10) || 3; markDirty(); });
+  qs('f-ei')?.addEventListener('input', e => { S.early.interval = parseInt(e.target.value, 10) || 30; markDirty(); });
+}
+
+function toggleCh(id){
+  qs(`ch-${id}-body`)?.classList.toggle('on');
+}
+
+function onChTog(id, inp){
+  if(inp.checked){
+    if(!S.channels.includes(id)) S.channels.push(id);
+  } else {
+    S.channels = S.channels.filter(c => c !== id);
+  }
+  qs(`ch-${id}-hdr`)?.classList.toggle('on', inp.checked);
+  markDirty();
+}
+
+function bindChannelFields(){
+  ['email','inapp','sms','wa'].forEach(id => {
+    qs(`ch-${id}`)?.addEventListener('change', e => onChTog(id, e.target));
+  });
+  qs('f-sender')?.addEventListener('input', e => {
+    S.sender_email = e.target.value.trim();
+    markDirty();
+  });
+}
+
+const EF_TYPES = ['Social security number','Nationality','Preferred language','Date of birth','Phone number','Insurance number','Reference code','Other (custom)'];
+
+function renderVerif(){
+  const title = qs('s7-title');
+  const lead = qs('s7-lead');
+  const body = qs('s7-body');
+  if(!title || !lead || !body) return;
+
+  if(S.arch === 'B'){
+    title.textContent = 'Additional registration data';
+    lead.textContent = 'Request up to 5 extra fields from visitors.';
+    body.innerHTML = `
+      <div class="co co-note" style="margin-bottom:14px">Visitors who don’t fill required fields cannot complete their booking.</div>
+      <div id="ef-list"></div>
+      <button type="button" class="btn-add" onclick="addExtraField()">+ Add registration field</button>
+    `;
+    renderExtraFields();
+    return;
+  }
+
+  if(S.arch === 'D'){
+    title.textContent = 'Official reseller links';
+    lead.textContent = 'Show official reseller links before booking.';
+    body.innerHTML = `
+      <div class="co co-note" style="margin-bottom:14px">Links are displayed prominently on the queue booking page.</div>
+      <div id="res-list"></div>
+      <button type="button" class="btn-add" onclick="addReseller()">+ Add reseller link</button>
+    `;
+    renderResellers();
+    return;
+  }
+
+  title.textContent = 'Payment gate';
+  lead.textContent = 'Optionally redirect visitors to an external payment provider.';
+  body.innerHTML = `
+    <div class="togrow" style="padding-top:0">
+      <div class="togi">
+        <div class="tog-title">Enable external payment redirect</div>
+        <div class="tog-desc">Redirect visitors to your payment provider before their booking is confirmed.</div>
+      </div>
+      <label class="togsw"><input type="checkbox" id="tog-pay" ${S.payment_gate ? 'checked' : ''}><span class="togtr"></span></label>
+    </div>
+
+    <div class="cond${S.payment_gate ? ' on' : ''}" id="pay-cfg">
+      <div class="cgrid c2" style="margin:12px 0">
+        <label class="copt${S.payment_mode==='best_attempt' ? ' on' : ''}">
+          <input type="radio" name="pm" value="best_attempt" ${S.payment_mode==='best_attempt' ? 'checked' : ''}>
+          <div class="cchk"></div>
+          <div class="ctitle">Best attempt</div>
+          <div class="cdesc">Booking confirmed even if payment is unconfirmed.</div>
+        </label>
+        <label class="copt${S.payment_mode==='mandatory' ? ' on' : ''}">
+          <input type="radio" name="pm" value="mandatory" ${S.payment_mode==='mandatory' ? 'checked' : ''}>
+          <div class="cchk"></div>
+          <div class="ctitle">Mandatory</div>
+          <div class="cdesc">Booking held until payment is confirmed.</div>
+        </label>
+      </div>
+    </div>
+  `;
+
+  qs('tog-pay')?.addEventListener('change', e => {
+    S.payment_gate = !!e.target.checked;
+    qs('pay-cfg')?.classList.toggle('on', !!e.target.checked);
+    markDirty();
+  });
+
+  document.querySelectorAll('input[name=pm]').forEach(r => r.addEventListener('change', () => {
+    S.payment_mode = r.value;
+    markDirty();
+  }));
+}
+
+function addExtraField(){
+  if(S.extra_fields.length >= 5) return;
+  S.extra_fields.push({ id:Date.now(), type:EF_TYPES[0], label:'', required:true, applies:'both' });
+  renderExtraFields();
+  markDirty();
+}
+
+function removeEF(id){
+  S.extra_fields = S.extra_fields.filter(f => String(f.id) !== String(id));
+  renderExtraFields();
+  markDirty();
+}
+
+function renderExtraFields(){
+  const list = qs('ef-list');
+  if(!list) return;
+
+  if(!S.extra_fields.length){
+    list.innerHTML = '<div class="empty-exc" style="margin-bottom:8px">No additional fields yet.</div>';
+    return;
+  }
+
+  list.innerHTML = S.extra_fields.map((f,i) => `
+    <div class="efrow">
+      <div class="f">
+        <label class="lbl">Field type</label>
+        <select onchange="updateEFType(${i}, this.value)">
+          ${EF_TYPES.map(t => `<option ${f.type===t ? 'selected' : ''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      <div class="f">
+        <label class="lbl">Display label</label>
+        <input type="text" value="${escHtml(f.label || '')}" placeholder="Shown to visitor" onchange="updateEFLabel(${i}, this.value)">
+      </div>
+      <div class="f" style="max-width:130px">
+        <label class="lbl">Applies to</label>
+        <select onchange="updateEFApplies(${i}, this.value)">
+          <option value="both" ${f.applies==='both' ? 'selected' : ''}>Both</option>
+          <option value="advance" ${f.applies==='advance' ? 'selected' : ''}>Advance only</option>
+          <option value="live" ${f.applies==='live' ? 'selected' : ''}>Live only</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;padding-top:22px;flex-shrink:0">
+        <label class="togsw"><input type="checkbox" ${f.required ? 'checked' : ''} onchange="updateEFRequired(${i}, this.checked)"><span class="togtr"></span></label>
+        <span style="font-size:12px;color:var(--muted)">Required</span>
+        <button class="btn-rm" onclick="removeEF(${f.id})">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateEFType(i,v){ S.extra_fields[i].type = v; markDirty(); }
+function updateEFLabel(i,v){ S.extra_fields[i].label = v; markDirty(); }
+function updateEFApplies(i,v){ S.extra_fields[i].applies = v; markDirty(); }
+function updateEFRequired(i,v){ S.extra_fields[i].required = !!v; markDirty(); }
+
+function addReseller(){
+  if(S.resellers.length >= 5) return;
+  S.resellers.push({ id:Date.now(), name:'', url:'' });
+  renderResellers();
+  markDirty();
+}
+
+function removeRes(id){
+  S.resellers = S.resellers.filter(r => String(r.id) !== String(id));
+  renderResellers();
+  markDirty();
+}
+
+function renderResellers(){
+  const list = qs('res-list');
+  if(!list) return;
+
+  if(!S.resellers.length){
+    list.innerHTML = '<div class="empty-exc" style="margin-bottom:8px">No reseller links yet.</div>';
+    return;
+  }
+
+  list.innerHTML = S.resellers.map((r,i) => `
+    <div class="resrow">
+      <div class="f"><label class="lbl">Platform</label><input type="text" value="${escHtml(r.name || '')}" placeholder="e.g. Ticketmaster" onchange="updateResName(${i}, this.value)"></div>
+      <div class="f"><label class="lbl">URL</label><input type="url" value="${escAttr(r.url || '')}" placeholder="https://…" onchange="updateResUrl(${i}, this.value)"></div>
+      <button class="btn-rm" style="margin-top:22px;flex-shrink:0" onclick="removeRes(${r.id})">✕</button>
+    </div>
+  `).join('');
+}
+
+function updateResName(i,v){ S.resellers[i].name = v; markDirty(); }
+function updateResUrl(i,v){ S.resellers[i].url = v; markDirty(); }
+
+/* ─────────────────────────────────────────────────────────────
+   OPERATORS / LOOK & FEEL / REVIEW
+───────────────────────────────────────────────────────────── */
+function defaultPerms(){
+  return {
+    can_call_next:true,
+    can_scan_validate:true,
+    can_mark_noshow:true,
+    can_view_bookings:true,
+    can_send_messages:true,
+    can_release_batch:true,
+  };
+}
+
+const PERM_LABELS = {
+  can_call_next:{ label:'Call next / manage flow', desc:'Trigger calls and advance the queue' },
+  can_scan_validate:{ label:'Scan & validate arrivals', desc:'Use the scan tool to check visitors in' },
+  can_mark_noshow:{ label:'Mark no-show', desc:'Mark a booked visitor as absent' },
+  can_view_bookings:{ label:'View booking details', desc:'See visitor names and booking info' },
+  can_send_messages:{ label:'Send messages', desc:'Contact visitors via configured channels' },
+  can_release_batch:{ label:'Release batches', desc:'For wave & flow queues — release a group' },
+};
+
+function renderOperators(){
+  const list = qs('op-list');
+  const addBtn = qs('btn-add-op');
+  const capMsg = qs('op-cap-msg');
+  if(!list) return;
+
+  const isExtended = ['B','C','D'].includes(S.arch);
+  const hardCap = isExtended ? 60 : 5;
+
+  qs('tog-deskid') && (qs('tog-deskid').checked = !!S.show_desk_id);
+
+  if(!S.operators.length){
+    list.innerHTML = `<div class="empty-exc" style="margin-bottom:12px">No operators added yet.</div>`;
+  } else {
+    list.innerHTML = S.operators.map((op, i) => `
+      <div class="slotcard" style="margin-bottom:12px" id="opcard-${op._id}">
+        <div class="slothdr">
+          <span class="slotnum">Operator ${i+1}</span>
+          <button class="btn-rm" onclick="removeOperator(${op._id})">✕</button>
+        </div>
+
+        <div class="row">
+          <div class="f">
+            <label class="lbl">Display name</label>
+            <input type="text" value="${escHtml(op.display_name || '')}" oninput="updateOp(${op._id}, 'display_name', this.value)">
+          </div>
+          <div class="f">
+            <label class="lbl">Email address</label>
+            <input type="email" value="${escAttr(op.email || '')}" oninput="updateOp(${op._id}, 'email', this.value)">
+          </div>
+        </div>
+
+        <div class="f" style="max-width:320px;margin-top:4px">
+          <label class="lbl">Password</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="password" id="op-pwd-${op._id}" value="${escAttr(op.password || '')}" oninput="updateOp(${op._id}, 'password', this.value)" style="flex:1">
+            <button type="button" class="btn-link" onclick="toggleOpPwd(${op._id})">👁</button>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <button type="button" class="collbtn" onclick="coll('op-perms-${op._id}',this)">
+            <span class="collarr">›</span> Restrict capabilities (optional)
+          </button>
+          <div class="collbody" id="op-perms-${op._id}">
+            <div style="margin-top:10px;border:1.5px solid var(--bord);border-radius:10px;overflow:hidden">
+              ${Object.entries(PERM_LABELS).map(([k, meta]) => `
+                <div class="togrow" style="padding:10px 13px">
+                  <div class="togi">
+                    <div class="tog-title" style="font-size:13px">${meta.label}</div>
+                    <div class="tog-desc">${meta.desc}</div>
+                  </div>
+                  <label class="togsw">
+                    <input type="checkbox" ${op.permissions?.[k] ? 'checked' : ''} onchange="updateOpPerm(${op._id}, '${k}', this.checked)">
+                    <span class="togtr"></span>
+                  </label>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  if(addBtn){
+    const count = S.operators.length;
+    addBtn.disabled = count >= hardCap;
+    if(count >= hardCap){
+      capMsg.style.display = 'block';
+      capMsg.textContent = `Maximum ${hardCap} operators reached.`;
+    } else {
+      capMsg.style.display = 'none';
+      capMsg.textContent = '';
+    }
+  }
+}
+
+function addOperator(){
+  const isExtended = ['B','C','D'].includes(S.arch);
+  const hardCap = isExtended ? 60 : 5;
+  if(S.operators.length >= hardCap) return;
+  S.operators.push({
+    _id: Date.now() + Math.floor(Math.random()*1000),
+    display_name:'',
+    email:'',
+    password:'',
+    permissions: defaultPerms(),
+  });
+  renderOperators();
+  markDirty();
+}
+
+function removeOperator(id){
+  S.operators = S.operators.filter(o => String(o._id) !== String(id));
+  renderOperators();
+  markDirty();
+}
+
+function updateOp(id, field, val){
+  const op = S.operators.find(o => String(o._id) === String(id));
+  if(op) op[field] = val;
+  markDirty();
+}
+
+function updateOpPerm(id, perm, val){
+  const op = S.operators.find(o => String(o._id) === String(id));
+  if(op){
+    op.permissions ||= defaultPerms();
+    op.permissions[perm] = !!val;
+  }
+  markDirty();
+}
+
+function toggleOpPwd(id){
+  const inp = qs(`op-pwd-${id}`);
+  if(inp) inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function wireOperatorFields(){
+  qs('tog-deskid')?.addEventListener('change', e => {
+    S.show_desk_id = !!e.target.checked;
+    markDirty();
+  });
+}
+
+function updatePreview(){
+  const qn = qs('prev-qname');
+  const ve = qs('prev-venue');
+  const shell = document.querySelector('.prev-shell');
+  const phone = document.querySelector('.prev-phone');
+  const status = document.querySelector('.prev-status');
+  const btn = document.querySelector('.prev-btn');
+
+  if(qn) qn.textContent = S.queue_name || 'Your Queue Name';
+  if(ve) ve.textContent = (S.venue_name || 'Your Venue') + (S.address ? ` · ${S.address.split(',').slice(0,2).join(',')}` : '');
+
+  if(!shell || !phone || !status || !btn || !qn || !ve) return;
+
+  shell.style.background = 'linear-gradient(160deg,#1e1b2e 0%,#2d1f5e 100%)';
+  phone.style.background = 'rgba(255,255,255,.06)';
+  phone.style.borderColor = 'rgba(255,255,255,.12)';
+  qn.style.color = '#fff';
+  ve.style.color = 'rgba(255,255,255,.6)';
+  status.style.color = '#4ade80';
+  status.style.background = 'rgba(74,222,128,.1)';
+  btn.style.background = 'var(--v)';
+  btn.style.color = '#fff';
+
+  if(!S.use_host_wall && S.preview_wallpaper){
+    phone.style.backgroundImage = `linear-gradient(rgba(0,0,0,.28), rgba(0,0,0,.28)), url("${S.preview_wallpaper}")`;
+  } else {
+    phone.style.backgroundImage = 'none';
+  }
+
+  switch(S.theme){
+    case 'light':
+      shell.style.background = 'linear-gradient(160deg,#f8fafc 0%, #e2e8f0 100%)';
+      phone.style.backgroundColor = 'rgba(255,255,255,.82)';
+      qn.style.color = '#1f2937';
+      ve.style.color = '#6b7280';
+      status.style.color = '#15803d';
+      status.style.background = 'rgba(34,197,94,.12)';
+      btn.style.background = '#2563eb';
+      break;
+    case 'nature':
+      shell.style.background = 'linear-gradient(160deg,#1f3b2d 0%, #355c43 100%)';
+      phone.style.backgroundColor = 'rgba(255,255,255,.08)';
+      qn.style.color = '#f0fdf4';
+      ve.style.color = 'rgba(240,253,244,.72)';
+      status.style.color = '#86efac';
+      status.style.background = 'rgba(134,239,172,.12)';
+      btn.style.background = '#16a34a';
+      break;
+    case 'bold':
+      shell.style.background = 'linear-gradient(160deg,#2a0f44 0%, #7c2d12 100%)';
+      phone.style.backgroundColor = 'rgba(255,255,255,.07)';
+      qn.style.color = '#fff7ed';
+      ve.style.color = 'rgba(255,247,237,.7)';
+      status.style.color = '#fbbf24';
+      status.style.background = 'rgba(251,191,36,.12)';
+      btn.style.background = '#f97316';
+      break;
+  }
+}
+
+function wireLookAndFeelPreview(){
+  document.querySelectorAll('input[name=theme]').forEach(r => r.addEventListener('change', () => {
+    if(r.checked){
+      S.theme = r.value;
+      updatePreview();
+      markDirty();
+    }
+  }));
+
+  qs('tog-host-wall')?.addEventListener('change', function(){
+    S.use_host_wall = !!this.checked;
+    qs('wall-up')?.classList.toggle('on', !this.checked);
+    updatePreview();
+    markDirty();
+  });
+
+  qs('f-wall')?.addEventListener('change', function(){
+    const file = this.files && this.files[0];
+    if(!file){
+      S.preview_wallpaper = '';
+      updatePreview();
+      markDirty();
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+      S.preview_wallpaper = e.target?.result || '';
+      updatePreview();
+      markDirty();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderReview(){
+  const body = qs('review-body');
+  const wb = qs('warnings-body');
+  if(!body || !wb) return;
+
+  const rv = (k,v,na) => `<div class="revrow"><span class="revk">${k}</span><span class="revv${na ? ' na' : ''}">${na ? '—' : escHtml(v)}</span></div>`;
+  const opd = S.schedule.days.filter(d => d.on).map(d => d.n).join(', ') || '—';
+
+  body.innerHTML = `
+    <div class="revgrp"><div class="revgtitle">Identity</div>
+      ${rv('Queue name', S.queue_name, !S.queue_name)}
+      ${rv('Venue', S.venue_name, !S.venue_name)}
+      ${rv('Location', S.address || 'Pinned on map', !S.address)}
+      ${rv('Timezone', S.timezone, !S.timezone)}
+      ${rv('Language / Currency', `${String(S.language || '').toUpperCase()} / ${S.currency || ''}`, false)}
+    </div>
+    <div class="revgrp"><div class="revgtitle">Structure</div>
+      ${rv('Archetype', archetypeLabel(S.arch), !S.arch)}
+      ${rv('Booking mode', formulaLabel(S.formula), !S.formula)}
+    </div>
+    <div class="revgrp"><div class="revgtitle">Schedule</div>
+      ${rv('Open days', opd, false)}
+      ${rv('Hours', S.schedule.sameHours ? `${S.schedule.globalOpen}–${S.schedule.globalClose}` : 'Per-day schedule', false)}
+      ${rv('Last booking cutoff', `${S.schedule.cutoff} min`, false)}
+    </div>
+  `;
+
+  const warns = [];
+  warns.push({ icon:'🔒', title:'Immutable fields', body:`Home region (${S.home_region || '—'}) and archetype (${S.arch || '—'}) are locked.` });
+  if(S.adm === 'no_scan') warns.push({ icon:'⚠️', title:'No-scan mode active', body:`Bookings auto-complete ${S.noscan_win} min after their window.` });
+  if(!S.channels.length) warns.push({ icon:'📭', title:'No notifications configured', body:'Visitors will not receive booking confirmations or reminders.' });
+
+  wb.innerHTML = warns.map(w => `
+    <div class="witem">
+      <div class="wi-icon">${w.icon}</div>
+      <div>
+        <div class="wi-title">${w.title}</div>
+        <div class="wi-desc">${escHtml(w.body)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SAVE
+───────────────────────────────────────────────────────────── */
+function collectPayload(){
+  return {
+    name: S.queue_name || '',
+    venue_name: S.venue_name || '',
+    internal_label: S.internal_label || '',
+    language: S.language || 'en',
+    currency: S.currency || 'EUR',
+    location_text: S.address || null,
+    lat: S.lat,
+    lng: S.lng,
+    timezone: S.timezone || null,
+    home_region: S.home_region || null,
+
+    archetype: S.arch || null,
+    booking_formula: S.formula || null,
+
+    access_publics: S.publics || [],
+    admission_mode: S.adm || 'scan',
+    show_desk_id: !!S.show_desk_id,
+
+    cal_sync: !!S.cal_sync,
+    cal_provider: S.cal_provider || null,
+    sync_horizon: S.sync_horizon || 90,
+
+    show_eet: !!S.show_eet,
+    show_ete: !!S.show_ete,
+
+    channels: S.channels || [],
+    sender_email: S.sender_email || '',
+
+    payment_gate: !!S.payment_gate,
+    theme: S.theme || 'default',
+
+    extra_fields: S.extra_fields || [],
+    resellers: S.resellers || [],
+
+    schedule: S.schedule || {},
+    slots: S.slots || [],
+    wave_duration: S.wave_duration,
+    wave_capacity: S.wave_capacity,
+    wave_cap_mode: S.wave_cap_mode,
+    wave_var_scope: S.wave_var_scope,
+    wave_schedule: S.wave_schedule,
+
+    release_mode: S.release_mode,
+    release_count: S.release_count,
+    release_interval: S.release_interval,
+    fixed_release_scope: S.fixed_release_scope,
+    release_schedule: S.release_schedule,
+
+    operators: S.operators || []
+  };
+}
+
+async function saveQueueChanges(){
+  if(!_queueId){
+    setSaveState('error', 'Missing queue id.');
+    return;
+  }
+
+  setSaveState('saving');
+
+  try{
+    const payload = collectPayload();
+
+    const res = await fetch(`/api/intime/queues/${encodeURIComponent(_queueId)}`, {
+      method:'PATCH',
+      credentials:'same-origin',
+      headers:{ 'Content-Type':'application/json', 'Accept':'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json().catch(() => null);
+    if(!res.ok || !data || data.ok === false){
+      throw new Error((data && data.error) || `HTTP ${res.status}`);
+    }
+
+    _isDirty = false;
+    setSaveState('saved');
+  } catch(err){
+    console.error('[page1-2 save]', err);
+    setSaveState('error', err.message || 'Save failed.');
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   BOOTSTRAP
+───────────────────────────────────────────────────────────── */
+function hydrateBasicsToDom(){
+  setInputValue('f-qname', S.queue_name);
+  setInputValue('f-venue', S.venue_name);
+  setInputValue('f-internal', S.internal_label);
+  setInputValue('f-addr', S.address);
+  setInputValue('f-lang', S.language || 'en');
+  setInputValue('f-currency', S.currency || 'EUR');
+  setInputValue('f-open', S.schedule.globalOpen || '09:00');
+  setInputValue('f-close', S.schedule.globalClose || '17:00');
+  setInputValue('f-cutoff', S.schedule.cutoff || 30);
+  setInputValue('f-cutoff2', S.schedule.cutoff || 30);
+
+  if(S.lat != null) setInputValue('f-lat', S.lat);
+  if(S.lng != null) setInputValue('f-lng', S.lng);
+
+  if(S.timezone){
+    const tzEl = qs('chip-tz');
+    if(tzEl){
+      tzEl.textContent = S.timezone;
+      tzEl.classList.remove('empty');
+    }
+  }
+  if(S.home_region){
+    const rgEl = qs('chip-region');
+    if(rgEl){
+      rgEl.textContent = S.home_region;
+      rgEl.classList.remove('empty');
+    }
+  }
+
+  const coordsPreview = qs('coordsPreview');
+  if(coordsPreview && S.lat != null && S.lng != null){
+    coordsPreview.textContent = `${Number(S.lat).toFixed(5)}, ${Number(S.lng).toFixed(5)}`;
+  }
+
+  document.querySelectorAll('.sc').forEach(sc => {
+    const r = sc.querySelector('input');
+    const on = r && r.value === S.sched_pat;
+    sc.classList.toggle('on', !!on);
+    if(r) r.checked = !!on;
+  });
+
+  qs('sched-same') && (qs('sched-same').style.display = S.sched_pat === 'custom' ? 'none' : 'block');
+  qs('sched-custom') && (qs('sched-custom').style.display = S.sched_pat === 'custom' ? 'block' : 'none');
+
+  document.querySelectorAll('input[name=adm]').forEach(r => {
+    r.checked = r.value === S.adm;
+    r.closest('.copt')?.classList.toggle('on', r.checked);
+  });
+
+  document.querySelectorAll('input[name=theme]').forEach(r => {
+    r.checked = r.value === S.theme;
+    r.closest('.copt')?.classList.toggle('on', r.checked);
+  });
+
+  const hostWall = qs('tog-host-wall');
+  if(hostWall){
+    hostWall.checked = !!S.use_host_wall;
+    qs('wall-up')?.classList.toggle('on', !hostWall.checked);
+  }
+
+  const tg = qs('tog-deskid');
+  if(tg) tg.checked = !!S.show_desk_id;
+}
+
+function mergeQueueIntoState(raw){
+  S.queue_name = raw.name || '';
+  S.venue_name = raw.venue_name || '';
+  S.internal_label = raw.internal_label || '';
+  S.language = raw.language || 'en';
+  S.currency = raw.currency || 'EUR';
+  S.timezone = raw.timezone || '';
+  S.home_region = raw.home_region || '';
+  S.arch = raw.archetype || null;
+  S.formula = raw.booking_formula || raw.formula || null;
+  S.adm = raw.admission_mode || 'scan';
+  S.show_desk_id = !!raw.show_desk_id;
+  S.cal_sync = !!raw.cal_sync;
+  S.cal_provider = raw.cal_provider || null;
+  S.sync_horizon = raw.sync_horizon || 90;
+  S.theme = raw.theme || 'default';
+  S.sender_email = raw.sender_email || '';
+
+  S.address = raw.location_text || raw.address || '';
+  if(raw.location_geo && typeof raw.location_geo === 'object'){
+    S.lat = raw.location_geo.lat ?? S.lat;
+    S.lng = raw.location_geo.lng ?? S.lng;
+  }
+
+  if(Array.isArray(raw.publics_json)) S.publics = raw.publics_json;
+  else if(typeof raw.publics_json === 'string'){
+    try { S.publics = JSON.parse(raw.publics_json); } catch(_){}
+  }
+
+  if(Array.isArray(raw.channels_json)) S.channels = raw.channels_json;
+  else if(typeof raw.channels_json === 'string'){
+    try { S.channels = JSON.parse(raw.channels_json); } catch(_){}
+  }
+
+  if(raw.schedule && typeof raw.schedule === 'object'){
+    S.schedule = { ...S.schedule, ...raw.schedule };
+    if(Array.isArray(raw.schedule.days)) S.schedule.days = raw.schedule.days;
+  }
+
+  if(Array.isArray(raw.slots)) S.slots = raw.slots;
+  if(Array.isArray(raw.wave_schedule)) S.wave_schedule = raw.wave_schedule;
+  if(Array.isArray(raw.release_schedule)) S.release_schedule = raw.release_schedule;
+  if(Array.isArray(raw.extra_fields)) S.extra_fields = raw.extra_fields;
+  if(Array.isArray(raw.resellers)) S.resellers = raw.resellers;
+  if(Array.isArray(raw.operators)) S.operators = raw.operators;
+
+  S.wave_duration = raw.wave_duration || S.wave_duration;
+  S.wave_capacity = raw.wave_capacity || S.wave_capacity;
+  S.wave_cap_mode = raw.wave_cap_mode || S.wave_cap_mode;
+  S.wave_var_scope = raw.wave_var_scope || S.wave_var_scope;
+
+  S.release_mode = raw.release_mode || S.release_mode;
+  S.release_count = raw.release_count || S.release_count;
+  S.release_interval = raw.release_interval || S.release_interval;
+  S.fixed_release_scope = raw.fixed_release_scope || S.fixed_release_scope;
+
+  S.show_eet = raw.show_eet != null ? !!raw.show_eet : S.show_eet;
+  S.show_ete = raw.show_ete != null ? !!raw.show_ete : S.show_ete;
+  S.payment_gate = raw.payment_gate != null ? !!raw.payment_gate : S.payment_gate;
+}
+
+async function bootstrapFromUrl(){
+  const params = new URLSearchParams(window.location.search);
+  _queueId = params.get('edit') || params.get('queue') || '';
+
+  if(!_queueId){
+    setSaveState('error', 'No queue id found in URL.');
+    return;
+  }
+
+  try{
+    const res = await fetch(`/api/intime/queues/${encodeURIComponent(_queueId)}`, {
+      credentials:'same-origin',
+      headers:{ Accept:'application/json' }
+    });
+    const data = await res.json().catch(() => null);
+    if(!res.ok || !data) throw new Error((data && data.error) || `HTTP ${res.status}`);
+
+    const raw = data.queue || data;
+    mergeQueueIntoState(raw);
+
+    hydrateBasicsToDom();
+
+    if(S.lat != null && S.lng != null){
+      try{
+        initMap();
+        setPin(S.lat, S.lng);
+      }catch(_){}
+    }
+
+    renderImmutableSummary();
+    renderDayChips();
+    renderPerDayRows();
+    renderBreaks();
+    renderHolidays();
+    renderSpecials();
+    renderPublics();
+    renderCalling();
+    renderTimeTrans();
+    renderVerif();
+    renderCapacity();
+    renderOperators();
+    renderReview();
+    adaptSections();
+    updatePreview();
+
+    const stepParam = params.get('step');
+    const jumpMap = {
+      s0:'identity',
+      s1:'queue-type',
+      s2a:'queue-type',
+      s2b:'capacity',
+      s3:'access',
+      s4:'admission',
+      s5:'time',
+      s6:'channels',
+      s7:'verification',
+      s8:'calendar',
+      s_op:'operators',
+      s9:'look',
+      sR:'review'
+    };
+    const targetSection = jumpMap[stepParam] || 'identity';
+    setTimeout(() => scrollToSection(targetSection), 120);
+
+    document.title = `Edit: ${S.queue_name || 'Queue'} — In-Time`;
+    setSaveState('idle');
+  } catch(err){
+    console.error('[bootstrap]', err);
+    setSaveState('error', err.message || 'Unable to load queue.');
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   COLLAPSE / START OVER / BOOT
+───────────────────────────────────────────────────────────── */
+function coll(bodyId, btn){
+  const b = qs(bodyId);
+  if(!b) return;
+  const o = b.classList.toggle('on');
+  btn.classList.toggle('open', o);
+}
+
+function confirmReset(){
+  if(confirm('Discard your unsaved changes on this edit page?')){
+    location.reload();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if(window.Drawer?.mount) window.Drawer.mount({ mode:'host', onLogout:window.InTimeNav?.performLogout });
+  if(window.FAB?.mount) window.FAB.mount({
+    useTopBand:true,
+    useBottomBand:true,
+    home:{ title:'Home', label:'🏠', onClick:window.InTimeNav?.goHostHome },
+    config:{ title:'Settings', label:'⚙️', onClick:window.InTimeNav?.goHostSettings },
+    onBack: () => history.length > 1 ? history.back() : location.href = '/modules/In-Time/manage/page 2.html',
+  });
+
+  initMap();
+  wireLocationControls();
+  wireIdentityFields();
+  initSched();
+  bindAccessFields();
+  bindAdmissionFields();
+  bindChannelFields();
+  wireOperatorFields();
+  wireLookAndFeelPreview();
+
+  await bootstrapFromUrl();
+
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+});
+</script>
+</body>
+</html>

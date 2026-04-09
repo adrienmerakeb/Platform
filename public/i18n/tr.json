@@ -1,0 +1,64 @@
+{
+  "appTitle": "WanderPal",
+  "langLabel": "Dil",
+
+  "loginTitle": "Giriş yap",
+  "registerTitle": "Kayıt ol",
+
+  "email": "E-posta adresi",
+  "password": "Şifre",
+  "createPassword": "Şifre oluştur",
+  "namePlaceholder": "Ad",
+  "companyName": "Şirket adı",
+  "website": "Resmî web sitesi",
+
+  "remember": "Beni hatırla",
+  "forgot": "Şifreni mi unuttun?",
+  "forgotTitle": "Şifre sıfırlama",
+  "forgotDesc": "E-postanı gir; sıfırlama bağlantısı göndereceğiz.",
+  "forgotCancel": "İptal",
+  "forgotSend": "Gönder",
+  "forgotSuccess": "Hesap varsa, sıfırlama bağlantısı gönderildi.",
+  "forgotError": "İsteğin işlenemedi.",
+
+  "loginBtn": "Giriş yap",
+  "registerBtn": "Kayıt ol",
+  "or": "veya",
+  "noAccount": "Hesabın yok mu?",
+  "signup": "Kaydol",
+  "haveAccount": "Zaten hesabın var mı?",
+  "signin": "Giriş yap",
+
+  "invalidCreds": "Geçersiz bilgiler",
+  "suspendedMsg": "Bu hesap askıya alındı. Lütfen destekle iletişime geçin.",
+
+  "networkError": "Ağ hatası",
+  "registerSuccess": "Hesap oluşturuldu. Şimdi giriş yapabilirsin.",
+  "registerFail": "Hesap oluşturulamadı (e-posta kullanılıyor olabilir).",
+
+  "hostTitle": "Host",
+  "hostLogin": "Host — Giriş",
+  "hostRegister": "Host — Kayıt",
+  "hostForgotTitle": "Host şifresini sıfırla",
+  "hostForgotDesc": "Bu e-posta host olarak kayıtlıysa bağlantı gönderilecektir.",
+
+  "partnerTitle": "Partner",
+  "partnerLogin": "Partner — Giriş",
+  "partnerRegister": "Partner — Kayıt",
+  "partnerForgotTitle": "Partner şifresini sıfırla",
+  "partnerForgotDesc": "Bu e-posta partner olarak kayıtlıysa bağlantı gönderilecektir.",
+
+  "chooseSector": "Sektör seç",
+  "recommendedServices": "Önerilen hizmetler",
+
+  "museum": "Müze / Galeri / Anıt",
+  "doctor": "Doktor / Klinik / Diş hekimi",
+  "salon": "Güzellik / Spa / Kuaför",
+  "event": "Etkinlik düzenleyici / Mekân",
+  "restaurant": "Restoran / Kafe / Bar",
+  "hotel": "Otel / Misafirhane / BnB",
+  "retail": "Mağaza / AVM",
+  "sports": "Spor merkezi / Spor salonu / Stadyum",
+  "public": "Kamu / Banka / Postane",
+  "other": "Diğer"
+}

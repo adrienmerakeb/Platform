@@ -1,0 +1,2388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Create Queue — In-Time</title>
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+/* ─── TOKENS ─────────────────────────────────────────────── */
+:root{
+  --v:#7c3aed;--v-s:#ede9fc;--v-d:#6d28d9;
+  --blue:#2563eb;--blue-s:#eff6ff;
+  --green:#16a34a;--green-s:#f0fdf4;
+  --amber:#d97706;--amber-s:#fffbeb;
+  --red:#dc2626;--red-s:#fef2f2;
+  --txt:#1a1825;--muted:#6b6880;--hint:#9b98aa;
+  --surf:#fff;--bg:#f4f3f8;--bord:#e2e0ea;--bord-f:#7c3aed;
+  --gray:#f0eff5;--gray-m:#d4d2de;
+  --r:14px;--ri:9px;
+  --sh:0 2px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --ring:0 0 0 3px rgba(124,58,237,.18);
+  --font:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:var(--font);background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55}
+
+/* ─── PROGRESS DOTS ──────────────────────────────────────── */
+.prog{
+  position:sticky;top:56px;z-index:20;
+  background:var(--surf);border-bottom:1px solid var(--bord);
+  padding:14px 24px 12px;
+  display:flex;align-items:center;gap:0;
+  overflow-x:auto;scrollbar-width:none;
+}
+.prog::-webkit-scrollbar{display:none}
+.pdot{
+  display:flex;flex-direction:column;align-items:center;
+  position:relative;flex:1;min-width:40px;
+}
+.pdot:not(:last-child)::after{
+  content:'';position:absolute;top:11px;left:50%;right:-50%;
+  height:2px;background:var(--gray-m);z-index:0;transition:background .3s;
+}
+.pdot.done::after,.pdot.active::after{background:var(--green)}
+.pdot.done::after{background:var(--green)}
+.pdot.active::after{background:var(--gray-m)}
+.dot{
+  width:22px;height:22px;border-radius:50%;z-index:1;
+  border:2px solid var(--gray-m);background:var(--surf);
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:800;transition:all .25s;
+}
+.pdot.done .dot{background:var(--green);border-color:var(--green);color:#fff;cursor:pointer}
+.pdot.done .dot::after{content:'✓'}
+.pdot.active .dot{background:var(--v);border-color:var(--v);box-shadow:0 0 0 3px var(--v-s)}
+.pdot.skipped .dot{border-style:dashed;border-color:var(--hint);background:var(--gray)}
+.pdot.opt .dot{border-style:dashed;border-color:var(--blue)}
+.dlabel{
+  font-size:10px;color:var(--hint);margin-top:4px;
+  white-space:nowrap;max-width:56px;text-align:center;
+  overflow:hidden;text-overflow:ellipsis;
+}
+.pdot.active .dlabel{color:var(--v);font-weight:700}
+.pdot.done .dlabel{color:var(--green)}
+
+/* ─── SHELL ──────────────────────────────────────────────── */
+.shell{max-width:680px;margin:0 auto;padding:28px 20px 100px}
+
+/* ─── CARD ───────────────────────────────────────────────── */
+.card{background:var(--surf);border-radius:var(--r);box-shadow:var(--sh);border:1px solid var(--bord);overflow:hidden;margin-bottom:20px}
+.card-hd{padding:26px 28px 20px;border-bottom:1px solid var(--bord)}
+.card-hd h1{font-size:20px;font-weight:600;color:var(--txt);line-height:1.25;margin-bottom:5px}
+.card-hd .lead{font-size:13.5px;color:var(--muted);line-height:1.5}
+.card-bd{padding:22px 28px}
+.card-ft{padding:14px 28px;border-top:1px solid var(--bord);background:var(--gray);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+
+/* ─── FORMS ──────────────────────────────────────────────── */
+.f{margin-bottom:18px}
+.f:last-child{margin-bottom:0}
+.lbl{display:block;font-size:13px;font-weight:600;color:var(--txt);margin-bottom:5px}
+.req{color:var(--v);margin-left:2px}
+.hint{font-size:12px;color:var(--hint);margin-top:4px;line-height:1.4}
+input[type=text],input[type=email],input[type=url],input[type=number],input[type=time],input[type=date],textarea,select{
+  width:100%;padding:10px 13px;border:1.5px solid var(--bord);border-radius:var(--ri);
+  font-family:var(--font);font-size:14px;color:var(--txt);background:var(--surf);
+  outline:none;transition:border-color .18s,box-shadow .18s;
+}
+input:focus,textarea:focus,select:focus{border-color:var(--bord-f);box-shadow:var(--ring)}
+select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b6880' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row .f{flex:1;min-width:120px;margin-bottom:0}
+textarea{resize:vertical;min-height:70px}
+input[type=time],input[type=date]{min-width:0}
+input[type=number]{width:auto}
+.sep{height:1px;background:var(--bord);margin:18px 0}
+
+/* ─── DERIVED CHIPS ──────────────────────────────────────── */
+.dchips{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.dchip{flex:1;min-width:140px;background:var(--gray);border:1.5px solid var(--bord);border-radius:9px;padding:10px 13px}
+.dchip-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--hint);margin-bottom:4px}
+.dchip-val{font-size:13px;font-weight:600;color:var(--txt)}
+.dchip-val.empty{color:var(--hint);font-weight:400;font-style:italic}
+.dchip select{border:none;background:none;font:inherit;font-weight:600;color:var(--txt);padding:0;width:100%;box-shadow:none}
+.dchip select:focus{box-shadow:none;border:none}
+.imm{display:inline-flex;align-items:center;font-size:10px;font-weight:700;color:#86198f;background:#fdf4ff;border:1px solid #e879f9;padding:1px 7px;border-radius:20px;margin-left:5px;vertical-align:middle}
+
+/* ─── MAP ────────────────────────────────────────────────── */
+#map{height:200px;border-radius:10px;border:1.5px solid var(--bord);overflow:hidden;margin-top:8px}
+
+/* ─── SCHEDULE SHORTCUT ──────────────────────────────────── */
+.shortcuts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:18px}
+.sc{display:flex;align-items:center;gap:9px;padding:10px 13px;border-radius:10px;border:1.5px solid var(--bord);cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);background:var(--surf);transition:all .18s;user-select:none}
+.sc.on{border-color:var(--v);background:var(--v-s);color:var(--v);font-weight:600}
+.sc input{display:none}
+.sc-icon{font-size:17px;flex-shrink:0}
+
+/* ─── DAY CHIPS ──────────────────────────────────────────── */
+.daychips{display:flex;gap:7px;flex-wrap:wrap}
+.dc{display:inline-flex;align-items:center;cursor:pointer;border-radius:8px;padding:7px 11px;font-size:13px;font-weight:600;transition:all .15s;border:1.5px solid var(--bord);background:var(--gray);color:var(--muted);user-select:none}
+.dc.on{background:var(--v-s);border-color:var(--v);color:var(--v)}
+
+/* ─── PER-DAY SCHEDULE ROWS ──────────────────────────────── */
+.srow{display:flex;align-items:flex-start;gap:8px;padding:9px 0;border-bottom:1px solid var(--bord);flex-wrap:wrap}
+.srow:last-child{border-bottom:none}
+.sname{width:36px;font-size:13px;font-weight:700;padding-top:10px;flex-shrink:0}
+.sname.off{color:var(--hint);text-decoration:line-through}
+.stimes{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.stimes span{font-size:12px;color:var(--muted)}
+.sbrks{width:100%;padding-left:44px;margin-top:4px;display:flex;flex-direction:column;gap:5px}
+.brk{display:flex;align-items:center;gap:6px}
+.brk span{font-size:12px;color:var(--muted);white-space:nowrap}
+
+/* ─── EXCEPTION ROWS ─────────────────────────────────────── */
+.erow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid var(--bord)}
+.erow:last-child{border-bottom:none}
+.empty-exc{text-align:center;padding:14px;color:var(--hint);font-size:13px;background:var(--gray);border-radius:8px;border:1.5px dashed var(--bord);margin-bottom:6px}
+
+/* ─── CHOICE CARDS ───────────────────────────────────────── */
+.cgrid{display:grid;gap:10px}
+.c2{grid-template-columns:repeat(2,1fr)}
+.c4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:500px){.c2,.c4{grid-template-columns:1fr}}
+@media(min-width:501px) and (max-width:660px){.c4{grid-template-columns:repeat(2,1fr)}}
+.copt{position:relative;display:block;cursor:pointer;border:2px solid var(--bord);border-radius:var(--r);padding:15px 13px;transition:all .18s;background:var(--surf);user-select:none}
+.copt input{position:absolute;opacity:0;width:0;height:0}
+.copt:hover{border-color:var(--v);background:var(--v-s)}
+.copt.on{border-color:var(--v);background:var(--v-s);box-shadow:0 0 0 1px var(--v)}
+.cchk{width:16px;height:16px;border-radius:50%;border:2px solid var(--gray-m);display:flex;align-items:center;justify-content:center;margin-bottom:9px;transition:all .15s}
+.copt.on .cchk{background:var(--v);border-color:var(--v)}
+.copt.on .cchk::after{content:'';width:5px;height:5px;border-radius:50%;background:#fff}
+.cicon{font-size:26px;display:block;margin-bottom:7px}
+.ctitle{font-size:13.5px;font-weight:600;color:var(--txt);margin-bottom:3px}
+.cdesc{font-size:12px;color:var(--muted);line-height:1.4}
+.cex{font-size:11px;color:var(--hint);margin-top:5px;font-style:italic}
+
+/* ─── REVEAL PANEL ───────────────────────────────────────── */
+.reveal{margin-top:14px;border-radius:12px;border:1.5px solid var(--v);background:var(--v-s);padding:16px 18px;display:none}
+.reveal.on{display:block}
+.rv-title{font-weight:700;font-size:14px;color:var(--v);margin-bottom:4px}
+.rv-body{font-size:13px;color:var(--muted);line-height:1.5}
+.rv-foot{margin-top:12px;padding-top:10px;border-top:1px solid rgba(124,58,237,.2);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.rv-fl{font-size:12px;color:var(--muted)}
+.rv-fv{font-size:13px;font-weight:600;color:var(--v)}
+.btnchg{font-size:12px;color:var(--v);background:none;border:1px solid var(--v);cursor:pointer;padding:3px 10px;border-radius:6px;transition:background .15s}
+.btnchg:hover{background:var(--v);color:#fff}
+
+/* ─── CALLOUTS ───────────────────────────────────────────── */
+.co{border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;margin-bottom:14px}
+.co:last-child{margin-bottom:0}
+.co strong{font-weight:700}
+.co-note{background:#f0f9ff;border:1px solid #bae6fd;color:#0369a1}
+.co-warn{background:var(--amber-s);border:1px solid #fcd34d;color:#92400e}
+.co-info{background:var(--v-s);border:1px solid #c4b5fd;color:#5b21b6}
+.co-lock{background:#fdf4ff;border:1px solid #e879f9;color:#86198f}
+.co-ok{background:var(--green-s);border:1px solid #86efac;color:#14532d}
+.co-danger{background:var(--red-s);border:1px solid #fca5a5;color:var(--red)}
+
+/* ─── TOGGLES ────────────────────────────────────────────── */
+.togrow{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid var(--bord)}
+.togrow:first-child{padding-top:0}
+.togrow:last-child{border-bottom:none}
+.togi{flex:1}
+.tog-title{font-size:14px;font-weight:600;color:var(--txt)}
+.tog-desc{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.45}
+.togsw{display:flex;align-items:center;flex-shrink:0;cursor:pointer}
+.togsw input{display:none}
+.togtr{width:42px;height:24px;border-radius:12px;background:var(--gray-m);position:relative;transition:background .2s}
+.togsw input:checked+.togtr{background:var(--v)}
+.togtr::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.togsw input:checked+.togtr::after{transform:translateX(18px)}
+
+/* ─── PUB OPTIONS ────────────────────────────────────────── */
+.popt{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;border:1.5px solid var(--bord);cursor:pointer;margin-bottom:8px;background:var(--surf);transition:all .18s;user-select:none}
+.popt:last-child{margin-bottom:0}
+.popt.on{border-color:var(--v);background:var(--v-s)}
+.pbox{width:18px;height:18px;border-radius:4px;border:2px solid var(--gray-m);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.popt.on .pbox{background:var(--v);border-color:var(--v)}
+.popt.on .pbox::after{content:'✓';color:#fff;font-size:10px;font-weight:800}
+.picon{font-size:20px}
+.pinfo{flex:1}
+.ptitle{font-size:13.5px;font-weight:600;color:var(--txt)}
+.pdesc{font-size:12px;color:var(--muted);margin-top:1px}
+
+/* ─── SLOT CARDS ─────────────────────────────────────────── */
+.slotcard{background:var(--gray);border:1.5px solid var(--bord);border-radius:12px;padding:15px 17px;margin-bottom:10px}
+.slothdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.slotnum{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--hint)}
+
+/* ─── TAGS ───────────────────────────────────────────────── */
+.tag{display:inline-flex;align-items:center;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:20px}
+.tag-adv{background:#eff6ff;color:var(--blue);border:1px solid #bfdbfe}
+.tag-live{background:var(--green-s);color:var(--green);border:1px solid #86efac}
+.tag-all{background:var(--v-s);color:var(--v);border:1px solid #c4b5fd}
+
+/* ─── CHANNEL SECTIONS ───────────────────────────────────── */
+.chsec{border:1.5px solid var(--bord);border-radius:12px;overflow:hidden;margin-bottom:10px}
+.chhdr{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;cursor:pointer;user-select:none;transition:background .15s}
+.chhdr:hover{background:var(--gray)}
+.chhdr.on{background:var(--v-s)}
+.chlbl{display:flex;align-items:center;gap:10px}
+.chicon{font-size:20px}
+.chname{font-size:14px;font-weight:600;color:var(--txt)}
+.chbody{padding:14px 16px;border-top:1px solid var(--bord);background:var(--surf);display:none}
+.chbody.on{display:block}
+
+/* ─── EXTRA FIELD BUILDER ────────────────────────────────── */
+.efrow{background:var(--gray);border:1.5px solid var(--bord);border-radius:10px;padding:13px 15px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.efrow .f{margin-bottom:0;flex:1;min-width:120px}
+
+/* ─── RESELLER ───────────────────────────────────────────── */
+.resrow{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.resrow .f{flex:1;min-width:120px;margin-bottom:0}
+
+/* ─── PREVIEW ────────────────────────────────────────────── */
+.prev-shell{background:linear-gradient(160deg,#1e1b2e 0%,#2d1f5e 100%);border-radius:14px;padding:20px;margin-top:16px}
+.prev-phone{background:rgba(255,255,255,.06);border-radius:12px;padding:18px;border:1px solid rgba(255,255,255,.12)}
+.prev-qname{font-size:16px;font-weight:700;color:#fff;margin-bottom:4px}
+.prev-venue{font-size:12px;color:rgba(255,255,255,.6);margin-bottom:14px}
+.prev-status{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#4ade80;background:rgba(74,222,128,.1);padding:4px 10px;border-radius:20px;margin-bottom:14px}
+.prev-btn{background:var(--v);color:#fff;width:100%;padding:12px;border-radius:10px;text-align:center;font-weight:700;font-size:14px}
+
+/* ─── REVIEW ─────────────────────────────────────────────── */
+.revgrp{margin-bottom:18px}
+.revgtitle{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--hint);margin-bottom:7px}
+.revrow{display:flex;align-items:baseline;gap:8px;padding:5px 0;border-bottom:1px solid var(--bord);font-size:13.5px}
+.revrow:last-child{border-bottom:none}
+.revk{color:var(--muted);flex:0 0 155px;font-size:12.5px}
+.revv{color:var(--txt);font-weight:500;flex:1}
+.revv.na{color:var(--hint);font-weight:400;font-style:italic}
+.witem{display:flex;gap:9px;padding:9px 12px;border-radius:8px;margin-bottom:7px;background:var(--amber-s);border:1px solid #fcd34d;font-size:13px}
+.witem:last-child{margin-bottom:0}
+.wi-icon{flex-shrink:0;font-size:14px;margin-top:1px}
+.wi-title{font-weight:700;color:#92400e}
+.wi-desc{color:#92400e;font-size:12px;margin-top:2px}
+
+/* ─── BUTTONS ────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:var(--font);font-size:14px;font-weight:600;padding:10px 22px;border-radius:9px;border:none;cursor:pointer;transition:all .18s;white-space:nowrap;outline:none;text-decoration:none}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:none}
+.btn-p{background:var(--v);color:#fff;box-shadow:0 2px 8px rgba(124,58,237,.25)}
+.btn-p:hover{background:var(--v-d)}
+.btn-p:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-s{background:var(--gray);color:var(--txt);border:1.5px solid var(--bord)}
+.btn-s:hover{background:var(--bord)}
+.btn-skip{background:transparent;color:var(--hint);border:none;font-weight:400;font-size:13px;padding:10px 6px}
+.btn-skip:hover{color:var(--muted);transform:none}
+.btn-add{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:var(--v);background:var(--v-s);border:1.5px dashed var(--v);padding:7px 13px;border-radius:8px;cursor:pointer;transition:background .15s;margin-top:8px}
+.btn-add:hover{background:rgba(124,58,237,.12)}
+.btn-rm{background:none;border:none;cursor:pointer;color:var(--hint);font-size:15px;padding:3px 5px;border-radius:4px;flex-shrink:0}
+.btn-rm:hover{color:var(--red)}
+.btn-link{background:none;border:none;cursor:pointer;font-size:12px;color:var(--v);padding:2px 4px;border-radius:4px}
+.btn-link:hover{background:var(--v-s)}
+
+/* ─── COLLAPSE ───────────────────────────────────────────── */
+.collbtn{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--v);background:none;border:none;cursor:pointer;padding:0}
+.collarr{transition:transform .2s;display:inline-block}
+.collbtn.open .collarr{transform:rotate(90deg)}
+.collbody{display:none}
+.collbody.on{display:block}
+
+/* ─── CONDITIONAL ────────────────────────────────────────── */
+.cond{display:none}
+.cond.on{display:block}
+
+/* ─── PLACEHOLDER NOTICE ─────────────────────────────────── */
+.phnotice{background:var(--blue-s);border:1.5px solid #bfdbfe;border-radius:10px;padding:16px 18px;text-align:center}
+.phnotice .ph-icon{font-size:28px;margin-bottom:8px}
+.phnotice .ph-title{font-weight:700;font-size:14px;color:var(--blue);margin-bottom:4px}
+.phnotice .ph-desc{font-size:12.5px;color:#3b82f6}
+
+/* ─── DISCOURAGE ─────────────────────────────────────────── */
+.discourage{background:var(--red-s);border:1.5px solid #fca5a5;border-radius:10px;padding:12px 14px;font-size:13px;color:#991b1b;line-height:1.5;display:none}
+.discourage.on{display:block}
+
+/* ─── ERROR BANNER ───────────────────────────────────────── */
+.errbar{background:var(--red-s);border:1.5px solid #fca5a5;border-radius:8px;padding:9px 13px;font-size:13px;color:var(--red);font-weight:500;margin-top:14px;display:none}
+.errbar.on{display:block}
+
+/* ─── SCREEN VISIBILITY ──────────────────────────────────── */
+.screen{display:none}
+.screen.active{display:block}
+</style>
+</head>
+<body>
+
+<div id="top-band" class="top-band"></div>
+
+<!-- Progress dots -->
+<div class="prog" id="prog" role="navigation" aria-label="Setup progress"></div>
+
+<div class="shell">
+
+<!-- ══════════════════════════════════════════════════════
+  STEP 0 — Identity + Location + Schedule
+════════════════════════════════════════════════════════ -->
+<div class="screen active" id="s-s0">
+<div class="card">
+  <div class="card-hd">
+    <h1>Let's set up your queue</h1>
+    <p class="lead">Start with the basics — name, location, and when your queue is open.</p>
+  </div>
+  <div class="card-bd">
+
+    <div class="f">
+      <label class="lbl" for="f-qname">Queue name <span class="req">*</span></label>
+      <input type="text" id="f-qname" placeholder="e.g. Dr. Martin's Practice Queue" maxlength="80">
+    </div>
+
+    <div class="f">
+      <label class="lbl" for="f-venue">Venue / business name <span class="req">*</span></label>
+      <input type="text" id="f-venue" placeholder="e.g. Dr. Martin's Medical Practice">
+    </div>
+
+    <div style="margin-bottom:18px">
+      <button type="button" class="collbtn" onclick="coll('int-lbl',this)">
+        <span class="collarr">›</span> Add internal label (optional)
+      </button>
+      <div class="collbody" id="int-lbl" style="margin-top:10px">
+        <div class="f">
+          <label class="lbl" for="f-internal">Internal label</label>
+          <input type="text" id="f-internal" placeholder="e.g. Ground floor reception">
+          <p class="hint">Only visible to you in the dashboard.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="f">
+      <label class="lbl" for="f-addr">Queue location <span class="req">*</span></label>
+      <input type="text" id="f-addr" placeholder="Start typing an address…" autocomplete="off">
+      <p class="hint">Pin the entrance visitors should use. Timezone and currency are auto-detected.</p>
+    </div>
+    <div id="map"></div>
+
+    <div class="dchips">
+      <div class="dchip">
+        <div class="dchip-lbl">Timezone</div>
+        <div class="dchip-val empty" id="chip-tz">Detected from location</div>
+      </div>
+      <div class="dchip">
+        <div class="dchip-lbl">Home region <span class="imm">🔒 immutable</span></div>
+        <div class="dchip-val empty" id="chip-region">Detected from location</div>
+      </div>
+      <div class="dchip">
+        <div class="dchip-lbl">Currency</div>
+        <div class="dchip-val" id="chip-currency">
+          <select id="f-currency">
+            <option value="EUR">EUR — Euro</option>
+            <option value="USD">USD — US Dollar</option>
+            <option value="GBP">GBP — Pound Sterling</option>
+            <option value="CAD">CAD — Canadian $</option>
+            <option value="AUD">AUD — Australian $</option>
+            <option value="JPY">JPY — Japanese Yen</option>
+            <option value="CHF">CHF — Swiss Franc</option>
+            <option value="BRL">BRL — Real</option>
+            <option value="INR">INR — Rupee</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="row">
+      <div class="f">
+        <label class="lbl" for="f-lang">Language <span class="req">*</span></label>
+        <select id="f-lang">
+          <option value="en">English</option>
+          <option value="fr">Français</option>
+          <option value="es">Español</option>
+          <option value="de">Deutsch</option>
+          <option value="pt">Português</option>
+          <option value="it">Italiano</option>
+          <option value="nl">Nederlands</option>
+          <option value="ar">العربية</option>
+          <option value="zh">中文</option>
+          <option value="ja">日本語</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- Schedule pattern shortcuts -->
+    <div class="lbl" style="margin-bottom:10px">Operating hours <span class="req">*</span></div>
+    <p class="hint" style="margin-bottom:12px">Choose a common pattern to pre-fill your schedule, or build a custom one.</p>
+
+    <div class="shortcuts" id="shortcuts">
+      <label class="sc on" data-pat="wd9_5">
+        <input type="radio" name="sched_pat" value="wd9_5" checked>
+        <span class="sc-icon">📅</span>
+        <span>Weekdays<br><small style="font-weight:400;opacity:.8">9:00 – 17:00</small></span>
+      </label>
+      <label class="sc" data-pat="wd9_6">
+        <input type="radio" name="sched_pat" value="wd9_6">
+        <span class="sc-icon">📅</span>
+        <span>Weekdays<br><small style="font-weight:400;opacity:.8">9:00 – 18:00</small></span>
+      </label>
+      <label class="sc" data-pat="wd_sat">
+        <input type="radio" name="sched_pat" value="wd_sat">
+        <span class="sc-icon">📆</span>
+        <span>Weekdays + Sat<br><small style="font-weight:400;opacity:.8">9:00 – 17:00</small></span>
+      </label>
+      <label class="sc" data-pat="custom">
+        <input type="radio" name="sched_pat" value="custom">
+        <span class="sc-icon">✏️</span>
+        <span>Custom<br><small style="font-weight:400;opacity:.8">Per day</small></span>
+      </label>
+    </div>
+
+    <!-- Same-hours view (non-custom) -->
+    <div id="sched-same">
+      <div class="row" style="margin-bottom:12px">
+        <div class="f" style="max-width:140px">
+          <label class="lbl">Opens</label>
+          <input type="time" id="f-open" value="09:00">
+        </div>
+        <div class="f" style="max-width:140px">
+          <label class="lbl">Closes</label>
+          <input type="time" id="f-close" value="17:00">
+        </div>
+        <div class="f" style="max-width:180px">
+          <label class="lbl">Last booking cutoff</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="number" id="f-cutoff" min="0" max="240" value="30" style="width:75px">
+            <span style="font-size:12px;color:var(--muted)">min before close</span>
+          </div>
+        </div>
+      </div>
+      <div class="lbl" style="margin-bottom:8px">Open days</div>
+      <div class="daychips" id="day-chips"></div>
+    </div>
+
+    <!-- Per-day builder (custom) -->
+    <div id="sched-custom" style="display:none">
+      <div id="per-day-rows"></div>
+      <div class="row" style="margin-top:12px">
+        <div class="f" style="max-width:200px">
+          <label class="lbl">Last booking cutoff</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="number" id="f-cutoff2" min="0" max="240" value="30" style="width:75px">
+            <span style="font-size:12px;color:var(--muted)">min before close</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Optional: breaks -->
+    <div style="margin-top:14px">
+      <button type="button" class="collbtn" onclick="coll('break-sec',this)" style="margin-bottom:8px">
+        <span class="collarr">›</span> Add breaks (lunch, etc.)
+      </button>
+      <div class="collbody" id="break-sec">
+        <div id="break-list"></div>
+        <button type="button" class="btn-add" onclick="addBreak()">+ Add break</button>
+      </div>
+    </div>
+
+    <!-- Optional: holidays / special dates -->
+    <div style="margin-top:14px">
+      <button type="button" class="collbtn" onclick="coll('exc-sec',this)" style="margin-bottom:8px">
+        <span class="collarr">›</span> Holidays &amp; exceptions (optional)
+      </button>
+      <div class="collbody" id="exc-sec">
+        <div style="margin-bottom:16px">
+          <div class="lbl" style="margin-bottom:8px">Holiday closures</div>
+          <div id="holiday-list"></div>
+          <button type="button" class="btn-add" onclick="addHoliday()">+ Add holiday</button>
+        </div>
+        <div style="margin-bottom:10px">
+          <div class="lbl" style="margin-bottom:8px">Special hours</div>
+          <div id="special-list"></div>
+          <button type="button" class="btn-add" onclick="addSpecial()">+ Add special day</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="co co-lock" style="margin-top:18px">
+      <strong>🔒 Immutable after creation:</strong> Home region and timezone are locked once the queue is created. Archetype (step 2) is also immutable.
+    </div>
+
+    <div class="errbar" id="err-s0"></div>
+  </div>
+  <div class="card-ft">
+    <span></span>
+    <button type="button" class="btn btn-p" onclick="goNext('s0')">Continue →</button>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+  STEP 1 — Archetype (How are people processed?)
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s-s1">
+<div class="card">
+  <div class="card-hd">
+    <h1>How are visitors typically processed?</h1>
+    <p class="lead">This one choice shapes your entire queue setup. Pick what best describes how your venue works during busy periods.</p>
+  </div>
+  <div class="card-bd">
+    <div class="cgrid c2" id="arch-cards">
+      <label class="copt" data-v="B">
+        <input type="radio" name="arch" value="B">
+        <div class="cchk"></div>
+        <span class="cicon">👤</span>
+        <div class="ctitle">One at a time</div>
+        <div class="cdesc">Each visitor is seen individually by one practitioner or staff member.</div>
+        <div class="cex">Doctors · Lawyers · Hair salons · Tutors</div>
+      </label>
+      <label class="copt" data-v="A">
+        <input type="radio" name="arch" value="A">
+        <div class="cchk"></div>
+        <span class="cicon">🪑</span>
+        <div class="ctitle">Several — distinct resources</div>
+        <div class="cdesc">Multiple parallel resources each serve a group or individual simultaneously.</div>
+        <div class="cex">Restaurants · Tennis courts · Bowling lanes</div>
+      </label>
+      <label class="copt" data-v="C">
+        <input type="radio" name="arch" value="C">
+        <div class="cchk"></div>
+        <span class="cicon">🏟️</span>
+        <div class="ctitle">Many at once — in batches</div>
+        <div class="cdesc">Groups enter together at scheduled intervals (waves).</div>
+        <div class="cex">Museums · Tours · Escape rooms · Gyms</div>
+      </label>
+      <label class="copt" data-v="D">
+        <input type="radio" name="arch" value="D">
+        <div class="cchk"></div>
+        <span class="cicon">🌊</span>
+        <div class="ctitle">Continuous open flow</div>
+        <div class="cdesc">Visitors join a running queue and are released dynamically.</div>
+        <div class="cex">Concerts · Festivals · Theme parks</div>
+      </label>
+    </div>
+
+    <!-- Reveal panel after selection -->
+    <div class="reveal" id="arch-reveal">
+      <div class="rv-title" id="rv-title"></div>
+      <div class="rv-body" id="rv-body"></div>
+      <div class="rv-foot">
+        <div>
+          <div class="rv-fl">Default booking mode</div>
+          <div class="rv-fv" id="rv-fv"></div>
+        </div>
+        <button type="button" class="btnchg" onclick="showFormulaOverride()">Change</button>
+      </div>
+    </div>
+
+    <div class="cond" id="formula-override" style="margin-top:14px">
+      <div class="sep" style="margin-top:0"></div>
+      <div class="lbl" style="margin-bottom:8px">Booking mode</div>
+      <div class="cgrid c2" id="formula-cards"></div>
+    </div>
+
+    <div class="errbar" id="err-s1"></div>
+  </div>
+  <div class="card-ft">
+    <button type="button" class="btn btn-s" onclick="goBack('s1')">← Back</button>
+    <button type="button" class="btn btn-p" onclick="goNext('s1')">Continue →</button>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+  STEP 2a — Booking mode (B and A only, others get info)
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s-s2a">
+<div class="card">
+  <div class="card-hd">
+    <h1>How will visitors book?</h1>
+    <p class="lead">Define whether bookings are made in advance, on the spot, or both.</p>
+  </div>
+  <div class="card-bd">
+    <div id="s2a-choice"></div>
+    <div id="s2a-info-C" style="display:none">
+      <div style="background:linear-gradient(135deg,var(--v-s),#f8f7ff);border:1.5px solid var(--v);border-radius:12px;padding:16px 18px">
+        <div style="font-weight:700;font-size:14px;color:var(--v);margin-bottom:4px">🏟️ Wave-based — advance booking</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5">Batch venues use pre-defined wave slots. Visitors book a specific wave in advance. Walk-in flow within a wave is managed automatically.</div>
+      </div>
+    </div>
+    <div id="s2a-info-D" style="display:none">
+      <div style="background:linear-gradient(135deg,var(--v-s),#f8f7ff);border:1.5px solid var(--v);border-radius:12px;padding:16px 18px">
+        <div style="font-weight:700;font-size:14px;color:var(--v);margin-bottom:4px">🌊 Live-flow only</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5">Continuous-flow queues are always live. Visitors join and are released in order — no advance reservation is needed or supported.</div>
+      </div>
+    </div>
+    <div class="errbar" id="err-s2a"></div>
+  </div>
+  <div class="card-ft">
+    <button type="button" class="btn btn-s" onclick="goBack('s2a')">← Back</button>
+    <button type="button" class="btn btn-p" onclick="goNext('s2a')">Continue →</button>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+  STEP 2b — Slot / Capacity config
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s-s2b">
+<div class="card">
+  <div class="card-hd">
+    <h1 id="s2b-title">Define your capacity</h1>
+    <p class="lead" id="s2b-lead">Set up the types of bookings you offer.</p>
+  </div>
+  <div class="card-bd" id="s2b-body"></div>
+  <div class="card-ft">
+    <button type="button" class="btn btn-s" onclick="goBack('s2b')">← Back</button>
+    <button type="button" class="btn btn-p" onclick="goNext('s2b')">Continue →</button>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+  STEP 3 — Who can book
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s-s3">
+<div class="card">
+  <div class="card-hd">
+    <h1>Who can book this queue?</h1>
+    <p class="lead">Choose which visitor types are allowed. You can combine multiple types.</p>
+  </div>
+  <div class="card-bd">
+    <div id="pub-opts"></div>
+    <div class="cond" id="listed-rules">
+      <div class="sep"></div>
+      <div class="lbl" style="margin-bottom:10px">📋 Listed visitor settings</div>
+      <div class="togrow">
+        <div class="togi">
+          <div class="tog-title">Enable access request workflow</div>
+          <div class="tog-desc">Visitors not on the list can request access. You approve or deny from your dashboard.</div>
+        </div>
+        <label class="togsw"><input type="checkbox" id="tog-access-req"><span class="togtr"></span></label>
+      </div>
+      <div class="togrow">
+        <div class="togi">
+          <div class="tog-title">Bulk invite support</div>
+          <div class="tog-desc">Upload a CSV of email addresses to add multiple visitors to your allowlist at once.</div>
+        </div>
+        <label class="togsw"><input type="checkbox" id="tog-bulk" checked><span class="togtr"></span></label>
+      </div>
+    </div>
+    <div class="errbar" id="err-s3"></div>
+  </div>
+  <div class="card-ft">
+    <button type="button" class="btn btn-s" onclick="goBack('s3')">← Back</button>
+    <button type="button" class="btn btn-p" onclick="goNext('s3')">Continue →</button>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+  STEP 4 — Admission & Calling
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s-s4">
+<div class="card">
+  <div class="card-hd">
+    <h1>Admission &amp; calling</h1>
+    <p class="lead">How do visitors check in, and how does your queue call them forward?</p>
+  </div>
+  <div class="card-bd">
+    <div class="lbl" style="margin-bottom:10px">Admission mode</div>
+    <div class="cgrid c2" id="adm-cards">
+      <label class="copt on" data-v="scan">
+        <input type="radio" name="adm" value="scan" checked>
+        <div class="cchk"></div>
+        <div class="ctitle">📷 Scan at entry <span style="font-size:11px;color:var(--green);font-weight:700;margin-left:4px">Recommended</span></div>
+        <div class="cdesc">Visitor scans QR on arrival to confirm their presence.</div>
+      </label>
+      <label class="copt" data-v="no_scan">
+        <input type="radio" name="adm" value="no_scan">
+        <div class="cchk"></div>
+        <div class="ctitle">⏱ No-scan (auto-complete)</div>
+        <div class="cdesc">Bookings auto-complete after the last-call window. No device needed at the door.</div>
+      </label>
+    </div>
+
+    <div class="cond on" id="scan-fallback-opt">
+      <div class="togrow" style="padding-top:8px">
+        <div class="togi">
+          <div class="tog-title">Add scan fallback</div>
+          <div class="tog-desc">If a visitor's scan is missed, their booking auto-completes after a window instead of being marked no-show.</div>
+        </div>
+        <label class="togsw"><input type="checkbox" id="tog-fallback"><span class="togtr"></span></label>
+      </div>
+    </div>
+
+    <div class="discourage" id="noscan-warn">
+      ⚠️ <strong>Not recommended for wave-based queues.</strong> Without scanning, staff cannot accurately count who has entered each wave. Auto-completion may inflate capacity counts and create entry confusion.
+    </div>
+
+    <div class="cond" id="noscan-config">
+      <div class="row" style="margin-top:10px">
+        <div class="f" style="max-width:220px">
+          <label class="lbl">Last-call window</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="number" id="f-noscan-win" min="1" max="120" value="10" style="width:78px">
+            <span style="font-size:13px;color:var(--muted)">minutes</span>
+          </div>
+          <p class="hint">Booking auto-completes after this window from scheduled time.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="lbl" style="margin-bottom:10px">Calling logic</div>
+    <div id="calling-body"></div>
+
+    <div class="errbar" id="err-s4"></div>
+  </div>
+  <div class="card-ft">
+    <button type="button" class="btn btn-s" onclick="goBack('s4')">← Back</button>
+    <button type="button" class="btn btn-p" onclick="goNext('s4')">Continue →</button>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+  STEP 5 — Time transparency (optional)
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s-s5">
+<div class="card">
+  <div class="card-hd">
+    <h1>Time transparency</h1>
+    <p class="lead">Control what time information visitors see while waiting or after booking.</p>
+  </div>
+  <div class="card-bd" id="s5-body"></div>
+  <div class="card-ft">
+    <button type="button" class="btn btn-s" onclick="goBack('s5')">← Back</button>
+    <div style="display:flex;gap:8px">
+      <button type="button" class="btn btn-skip" onclick="skip('s5')">Skip for now →</button>
+      <button type="button" class="btn btn-p" onclick="goNext('s5')">Save &amp; continue →</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+  STEP 6 — Communication channels (optional)
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s-s6">
+<div class="card">
+  <div class="card-hd">
+    <h1>Communication channels</h1>
+    <p class="lead">Choose how visitors receive confirmations, reminders, and queue updates.</p>
+  </div>
+  <div class="card-bd">
+
+    <!-- EMAIL -->
+    <div class="chsec">
+      <div class="chhdr on" id="ch-email-hdr" onclick="toggleCh('email',this)">
+        <div class="chlbl"><span class="chicon">📧</span><span class="chname">Email</span></div>
+        <label class="togsw" onclick="e=>e.stopPropagation()">
+          <input type="checkbox" id="ch-email" checked onchange="onChTog('email',this)">
+          <span class="togtr"></span>
+        </label>
+      </div>
+      <div class="chbody on" id="ch-email-body">
+        <div class="f">
+          <label class="lbl">Sender email address</label>
+          <input type="email" id="f-sender" placeholder="practice@example.com">
+          <p class="hint">Pre-filled from your host profile. Visitors see this as the sender.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- IN-APP -->
+    <div class="chsec">
+      <div class="chhdr on" id="ch-inapp-hdr" onclick="toggleCh('inapp',this)">
+        <div class="chlbl"><span class="chicon">🔔</span><span class="chname">In-app notifications</span></div>
+        <label class="togsw">
+          <input type="checkbox" id="ch-inapp" checked onchange="onChTog('inapp',this)">
+          <span class="togtr"></span>
+        </label>
+      </div>
+      <!-- No extra config for in-app -->
+    </div>
+
+    <!-- SMS -->
+    <div class="chsec">
+      <div class="chhdr" id="ch-sms-hdr" onclick="toggleCh('sms',this)">
+        <div class="chlbl"><span class="chicon">💬</span><span class="chname">SMS</span></div>
+        <label class="togsw">
+          <input type="checkbox" id="ch-sms" onchange="onChTog('sms',this)">
+          <span class="togtr"></span>
+        </label>
+      </div>
+      <div class="chbody" id="ch-sms-body">
+        <div class="phnotice">
+          <div class="ph-icon">💬</div>
+          <div class="ph-title">SMS gateway — coming soon</div>
+          <div class="ph-desc">SMS delivery requires a gateway provider connection. Configuration will be available here once the feature launches.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WHATSAPP -->
+    <div class="chsec">
+      <div class="chhdr" id="ch-wa-hdr" onclick="toggleCh('wa',this)">
+        <div class="chlbl"><span class="chicon">📱</span><span class="chname">WhatsApp</span></div>
+        <label class="togsw">
+          <input type="checkbox" id="ch-wa" onchange="onChTog('wa',this)">
+          <span class="togtr"></span>
+        </label>
+      </div>
+      <div class="chbody" id="ch-wa-body">
+        <div class="phnotice">
+          <div class="ph-icon">📱</div>
+          <div class="ph-title">WhatsApp Business API — setup walkthrough</div>
+          <div class="ph-desc">Connecting WhatsApp requires a Meta Business account and API credentials. A step-by-step walkthrough will guide you through connecting your account, setting up templates, and testing delivery.</div>
+        </div>
+        <div class="co co-info" style="margin-top:12px">
+          <strong>Note:</strong> Mass messaging via WhatsApp requires Meta-approved message templates. You'll be guided through this after queue creation.
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="card-ft">
+    <button type="button" class="btn btn-s" onclick="goBack('s6')">← Back</button>
+    <div style="display:flex;gap:8px">
+      <button type="button" class="btn btn-skip" onclick="skip('s6')">Skip for now →</button>
+      <button type="button" class="btn btn-p" onclick="goNext('s6')">Save &amp; continue →</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+  STEP 7 — Payment / Verification (optional)
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s-s7">
+<div class="card">
+  <div class="card-hd">
+    <h1 id="s7-title">Verification &amp; additional data</h1>
+    <p class="lead" id="s7-lead">Collect additional information from visitors to verify their eligibility to book.</p>
+  </div>
+  <div class="card-bd" id="s7-body"></div>
+  <div class="card-ft">
+    <button type="button" class="btn btn-s" onclick="goBack('s7')">← Back</button>
+    <div style="display:flex;gap:8px">
+      <button type="button" class="btn btn-skip" onclick="skip('s7')">Skip for now →</button>
+      <button type="button" class="btn btn-p" onclick="goNext('s7')">Save &amp; continue →</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+  STEP 8 — Calendar sync (B only, optional)
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s-s8">
+<div class="card">
+  <div class="card-hd">
+    <h1>Calendar synchronisation</h1>
+    <p class="lead">Connect an external calendar to automatically block busy times and prevent double-bookings.</p>
+  </div>
+  <div class="card-bd">
+    <div class="togrow" style="padding-top:0">
+      <div class="togi">
+        <div class="tog-title">Enable calendar sync</div>
+        <div class="tog-desc">Import busy times from Google Calendar, Outlook, or CalDAV to prevent conflicts.</div>
+      </div>
+      <label class="togsw"><input type="checkbox" id="tog-cal" onchange="document.getElementById('cal-config').classList.toggle('on',this.checked)"><span class="togtr"></span></label>
+    </div>
+    <div class="cond" id="cal-config">
+      <div class="sep" style="margin:14px 0 16px"></div>
+      <div class="f">
+        <label class="lbl">Calendar provider</label>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <label class="copt" style="flex:1;min-width:120px" data-v="google"><input type="radio" name="cal_prov" value="google"><div class="cchk"></div><div class="ctitle">📅 Google</div></label>
+          <label class="copt" style="flex:1;min-width:120px" data-v="microsoft"><input type="radio" name="cal_prov" value="microsoft"><div class="cchk"></div><div class="ctitle">📆 Microsoft</div></label>
+          <label class="copt" style="flex:1;min-width:120px" data-v="caldav"><input type="radio" name="cal_prov" value="caldav"><div class="cchk"></div><div class="ctitle">🗓 CalDAV</div></label>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div class="f" style="max-width:200px">
+          <label class="lbl">Sync horizon</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="number" id="f-horizon" min="7" max="365" value="90" style="width:78px">
+            <span style="font-size:13px;color:var(--muted)">days ahead</span>
+          </div>
+        </div>
+      </div>
+      <div class="togrow" style="margin-top:8px">
+        <div class="togi">
+          <div class="tog-title">Allow manual refresh</div>
+          <div class="tog-desc">Trigger a sync manually from your dashboard at any time.</div>
+        </div>
+        <label class="togsw"><input type="checkbox" id="tog-manual-refresh" checked><span class="togtr"></span></label>
+      </div>
+      <div class="sep"></div>
+      <div class="lbl" style="margin-bottom:10px">Conflict policy</div>
+      <div class="togrow" style="padding-top:0">
+        <div class="togi">
+          <div class="tog-title">Review conflicts manually</div>
+          <div class="tog-desc">Conflicts appear in your dashboard for individual review.</div>
+        </div>
+        <label class="togsw"><input type="checkbox" id="tog-conf-review" checked><span class="togtr"></span></label>
+      </div>
+      <div class="togrow">
+        <div class="togi">
+          <div class="tog-title">Allow bulk resolution</div>
+          <div class="tog-desc">Apply a resolution to multiple conflicting bookings at once.</div>
+        </div>
+        <label class="togsw"><input type="checkbox" id="tog-bulk-res" checked><span class="togtr"></span></label>
+      </div>
+      <div class="togrow">
+        <div class="togi">
+          <div class="tog-title">Notify impacted visitors automatically</div>
+          <div class="tog-desc">Send a message to visitors when their booking changes due to a calendar conflict.</div>
+        </div>
+        <label class="togsw"><input type="checkbox" id="tog-notify-imp" checked><span class="togtr"></span></label>
+      </div>
+      <div class="co co-info" style="margin-top:14px">
+        <strong>ℹ️ Fixed bookings take priority.</strong> Live-flow slots wrap around confirmed calendar blocks automatically.
+      </div>
+    </div>
+  </div>
+  <div class="card-ft">
+    <button type="button" class="btn btn-s" onclick="goBack('s8')">← Back</button>
+    <div style="display:flex;gap:8px">
+      <button type="button" class="btn btn-skip" onclick="skip('s8')">Skip for now →</button>
+      <button type="button" class="btn btn-p" onclick="goNext('s8')">Save &amp; continue →</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+  STEP s_op — Operators (optional)
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s-s_op">
+<div class="card">
+  <div class="card-hd">
+    <h1>Team &amp; operators</h1>
+    <p class="lead">Add up to 5 staff accounts who can run this queue day-to-day. They log in through the same host login page with your company name, their own email, and their own password.</p>
+  </div>
+  <div class="card-bd">
+
+    <div class="co co-info" style="margin-bottom:14px">
+      <strong>📋 How operator login works:</strong> Operators use the host login page — same company name, different email and password. After entering credentials, a verification link is sent to their email. Sessions last 24 hours.
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+      <div style="background:var(--green-s);border:1px solid #86efac;border-radius:10px;padding:12px 14px">
+        <div style="font-weight:700;font-size:12px;color:var(--green);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">✅ Operators can</div>
+        <ul style="font-size:12.5px;color:#14532d;line-height:1.9;margin:0;padding-left:16px">
+          <li>Call next visitor</li>
+          <li>Scan &amp; validate arrivals</li>
+          <li>Mark no-show</li>
+          <li>View booking details</li>
+          <li>Send messages via queue channels</li>
+          <li>Release batches (wave / flow queues)</li>
+        </ul>
+      </div>
+      <div style="background:var(--red-s);border:1px solid #fca5a5;border-radius:10px;padding:12px 14px">
+        <div style="font-weight:700;font-size:12px;color:var(--red);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">🚫 Operators cannot</div>
+        <ul style="font-size:12.5px;color:#991b1b;line-height:1.9;margin:0;padding-left:16px">
+          <li>Change slot types or schedules</li>
+          <li>Change capacity or payment settings</li>
+          <li>Change release rules or calendar sync</li>
+          <li>Create or delete queues</li>
+          <li>Access subscription or integrations</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="co co-warn" style="margin-bottom:16px">
+      <strong>🔑 You are responsible</strong> for managing operator passwords and access. Set secure passwords and share them directly with each operator. You can update or revoke access at any time from your host account page.
+    </div>
+
+    <div id="op-list"></div>
+
+    <button type="button" class="btn-add" id="btn-add-op" onclick="addOperator()">
+      + Add operator
+    </button>
+
+    <p class="hint" style="margin-top:12px">Operator accounts are created immediately when the queue is saved. You can also add, edit, or remove operators from your host account page at any time.</p>
+
+  </div>
+  <div class="card-ft">
+    <button type="button" class="btn btn-s" onclick="goBack('s_op')">← Back</button>
+    <div style="display:flex;gap:8px">
+      <button type="button" class="btn btn-skip" onclick="skip('s_op')">Skip for now →</button>
+      <button type="button" class="btn btn-p" onclick="goNext('s_op')">Save &amp; continue →</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+  STEP 9 — Look & Feel (optional)
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s-s9">
+<div class="card">
+  <div class="card-hd">
+    <h1>Look &amp; feel</h1>
+    <p class="lead">Customise your queue's appearance. Your host defaults apply until you change them here.</p>
+  </div>
+  <div class="card-bd">
+    <div class="togrow" style="padding-top:0">
+      <div class="togi">
+        <div class="tog-title">Use host default wallpaper</div>
+        <div class="tog-desc">Inherit the background wallpaper from your host profile.</div>
+      </div>
+      <label class="togsw"><input type="checkbox" id="tog-host-wall" checked onchange="document.getElementById('wall-up').classList.toggle('on',!this.checked)"><span class="togtr"></span></label>
+    </div>
+    <div class="cond" id="wall-up">
+      <div class="f" style="margin-top:8px">
+        <label class="lbl">Queue wallpaper</label>
+        <input type="file" id="f-wall" accept="image/*" style="padding:8px">
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="f">
+      <label class="lbl">Theme</label>
+      <div class="cgrid c2">
+        <label class="copt on" data-v="default"><input type="radio" name="theme" value="default" checked><div class="cchk"></div><div class="ctitle">🌙 Dusk Glass</div><div class="cdesc">Violet glass panels on dark gradient (default)</div></label>
+        <label class="copt" data-v="light"><input type="radio" name="theme" value="light"><div class="cchk"></div><div class="ctitle">☀️ Bright Clean</div><div class="cdesc">Light, minimal, high contrast</div></label>
+        <label class="copt" data-v="nature"><input type="radio" name="theme" value="nature"><div class="cchk"></div><div class="ctitle">🌿 Nature</div><div class="cdesc">Earthy greens and warm tones</div></label>
+        <label class="copt" data-v="bold"><input type="radio" name="theme" value="bold"><div class="cchk"></div><div class="ctitle">⚡ Bold</div><div class="cdesc">High energy, vibrant colors</div></label>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div style="background:var(--v-s);border:1.5px solid var(--v);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+      <span style="font-size:18px">👁️</span>
+      <div>
+        <div style="font-weight:700;font-size:13px;color:var(--v)">Queue Preview — What visitors will see</div>
+        <div style="font-size:12px;color:var(--muted)">This is a live preview of your visitor-facing queue page.</div>
+      </div>
+    </div>
+    <div class="prev-shell">
+      <div class="prev-phone">
+        <div class="prev-qname" id="prev-qname">Your Queue Name</div>
+        <div class="prev-venue" id="prev-venue">Your Venue · Location</div>
+        <div class="prev-status">● Open now</div>
+        <div class="prev-btn">Book my spot →</div>
+      </div>
+    </div>
+
+  </div>
+  <div class="card-ft">
+    <button type="button" class="btn btn-s" onclick="goBack('s9')">← Back</button>
+    <div style="display:flex;gap:8px">
+      <button type="button" class="btn btn-skip" onclick="skip('s9')">Skip for now →</button>
+      <button type="button" class="btn btn-p" onclick="goNext('s9')">Save &amp; continue →</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+  STEP R — Review & Create
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="s-sR">
+<div class="card">
+  <div class="card-hd">
+    <h1>Review &amp; create</h1>
+    <p class="lead">Everything look good? Hit create to launch your queue live.</p>
+  </div>
+  <div class="card-bd">
+    <div id="review-body"></div>
+    <div id="warnings-body" style="margin-top:18px"></div>
+    <div class="co co-lock" style="margin-top:18px">
+      <strong>🔒 Locked after creation:</strong> Home region, timezone, and queue archetype cannot be changed.
+    </div>
+    <div class="errbar" id="err-sR"></div>
+  </div>
+  <div class="card-ft">
+    <button type="button" class="btn btn-s" onclick="goBack('sR')">← Back</button>
+    <button type="button" class="btn btn-p" id="btn-create" onclick="createQueue()">🚀 Create Queue</button>
+  </div>
+</div>
+</div>
+
+</div><!-- /shell -->
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/fab.js"></script>
+<script>
+'use strict';
+
+/* ─────────────────────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────────────────────── */
+const S = {
+  // Identity
+  queue_name:'', internal_label:'', venue_name:'',
+  address:'', lat:null, lng:null,
+  timezone:'', home_region:'', language:'en', currency:'EUR',
+  // Schedule
+  sched_pat:'wd9_5',
+  schedule:{
+    sameHours:true, globalOpen:'09:00', globalClose:'17:00',
+    days:[
+      {n:'Mon',on:true, open:'09:00',close:'17:00',breaks:[]},
+      {n:'Tue',on:true, open:'09:00',close:'17:00',breaks:[]},
+      {n:'Wed',on:true, open:'09:00',close:'17:00',breaks:[]},
+      {n:'Thu',on:true, open:'09:00',close:'17:00',breaks:[]},
+      {n:'Fri',on:true, open:'09:00',close:'17:00',breaks:[]},
+      {n:'Sat',on:false,open:'09:00',close:'17:00',breaks:[]},
+      {n:'Sun',on:false,open:'09:00',close:'17:00',breaks:[]},
+    ],
+    cutoff:30,
+    breaks:[], holidays:[], specials:[],
+  },
+  // Archetype + formula
+  arch:null, // B A C D
+  formula:null, // ADVANCE_ONLY LIVE_ONLY MIXED
+  // Capacity
+  slots:[], // [{id,name,duration,capacity?,occurrences?}]
+  wave_duration:15, wave_capacity:20, wave_cap_mode:'constant',
+  release_mode:'manual', release_count:10, release_interval:15,
+  // Access
+  publics:['anonymous','registered'],
+  access_req:false, bulk_invite:true,
+  // Admission
+  adm:'scan', scan_fallback:false, noscan_win:10,
+  calling:{live:'single_next', adv_lead:10},
+  // Time transparency
+  show_eet:true, show_ete:false,
+  early:{enabled:false, interval:30, max:3, window:30},
+  // Channels
+  channels:['email','inapp'], sender_email:'',
+  // Verification / Payment
+  extra_fields:[], // B
+  payment_gate:false, payment_mode:'best_attempt', has_tickets:false, // A/C
+  resellers:[], // D
+  // Calendar
+  cal_sync:false, cal_provider:null, sync_horizon:90,
+  manual_refresh:true, conf_review:true, bulk_res:true, notify_imp:true,
+  // Branding
+  use_host_wall:true, theme:'default',
+  // Wizard meta
+  skipped:new Set(),
+  operators:[],   // [{_id(tmp), display_name, email, password, queue_scope:'all'|'this', permissions:{…}}]
+};
+
+/* ─────────────────────────────────────────────────────────────
+   ARCHETYPE DEFINITIONS
+───────────────────────────────────────────────────────────── */
+const ARCH = {
+  A:{
+    label:'Distinct Resources',
+    body:'Multiple parallel resources each serve visitors simultaneously.',
+    formula_default:'MIXED',
+    formula_label:'Advance reservation + live flow',
+    formulas:[
+      {v:'ADVANCE_ONLY',l:'Reservation only (in advance)',d:'Visitors must book a slot in advance.'},
+      {v:'LIVE_ONLY',   l:'Next available only (live)',   d:'Visitors walk in and get the next free resource.'},
+      {v:'MIXED',       l:'Both — advance + walk-in',     d:'Visitors can book ahead or walk in.'},
+    ],
+  },
+  B:{
+    label:'Individual Practice',
+    body:'One practitioner sees visitors one at a time through a single lane.',
+    formula_default:'MIXED',
+    formula_label:'Appointment + next-in-line',
+    formulas:[
+      {v:'ADVANCE_ONLY',l:'Appointment only (in advance)', d:'Visitors must book a specific appointment slot.'},
+      {v:'LIVE_ONLY',   l:'Next in line only (live)',      d:'Visitors join the live queue and wait their turn.'},
+      {v:'MIXED',       l:'Both — appointment + walk-in', d:'Visitors can book ahead or walk in.'},
+    ],
+  },
+  C:{label:'Wave-Based Venue', body:'Visitors enter in timed batches. Each wave has a fixed capacity.',formula_default:'ADVANCE',formula_label:'Wave-slot booking',formulas:[]},
+  D:{label:'Continuous Flow', body:'Visitors join a running queue and receive a position number.',formula_default:'LIVE_ONLY',formula_label:'Live queue only',formulas:[]},
+};
+
+/* ─────────────────────────────────────────────────────────────
+   STEP SEQUENCE
+───────────────────────────────────────────────────────────── */
+const ALL = ['s0','s1','s2a','s2b','s3','s4','s5','s6','s7','s8','s9','s_op','sR'];
+const LABELS = {
+  s0:'Your queue', s1:'Queue type',
+  s2a:'Booking mode', s2b:'Capacity',
+  s3:'Access', s4:'Admission',
+  s5:'Time info', s6:'Notifications',
+  s7:'Verification', s8:'Calendar',
+  s9:'Look & feel', s_op:'Operators', sR:'Review',
+};
+const OPTIONAL = new Set(['s5','s6','s7','s8','s9','s_op']);
+const STATUS = {}; // pending|active|done|skipped
+ALL.forEach((s,i)=>STATUS[s]=i===0?'active':'pending');
+let cur = 's0';
+
+function visSteps(){
+  return ALL.filter(s=>{
+    if(s==='s8') return S.arch==='B'||!S.arch;
+    return true;
+  });
+}
+
+function nextOf(s){
+  if(s==='s7') return S.arch==='B'?'s8':'s9';
+  if(s==='s8') return 's9';
+  const vs=visSteps(); const i=vs.indexOf(s);
+  return i<vs.length-1?vs[i+1]:null;
+}
+function prevOf(s){
+  const vs=visSteps(); const i=vs.indexOf(s);
+  return i>0?vs[i-1]:null;
+}
+
+function showStep(s){
+  document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active'));
+  const el=document.getElementById('s-'+s);
+  if(el) el.classList.add('active');
+  cur=s;
+  renderProg();
+  onEnter(s);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function goNext(s){
+  const err=validate(s);
+  if(err){showErr(s,err);return;}
+  clearErr(s);
+  save(s);
+  STATUS[s]='done';
+  const n=nextOf(s);
+  if(n){STATUS[n]=STATUS[n]==='skipped'?'skipped':'active';showStep(n);}
+}
+
+function goBack(s){
+  const p=prevOf(s);
+  if(p) showStep(p);
+}
+
+function skip(s){
+  S.skipped.add(s);
+  STATUS[s]='skipped';
+  const n=nextOf(s);
+  if(n){STATUS[n]=STATUS[n]==='skipped'?'skipped':'active';showStep(n);}
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PROGRESS DOTS
+───────────────────────────────────────────────────────────── */
+function renderProg(){
+  const bar=document.getElementById('prog');
+  const vs=visSteps();
+  bar.innerHTML=vs.map((s,i)=>{
+    const st=STATUS[s]||'pending';
+    const isCur=s===cur;
+    const isOpt=OPTIONAL.has(s);
+    let cls='pdot';
+    if(isCur) cls+=' active';
+    else if(st==='done') cls+=' done';
+    else if(st==='skipped') cls+=' skipped';
+    else if(isOpt) cls+=' opt';
+    const onclick=st==='done'?`onclick="showStep('${s}')"`:'';
+    const marker=st==='done'?`<div class="dot" ${onclick}></div>`:`<div class="dot"></div>`;
+    // add line only before active steps that follow done steps
+    return `<div class="${cls}" title="${LABELS[s]||s}">${marker}<div class="dlabel">${LABELS[s]||''}</div></div>`;
+  }).join('');
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ON ENTER (dynamic rendering per step)
+───────────────────────────────────────────────────────────── */
+function onEnter(s){
+  if(s==='s0') initSched();
+  if(s==='s2a') renderBookingLogic();
+  if(s==='s2b') renderCapacity();
+  if(s==='s3')  renderPublics();
+  if(s==='s4')  renderCalling();
+  if(s==='s5')  renderTimeTrans();
+  if(s==='s7')  renderVerif();
+  if(s==='s9')  { renderTimeTrans(); updatePreview(); }
+  if(s==='s_op') renderOperators();
+  if(s==='sR')  renderReview();
+}
+
+/* ─────────────────────────────────────────────────────────────
+   VALIDATION
+───────────────────────────────────────────────────────────── */
+function validate(s){
+  if(s==='s0'){
+    if(!document.getElementById('f-qname').value.trim()) return 'Please enter a queue name.';
+    if(!document.getElementById('f-venue').value.trim()) return 'Please enter a venue name.';
+    if(!S.lat||!S.lng) return 'Please confirm your location on the map.';
+    const anyOn=S.schedule.days.some(d=>d.on);
+    if(!anyOn) return 'Please enable at least one operating day.';
+  }
+  if(s==='s1'){
+    if(!S.arch) return 'Please select how your queue works.';
+  }
+  if(s==='s2a'){
+    if((S.arch==='A'||S.arch==='B')&&!S.formula) return 'Please select a booking mode.';
+  }
+  if(s==='s2b'){
+    if(S.arch==='A'||S.arch==='B'){
+      if(!S.slots.length) return 'Please add at least one type.';
+      for(const sl of S.slots){
+        if(!sl.name.trim()) return 'Please name each type.';
+        if(!sl.duration||sl.duration<1) return 'Duration must be at least 1 minute.';
+      }
+    }
+  }
+  if(s==='s3'){
+    if(!S.publics.length) return 'Please select at least one visitor type.';
+  }
+  return null;
+}
+function showErr(s,msg){const el=document.getElementById('err-'+s);if(el){el.textContent=msg;el.classList.add('on');}}
+function clearErr(s){const el=document.getElementById('err-'+s);if(el)el.classList.remove('on');}
+
+/* ─────────────────────────────────────────────────────────────
+   SAVE STATE
+───────────────────────────────────────────────────────────── */
+function save(s){
+  if(s==='s0'){
+    S.queue_name=document.getElementById('f-qname').value.trim();
+    S.internal_label=document.getElementById('f-internal').value.trim();
+    S.venue_name=document.getElementById('f-venue').value.trim();
+    S.language=document.getElementById('f-lang').value;
+    S.currency=document.getElementById('f-currency').value;
+    const openEl=document.getElementById('f-open');
+    const closeEl=document.getElementById('f-close');
+    const cutEl=document.getElementById('f-cutoff')||document.getElementById('f-cutoff2');
+    if(openEl) S.schedule.globalOpen=openEl.value;
+    if(closeEl) S.schedule.globalClose=closeEl.value;
+    if(cutEl) S.schedule.cutoff=parseInt(cutEl.value)||30;
+    updatePreview();
+  }
+  if(s==='s4'){
+    S.calling.adv_lead=parseInt(document.getElementById('f-adv-lead')?.value)||10;
+    S.noscan_win=parseInt(document.getElementById('f-noscan-win')?.value)||10;
+    S.scan_fallback=document.getElementById('tog-fallback')?.checked||false;
+  }
+  if(s==='s5'){
+    S.show_eet=document.getElementById('tog-eet')?.checked??true;
+    S.show_ete=document.getElementById('tog-ete')?.checked??false;
+    S.early.enabled=document.getElementById('tog-early')?.checked??false;
+    if(S.early.enabled){
+      S.early.interval=parseInt(document.getElementById('f-ei')?.value)||30;
+      S.early.max=parseInt(document.getElementById('f-em')?.value)||3;
+      S.early.window=parseInt(document.getElementById('f-ew')?.value)||30;
+    }
+  }
+  if(s==='s6'){
+    S.channels=[];
+    ['email','inapp','sms','wa'].forEach(c=>{if(document.getElementById('ch-'+c)?.checked)S.channels.push(c);});
+    S.sender_email=document.getElementById('f-sender')?.value||'';
+  }
+  if(s==='s8'){
+    S.cal_sync=document.getElementById('tog-cal')?.checked||false;
+    S.sync_horizon=parseInt(document.getElementById('f-horizon')?.value)||90;
+    S.manual_refresh=document.getElementById('tog-manual-refresh')?.checked??true;
+    S.conf_review=document.getElementById('tog-conf-review')?.checked??true;
+    S.bulk_res=document.getElementById('tog-bulk-res')?.checked??true;
+    S.notify_imp=document.getElementById('tog-notify-imp')?.checked??true;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LEAFLET MAP
+───────────────────────────────────────────────────────────── */
+let _map, _marker;
+function initMap(){
+  if(_map) return;
+  _map=L.map('map').setView([48.8566,2.3522],4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(_map);
+  _map.on('click',e=>setPin(e.latlng.lat,e.latlng.lng));
+}
+
+const GEO={
+  FR:{tz:'Europe/Paris',region:'Europe — West',cur:'EUR',lang:'fr'},
+  GB:{tz:'Europe/London',region:'Europe — UK',cur:'GBP',lang:'en'},
+  US:{tz:'America/New_York',region:'Americas — NA',cur:'USD',lang:'en'},
+  DE:{tz:'Europe/Berlin',region:'Europe — Central',cur:'EUR',lang:'de'},
+  ES:{tz:'Europe/Madrid',region:'Europe — South',cur:'EUR',lang:'es'},
+  IT:{tz:'Europe/Rome',region:'Europe — South',cur:'EUR',lang:'it'},
+  CA:{tz:'America/Toronto',region:'Americas — NA',cur:'CAD',lang:'en'},
+  AU:{tz:'Australia/Sydney',region:'Asia-Pacific',cur:'AUD',lang:'en'},
+  JP:{tz:'Asia/Tokyo',region:'Asia-Pacific',cur:'JPY',lang:'ja'},
+  BR:{tz:'America/Sao_Paulo',region:'Americas — SA',cur:'BRL',lang:'pt'},
+};
+
+function guessCc(lat,lng){
+  if(lat>41&&lat<51&&lng>-5&&lng<9) return 'FR';
+  if(lat>50&&lat<59&&lng>-8&&lng<2) return 'GB';
+  if(lat>48&&lat<55&&lng>6&&lng<15) return 'DE';
+  if(lat>36&&lat<44&&lng>-9&&lng<3) return 'ES';
+  if(lat>37&&lat<47&&lng>7&&lng<19) return 'IT';
+  if(lat>25&&lat<70&&lng>-130&&lng<-60) return 'US';
+  if(lat>43&&lat<70&&lng>-85&&lng<-52) return 'CA';
+  if(lat>-44&&lat<-10&&lng>113&&lng<154) return 'AU';
+  if(lat>30&&lat<46&&lng>129&&lng<146) return 'JP';
+  if(lat>-34&&lat<5&&lng>-73&&lng<-34) return 'BR';
+  return 'US';
+}
+
+function setPin(lat,lng,cc){
+  S.lat=lat; S.lng=lng;
+  if(_marker) _marker.setLatLng([lat,lng]);
+  else _marker=L.marker([lat,lng]).addTo(_map);
+  _map.setView([lat,lng],14);
+  const info=GEO[cc||guessCc(lat,lng)]||{tz:'UTC',region:'Global',cur:'USD',lang:'en'};
+  S.timezone=info.tz; S.home_region=info.region;
+  const tzEl=document.getElementById('chip-tz');
+  const rgEl=document.getElementById('chip-region');
+  if(tzEl){tzEl.textContent=info.tz;tzEl.classList.remove('empty');}
+  if(rgEl){rgEl.textContent=info.region;rgEl.classList.remove('empty');}
+  const cur=document.getElementById('f-currency');
+  if(cur){cur.value=info.cur;S.currency=info.cur;}
+  const lang=document.getElementById('f-lang');
+  if(lang){lang.value=info.lang;S.language=info.lang;}
+}
+
+// Address autocomplete (Nominatim)
+let _acTimer;
+document.addEventListener('DOMContentLoaded',()=>{
+  const inp=document.getElementById('f-addr');
+  if(!inp) return;
+  inp.addEventListener('input',()=>{
+    clearTimeout(_acTimer);
+    _acTimer=setTimeout(()=>doGeocode(inp.value),600);
+  });
+});
+async function doGeocode(q){
+  if(q.length<4) return;
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`);
+    const d=await r.json();
+    if(d[0]){
+      const {lat,lon,display_name,address}=d[0];
+      S.address=display_name;
+      const cc=(address?.country_code||'').toUpperCase();
+      setPin(parseFloat(lat),parseFloat(lon),cc);
+    }
+  }catch(e){}
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CHOICE CARDS WIRING
+───────────────────────────────────────────────────────────── */
+function wireCards(el){
+  if(!el) return;
+  el.querySelectorAll('.copt').forEach(card=>{
+    const r=card.querySelector('input[type=radio]');
+    if(!r) return;
+    r.addEventListener('change',function(){
+      const name=this.name;
+      document.querySelectorAll(`input[name="${name}"]`).forEach(rb=>{
+        rb.closest('.copt').classList.toggle('on',rb.checked);
+      });
+      onCardChange(name,this.value);
+    });
+    if(r.checked) card.classList.add('on');
+  });
+}
+
+function onCardChange(name,val){
+  if(name==='arch'){
+    S.arch=val;
+    const a=ARCH[val];
+    S.formula=a.formula_default;
+    document.getElementById('rv-title').textContent=a.label;
+    document.getElementById('rv-body').textContent=a.body;
+    document.getElementById('rv-fv').textContent=a.formula_label;
+    document.getElementById('arch-reveal').classList.add('on');
+    document.getElementById('formula-override').classList.remove('on');
+    renderFormulaCards();
+    renderProg();
+  }
+  if(name==='formula'){
+    S.formula=val;
+    const a=ARCH[S.arch];
+    const m=a.formulas.find(f=>f.v===val);
+    if(m) document.getElementById('rv-fv').textContent=m.l;
+  }
+  if(name==='adm'){
+    S.adm=val;
+    document.getElementById('scan-fallback-opt').classList.toggle('on',val==='scan');
+    document.getElementById('noscan-config').classList.toggle('on',val==='no_scan');
+    const w=document.getElementById('noscan-warn');
+    if(w) w.classList.toggle('on',val==='no_scan'&&S.arch==='C');
+  }
+  if(name==='cal_prov') S.cal_provider=val;
+  if(name==='theme') S.theme=val;
+}
+
+function showFormulaOverride(){
+  document.getElementById('formula-override').classList.add('on');
+}
+
+function renderFormulaCards(){
+  const a=ARCH[S.arch];
+  if(!a||!a.formulas.length) return;
+  const grid=document.getElementById('formula-cards');
+  if(!grid) return;
+  grid.innerHTML=a.formulas.map(f=>`
+    <label class="copt${S.formula===f.v?' on':''}" data-v="${f.v}">
+      <input type="radio" name="formula" value="${f.v}"${S.formula===f.v?' checked':''}>
+      <div class="cchk"></div>
+      <div class="ctitle">${f.l}</div>
+      <div class="cdesc">${f.d}</div>
+    </label>`).join('');
+  wireCards(grid);
+  grid.querySelectorAll('input[name=formula]').forEach(r=>{
+    r.addEventListener('change',()=>{S.formula=r.value;const m=a.formulas.find(f=>f.v===r.value);if(m){document.getElementById('rv-fv').textContent=m.l;}});
+  });
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SCHEDULE
+───────────────────────────────────────────────────────────── */
+const PATS={
+  wd9_5:{days:[1,1,1,1,1,0,0],open:'09:00',close:'17:00'},
+  wd9_6:{days:[1,1,1,1,1,0,0],open:'09:00',close:'18:00'},
+  wd_sat:{days:[1,1,1,1,1,1,0],open:'09:00',close:'17:00'},
+};
+
+function initSched(){
+  document.querySelectorAll('.sc').forEach(sc=>{
+    const r=sc.querySelector('input');
+    if(!r) return;
+    sc.addEventListener('click',()=>{
+      document.querySelectorAll('.sc').forEach(s=>s.classList.remove('on'));
+      sc.classList.add('on');
+      r.checked=true;
+      applyPat(r.value);
+    });
+    if(r.checked) applyPat(r.value);
+  });
+  renderDayChips();
+  renderPerDayRows();
+  document.getElementById('f-open')?.addEventListener('change',e=>{S.schedule.globalOpen=e.target.value;});
+  document.getElementById('f-close')?.addEventListener('change',e=>{S.schedule.globalClose=e.target.value;});
+}
+
+function applyPat(p){
+  S.sched_pat=p;
+  if(p==='custom'){
+    document.getElementById('sched-same').style.display='none';
+    document.getElementById('sched-custom').style.display='block';
+    S.schedule.sameHours=false;
+    renderPerDayRows();
+  } else {
+    document.getElementById('sched-same').style.display='block';
+    document.getElementById('sched-custom').style.display='none';
+    S.schedule.sameHours=true;
+    const pat=PATS[p];
+    S.schedule.globalOpen=pat.open;
+    S.schedule.globalClose=pat.close;
+    document.getElementById('f-open').value=pat.open;
+    document.getElementById('f-close').value=pat.close;
+    pat.days.forEach((on,i)=>{S.schedule.days[i].on=!!on;S.schedule.days[i].open=pat.open;S.schedule.days[i].close=pat.close;});
+    renderDayChips();
+  }
+}
+
+function renderDayChips(){
+  const wrap=document.getElementById('day-chips');
+  if(!wrap) return;
+  wrap.innerHTML=S.schedule.days.map((d,i)=>`
+    <span class="dc${d.on?' on':''}" onclick="toggleDay(${i},!S.schedule.days[${i}].on)">${d.n}</span>`).join('');
+}
+
+function toggleDay(i,v){S.schedule.days[i].on=v;renderDayChips();renderPerDayRows();}
+
+function renderPerDayRows(){
+  const wrap=document.getElementById('per-day-rows');
+  if(!wrap) return;
+  wrap.innerHTML=S.schedule.days.map((d,i)=>`
+    <div class="srow">
+      <span class="sname${!d.on?' off':''}">${d.n}</span>
+      <label class="togsw" style="margin-right:4px"><input type="checkbox" ${d.on?'checked':''} onchange="toggleDay(${i},this.checked)"><span class="togtr"></span></label>
+      <div class="stimes" style="${!d.on?'opacity:.35;pointer-events:none':''}">
+        <input type="time" value="${d.open}" style="width:100px" onchange="S.schedule.days[${i}].open=this.value">
+        <span>–</span>
+        <input type="time" value="${d.close}" style="width:100px" onchange="S.schedule.days[${i}].close=this.value">
+        <button type="button" class="btn-link" onclick="addDayBreak(${i})">+ break</button>
+      </div>
+      <div class="sbrks" id="sbrk-${i}">
+        ${d.breaks.map((b,bi)=>`
+          <div class="brk">
+            <span>Break:</span>
+            <input type="time" value="${b.from}" style="width:95px" onchange="S.schedule.days[${i}].breaks[${bi}].from=this.value">
+            <span>–</span>
+            <input type="time" value="${b.to}" style="width:95px" onchange="S.schedule.days[${i}].breaks[${bi}].to=this.value">
+            <button class="btn-rm" onclick="S.schedule.days[${i}].breaks.splice(${bi},1);renderPerDayRows()">✕</button>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function addDayBreak(i){S.schedule.days[i].breaks.push({from:'12:00',to:'13:00'});renderPerDayRows();}
+
+let _brkId=0;
+function addBreak(){S.schedule.breaks.push({id:++_brkId,from:'12:00',to:'13:00',label:'Lunch break'});renderBreaks();}
+function renderBreaks(){
+  const list=document.getElementById('break-list');
+  if(!list) return;
+  list.innerHTML=S.schedule.breaks.map((b,i)=>`
+    <div class="erow">
+      <input type="text" value="${b.label}" placeholder="Break name" onchange="S.schedule.breaks[${i}].label=this.value" style="flex:1;min-width:90px">
+      <input type="time" value="${b.from}" onchange="S.schedule.breaks[${i}].from=this.value" style="width:100px">
+      <span style="font-size:12px;color:var(--muted)">–</span>
+      <input type="time" value="${b.to}" onchange="S.schedule.breaks[${i}].to=this.value" style="width:100px">
+      <button class="btn-rm" onclick="S.schedule.breaks.splice(${i},1);renderBreaks()">✕</button>
+    </div>`).join('');
+}
+
+function addHoliday(){S.schedule.holidays.push({date:'',label:''});renderHolidays();}
+function renderHolidays(){
+  const list=document.getElementById('holiday-list');
+  if(!list) return;
+  if(!S.schedule.holidays.length){list.innerHTML='<div class="empty-exc">No holiday closures added yet.</div>';return;}
+  list.innerHTML=S.schedule.holidays.map((h,i)=>`
+    <div class="erow">
+      <input type="date" value="${h.date}" onchange="S.schedule.holidays[${i}].date=this.value" style="width:148px">
+      <input type="text" value="${h.label}" placeholder="e.g. Christmas Day" onchange="S.schedule.holidays[${i}].label=this.value" style="flex:1;min-width:120px">
+      <button class="btn-rm" onclick="S.schedule.holidays.splice(${i},1);renderHolidays()">✕</button>
+    </div>`).join('');
+}
+
+function addSpecial(){S.schedule.specials.push({date:'',open:'09:00',close:'18:00',label:''});renderSpecials();}
+function renderSpecials(){
+  const list=document.getElementById('special-list');
+  if(!list) return;
+  if(!S.schedule.specials.length){list.innerHTML='<div class="empty-exc">No special hours added yet.</div>';return;}
+  list.innerHTML=S.schedule.specials.map((s,i)=>`
+    <div class="erow">
+      <input type="date" value="${s.date}" onchange="S.schedule.specials[${i}].date=this.value" style="width:148px">
+      <input type="time" value="${s.open}" onchange="S.schedule.specials[${i}].open=this.value" style="width:95px">
+      <span style="font-size:12px;color:var(--muted)">–</span>
+      <input type="time" value="${s.close}" onchange="S.schedule.specials[${i}].close=this.value" style="width:95px">
+      <input type="text" value="${s.label}" placeholder="Label" onchange="S.schedule.specials[${i}].label=this.value" style="flex:1;min-width:80px">
+      <button class="btn-rm" onclick="S.schedule.specials.splice(${i},1);renderSpecials()">✕</button>
+    </div>`).join('');
+}
+
+/* ─────────────────────────────────────────────────────────────
+   BOOKING LOGIC (s2a)
+───────────────────────────────────────────────────────────── */
+function renderBookingLogic(){
+  const a=S.arch;
+  document.getElementById('s2a-choice').style.display=(a==='A'||a==='B')?'block':'none';
+  document.getElementById('s2a-info-C').style.display=a==='C'?'block':'none';
+  document.getElementById('s2a-info-D').style.display=a==='D'?'block':'none';
+  if(a==='A'||a==='B'){
+    const arch=ARCH[a];
+    const grid=document.getElementById('s2a-choice');
+    grid.innerHTML=`<div class="cgrid c2" id="formula-ba">${arch.formulas.map(f=>`
+      <label class="copt${S.formula===f.v?' on':''}" data-v="${f.v}">
+        <input type="radio" name="formula_ba" value="${f.v}"${S.formula===f.v?' checked':''}>
+        <div class="cchk"></div>
+        <div class="ctitle">${f.l}</div>
+        <div class="cdesc">${f.d}</div>
+      </label>`).join('')}</div>`;
+    wireCards(document.getElementById('formula-ba'));
+    document.querySelectorAll('input[name=formula_ba]').forEach(r=>{
+      r.addEventListener('change',()=>{S.formula=r.value;const m=arch.formulas.find(f=>f.v===r.value);if(m)document.getElementById('rv-fv').textContent=m.l;});
+    });
+  } else {
+    if(a==='C') S.formula='ADVANCE_ONLY';
+    if(a==='D') S.formula='LIVE_ONLY';
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CAPACITY (s2b)
+───────────────────────────────────────────────────────────── */
+let _slotId=0;
+function newSlot(a){_slotId++;return{id:_slotId,name:a==='B'?'Consultation':'Table',duration:a==='B'?30:60,capacity:a==='A'?4:1,occurrences:1};}
+
+function renderCapacity(){
+  const a=S.arch;
+  const body=document.getElementById('s2b-body');
+  const title=document.getElementById('s2b-title');
+  const lead=document.getElementById('s2b-lead');
+  if(a==='B'){
+    title.textContent='Appointment types';
+    lead.textContent='Define the types of appointments you offer and their durations.';
+    if(!S.slots.length) S.slots=[newSlot('B')];
+    body.innerHTML=`<div id="slot-list">${S.slots.map((s,i)=>slotCardHTML(s,i,'B')).join('')}</div>
+    <button type="button" class="btn-add" onclick="addSlot('B')">+ Add appointment type</button>`;
+  } else if(a==='A'){
+    title.textContent='Resource types';
+    lead.textContent='Define each type of bookable resource at your venue.';
+    if(!S.slots.length) S.slots=[newSlot('A')];
+    body.innerHTML=`<div id="slot-list">${S.slots.map((s,i)=>slotCardHTML(s,i,'A')).join('')}</div>
+    <button type="button" class="btn-add" onclick="addSlot('A')">+ Add resource type</button>`;
+  } else if(a==='C'){
+    title.textContent='Wave configuration';
+    lead.textContent='Define how long each wave lasts and how many visitors it holds.';
+    body.innerHTML=`
+    <div class="row">
+      <div class="f">
+        <label class="lbl">Wave duration <span class="req">*</span></label>
+        <div style="display:flex;align-items:center;gap:8px"><input type="number" id="f-wdur" min="5" max="240" value="${S.wave_duration}" style="width:78px"><span style="font-size:13px;color:var(--muted)">minutes</span></div>
+      </div>
+      <div class="f">
+        <label class="lbl">Capacity per wave <span class="req">*</span></label>
+        <div style="display:flex;align-items:center;gap:8px"><input type="number" id="f-wcap" min="1" value="${S.wave_capacity}" style="width:78px"><span style="font-size:13px;color:var(--muted)">visitors</span></div>
+      </div>
+    </div>
+    <div class="f" style="margin-top:8px">
+      <label class="lbl">Capacity mode</label>
+      <div class="cgrid c2">
+        <label class="copt${S.wave_cap_mode==='constant'?' on':''}" data-v="constant"><input type="radio" name="wcm" value="constant"${S.wave_cap_mode==='constant'?' checked':''}><div class="cchk"></div><div class="ctitle">Constant all day</div><div class="cdesc">Same capacity for every wave.</div></label>
+        <label class="copt${S.wave_cap_mode==='variable'?' on':''}" data-v="variable"><input type="radio" name="wcm" value="variable"${S.wave_cap_mode==='variable'?' checked':''}><div class="cchk"></div><div class="ctitle">Varies by time</div><div class="cdesc">Different capacity by time segment.</div></label>
+      </div>
+    </div>`;
+    document.getElementById('f-wdur')?.addEventListener('input',e=>S.wave_duration=parseInt(e.target.value)||15);
+    document.getElementById('f-wcap')?.addEventListener('input',e=>S.wave_capacity=parseInt(e.target.value)||20);
+  } else if(a==='D'){
+    title.textContent='Release configuration';
+    lead.textContent='Define how visitors are released from your queue.';
+    body.innerHTML=`
+    <div class="cgrid">
+      <label class="copt${S.release_mode==='manual'?' on':''}" data-v="manual"><input type="radio" name="rm" value="manual"${S.release_mode==='manual'?' checked':''}><div class="cchk"></div><div class="ctitle">🖐 Manual release</div><div class="cdesc">You release visitors from your dashboard as space becomes available.</div></label>
+      <label class="copt${S.release_mode==='incremental'?' on':''}" data-v="incremental"><input type="radio" name="rm" value="incremental"${S.release_mode==='incremental'?' checked':''}><div class="cchk"></div><div class="ctitle">⏱ Scheduled incremental</div><div class="cdesc">Release a fixed count every X minutes automatically.</div></label>
+      <label class="copt${S.release_mode==='fixed'?' on':''}" data-v="fixed"><input type="radio" name="rm" value="fixed"${S.release_mode==='fixed'?' checked':''}><div class="cchk"></div><div class="ctitle">🗓 Fixed-time releases</div><div class="cdesc">Release visitors at specific times you define.</div></label>
+    </div>
+    <div id="rel-sched" class="cond${S.release_mode!=='manual'?' on':''}">
+      <div class="row" style="margin-top:12px">
+        <div class="f" style="max-width:160px"><label class="lbl">Count per release</label><div style="display:flex;align-items:center;gap:8px"><input type="number" id="f-rc" min="1" value="${S.release_count}" style="width:78px"></div></div>
+        <div class="f" style="max-width:180px"><label class="lbl">Every</label><div style="display:flex;align-items:center;gap:8px"><input type="number" id="f-ri" min="5" value="${S.release_interval}" style="width:78px"><span style="font-size:13px;color:var(--muted)">min</span></div></div>
+      </div>
+    </div>`;
+    document.querySelectorAll('input[name=rm]').forEach(r=>r.addEventListener('change',()=>{S.release_mode=r.value;document.getElementById('rel-sched').classList.toggle('on',r.value!=='manual');}));
+  }
+  wireCards(body);
+  bindSlotEvents(a);
+}
+
+function slotCardHTML(st,idx,a){
+  return `<div class="slotcard" id="slot-${st.id}">
+    <div class="slothdr">
+      <span class="slotnum">${a==='B'?'Appointment':'Resource'} type ${idx+1}</span>
+      ${idx>0?`<button class="btn-rm" onclick="removeSlot(${st.id})">✕</button>`:''}
+    </div>
+    <div class="row">
+      <div class="f">
+        <label class="lbl">Name <span class="req">*</span></label>
+        <input type="text" class="slot-name" data-id="${st.id}" value="${st.name}" placeholder="${a==='B'?'e.g. Consultation':'e.g. Table for 4'}">
+      </div>
+      ${a==='A'?`
+      <div class="f" style="max-width:120px"><label class="lbl">Per unit</label><input type="number" class="slot-cap" data-id="${st.id}" min="1" value="${st.capacity}" style="width:72px"></div>
+      <div class="f" style="max-width:110px"><label class="lbl">No. of units</label><input type="number" class="slot-occ" data-id="${st.id}" min="1" value="${st.occurrences}" style="width:72px"></div>
+      `:''}
+    </div>
+    <div class="f">
+      <label class="lbl">Duration <span class="req">*</span></label>
+      <div style="display:flex;align-items:center;gap:8px"><input type="number" class="slot-dur" data-id="${st.id}" min="5" max="480" value="${st.duration}" style="width:78px"><span style="font-size:13px;color:var(--muted)">minutes</span></div>
+    </div>
+  </div>`;
+}
+
+function bindSlotEvents(a){
+  document.querySelectorAll('.slot-name').forEach(el=>el.addEventListener('input',()=>{const s=S.slots.find(x=>x.id==el.dataset.id);if(s)s.name=el.value;}));
+  document.querySelectorAll('.slot-dur').forEach(el=>el.addEventListener('input',()=>{const s=S.slots.find(x=>x.id==el.dataset.id);if(s)s.duration=parseInt(el.value)||30;}));
+  document.querySelectorAll('.slot-cap').forEach(el=>el.addEventListener('input',()=>{const s=S.slots.find(x=>x.id==el.dataset.id);if(s)s.capacity=parseInt(el.value)||1;}));
+  document.querySelectorAll('.slot-occ').forEach(el=>el.addEventListener('input',()=>{const s=S.slots.find(x=>x.id==el.dataset.id);if(s)s.occurrences=parseInt(el.value)||1;}));
+}
+function addSlot(a){S.slots.push(newSlot(a));renderCapacity();}
+function removeSlot(id){S.slots=S.slots.filter(s=>s.id!==id);renderCapacity();}
+
+/* ─────────────────────────────────────────────────────────────
+   ACCESS PUBLICS (s3)
+───────────────────────────────────────────────────────────── */
+const PUBS={
+  anonymous:{icon:'👻',title:'Anonymous visitors',desc:'Anyone can join without an account. Device-based limits apply.'},
+  registered:{icon:'👤',title:'Registered visitors',desc:'Visitors with an In-Time account.'},
+  listed:{icon:'📋',title:'Listed visitors only',desc:'Only visitors you\'ve invited or explicitly approved.'},
+};
+
+function renderPublics(){
+  const a=S.arch;
+  const avail=(a==='C'||a==='D')?['anonymous','registered']:['anonymous','registered','listed'];
+  const wrap=document.getElementById('pub-opts');
+  wrap.innerHTML=avail.map(k=>{
+    const d=PUBS[k]; const sel=S.publics.includes(k);
+    return `<div class="popt${sel?' on':''}" onclick="togglePub('${k}',this)">
+      <div class="pbox"></div>
+      <span class="picon">${d.icon}</span>
+      <div class="pinfo"><div class="ptitle">${d.title}</div><div class="pdesc">${d.desc}</div></div>
+    </div>`;
+  }).join('');
+  const lr=document.getElementById('listed-rules');
+  if(lr) lr.classList.toggle('on',S.publics.includes('listed'));
+}
+
+function togglePub(k,el){
+  const i=S.publics.indexOf(k);
+  if(i>=0) S.publics.splice(i,1);
+  else S.publics.push(k);
+  renderPublics();
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CALLING LOGIC (s4)
+───────────────────────────────────────────────────────────── */
+function renderCalling(){
+  const body=document.getElementById('calling-body');
+  const a=S.arch; const f=S.formula;
+  const hasAdv=['ADVANCE_ONLY','MIXED','ADVANCE_PLUS','ADVANCE'].includes(f);
+  const hasLive=['LIVE_ONLY','MIXED','LIVE_ETE'].includes(f);
+  let html='';
+  if(a==='B'||a==='A'){
+    if(hasLive) html+=`<div class="co co-note" style="margin-bottom:10px">
+      <span class="tag tag-live">Live flow</span>&nbsp;
+      <strong>Single next call</strong> — The next visitor in the live queue is called as soon as you're ready.
+    </div>`;
+    if(hasAdv) html+=`<div class="co co-note" style="margin-bottom:10px">
+      <span class="tag tag-adv">In advance</span>&nbsp;
+      <strong>Scheduled call lead</strong> — Booked visitors are notified before their slot.
+      <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+        <label style="font-size:13px;color:var(--muted)">Lead time:</label>
+        <input type="number" id="f-adv-lead" min="0" max="60" value="${S.calling.adv_lead||10}" style="width:72px">
+        <span style="font-size:13px;color:var(--muted)">min before slot</span>
+      </div>
+    </div>`;
+  }
+  if(a==='C') html=`<div class="co co-note">
+    <span class="tag tag-all">All bookings</span>&nbsp;
+    <strong>Scheduled call lead</strong> — All visitors are notified before their wave entry window.
+    <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+      <label style="font-size:13px;color:var(--muted)">Lead time:</label>
+      <input type="number" id="f-adv-lead" min="0" max="60" value="${S.calling.adv_lead||15}" style="width:72px">
+      <span style="font-size:13px;color:var(--muted)">min before wave</span>
+    </div>
+  </div>`;
+  if(a==='D') html=`<div class="co co-note">
+    <span class="tag tag-live">Live flow</span>&nbsp;
+    <strong>Single next call</strong> — Visitors are notified in queue order when released.
+  </div>`;
+  body.innerHTML=html||`<p style="color:var(--muted);font-size:13px">No calling configuration needed for your selections.</p>`;
+  document.getElementById('f-adv-lead')?.addEventListener('input',e=>{S.calling.adv_lead=parseInt(e.target.value)||10;});
+  wireCards(document.getElementById('adm-cards'));
+}
+
+/* ─────────────────────────────────────────────────────────────
+   TIME TRANSPARENCY (s5)
+───────────────────────────────────────────────────────────── */
+function renderTimeTrans(){
+  const a=S.arch; const f=S.formula;
+  const hasAdv=['ADVANCE_ONLY','MIXED','ADVANCE'].includes(f);
+  const hasLive=['LIVE_ONLY','MIXED'].includes(f);
+  const body=document.getElementById('s5-body');
+  let html='';
+
+  if(a==='C'){
+    html=`<div class="co co-info"><strong>ℹ️ EET is the default for wave-based queues.</strong><br>
+    <strong>EET (Expected Entry Time)</strong> = the clock time of the visitor's wave slot. Since wave times are fixed, there is no live-flow estimate (ETE) for this queue type.</div>`;
+    html+=earlyEntryHtml(false,true);
+    body.innerHTML=html;
+    wireEarly();
+    return;
+  }
+
+  if(a==='D'){
+    html=`<div class="togrow" style="padding-top:0">
+      <div class="togi">
+        <div class="tog-title">Show ETE <span class="tag tag-live" style="margin-left:4px">Live flow</span></div>
+        <div class="tog-desc"><strong>ETE (Estimated Time of Entry)</strong> — Show visitors an estimated wait time alongside their queue number.</div>
+      </div>
+      <label class="togsw"><input type="checkbox" id="tog-ete"${S.show_ete?' checked':''}><span class="togtr"></span></label>
+    </div>`;
+    html+=`<div class="sep"></div>`;
+    html+=earlyEntryHtml(true,false);
+    body.innerHTML=html;
+    wireEarly();
+    return;
+  }
+
+  // B or A
+  if(hasAdv) html+=`<div class="togrow" style="padding-top:0">
+    <div class="togi">
+      <div class="tog-title">Show EET <span class="tag tag-adv" style="margin-left:4px">In advance</span></div>
+      <div class="tog-desc"><strong>EET (Expected Entry Time)</strong> — The scheduled clock time of the visitor's appointment. Shown to booked visitors by default.</div>
+    </div>
+    <label class="togsw"><input type="checkbox" id="tog-eet"${S.show_eet?' checked':''}><span class="togtr"></span></label>
+  </div>`;
+
+  if(hasLive) html+=`<div class="togrow">
+    <div class="togi">
+      <div class="tog-title">Show ETE <span class="tag tag-live" style="margin-left:4px">Live flow</span></div>
+      <div class="tog-desc"><strong>ETE (Estimated Time of Entry)</strong> — A live wait-time estimate shown to visitors in the live queue, based on current slot durations and queue length.</div>
+    </div>
+    <label class="togsw"><input type="checkbox" id="tog-ete"${S.show_ete?' checked':''}><span class="togtr"></span></label>
+  </div>`;
+
+  html+=`<div class="sep"></div>`;
+  html+=earlyEntryHtml(false,false);
+  body.innerHTML=html;
+  wireEarly();
+  document.getElementById('tog-eet')?.addEventListener('change',e=>S.show_eet=e.target.checked);
+  document.getElementById('tog-ete')?.addEventListener('change',e=>S.show_ete=e.target.checked);
+}
+
+function earlyEntryHtml(activeDefault, disabledForC){
+  const ee=S.early;
+  const isD=S.archetype==='D';
+  const defI=isD?10:30; const defM=isD?30:3; const defW=isD?180:30;
+  const note=disabledForC?`<br><span style="color:var(--amber);font-size:11.5px;font-weight:600">⚠️ Not recommended for wave-based queues — disable unless you actively manage capacity overflows.</span>`:'';
+  return `<div class="togrow">
+    <div class="togi">
+      <div class="tog-title">Offer an earlier spot</div>
+      <div class="tog-desc">When a slot opens ahead of a visitor's scheduled time, proactively offer them the earlier option.${note}</div>
+    </div>
+    <label class="togsw"><input type="checkbox" id="tog-early"${(activeDefault||ee.enabled)?' checked':''}><span class="togtr"></span></label>
+  </div>
+  <div id="early-cfg" class="cond${(activeDefault||ee.enabled)?' on':''}">
+    <div class="row" style="margin-top:10px">
+      <div class="f" style="max-width:175px">
+        <label class="lbl">Offer interval</label>
+        <div style="display:flex;align-items:center;gap:7px"><input type="number" id="f-ei" min="5" max="300" value="${ee.interval||defI}" style="width:72px"><span style="font-size:12px;color:var(--muted)">seconds</span></div>
+      </div>
+      <div class="f" style="max-width:155px">
+        <label class="lbl">Max candidates</label>
+        <input type="number" id="f-em" min="1" max="50" value="${ee.max||defM}" style="width:72px">
+      </div>
+      <div class="f" style="max-width:175px">
+        <label class="lbl">Visibility window</label>
+        <div style="display:flex;align-items:center;gap:7px"><input type="number" id="f-ew" min="5" max="600" value="${ee.window||defW}" style="width:72px"><span style="font-size:12px;color:var(--muted)">min</span></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function wireEarly(){
+  document.getElementById('tog-early')?.addEventListener('change',function(){
+    S.early.enabled=this.checked;
+    document.getElementById('early-cfg').classList.toggle('on',this.checked);
+  });
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CHANNELS (s6)
+───────────────────────────────────────────────────────────── */
+function toggleCh(id,hdr){
+  const body=document.getElementById('ch-'+id+'-body');
+  if(body) body.classList.toggle('on');
+}
+function onChTog(id,inp){
+  if(inp.checked){if(!S.channels.includes(id))S.channels.push(id);}
+  else{S.channels=S.channels.filter(c=>c!==id);}
+  const hdr=document.getElementById('ch-'+id+'-hdr');
+  if(hdr) hdr.classList.toggle('on',inp.checked);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   VERIFICATION / PAYMENT (s7)
+───────────────────────────────────────────────────────────── */
+const EF_TYPES=['Social security number','Nationality','Preferred language','Date of birth','Phone number','Insurance number','Reference code','Other (custom)'];
+let _efId=0;
+
+function addExtraField(){
+  if(S.extra_fields.length>=5) return;
+  S.extra_fields.push({id:++_efId,type:EF_TYPES[0],label:'',required:true,applies:'both'});
+  renderExtraFields();
+}
+function removeEF(id){S.extra_fields=S.extra_fields.filter(f=>f.id!==id);renderExtraFields();}
+function renderExtraFields(){
+  const list=document.getElementById('ef-list');
+  if(!list) return;
+  if(!S.extra_fields.length){list.innerHTML='<div class="empty-exc" style="margin-bottom:8px">No additional fields yet.</div>';return;}
+  list.innerHTML=S.extra_fields.map((f,i)=>`
+    <div class="efrow">
+      <div class="f"><label class="lbl">Field type</label>
+        <select onchange="S.extra_fields[${i}].type=this.value">${EF_TYPES.map(t=>`<option${f.type===t?' selected':''}>${t}</option>`).join('')}</select>
+      </div>
+      <div class="f"><label class="lbl">Display label</label>
+        <input type="text" value="${f.label}" placeholder="Shown to visitor" onchange="S.extra_fields[${i}].label=this.value">
+      </div>
+      <div class="f" style="max-width:130px"><label class="lbl">Applies to</label>
+        <select onchange="S.extra_fields[${i}].applies=this.value">
+          <option value="both"${f.applies==='both'?' selected':''}>Both</option>
+          <option value="advance"${f.applies==='advance'?' selected':''}>Advance only</option>
+          <option value="live"${f.applies==='live'?' selected':''}>Live only</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;padding-top:22px;flex-shrink:0">
+        <label class="togsw"><input type="checkbox" ${f.required?'checked':''} onchange="S.extra_fields[${i}].required=this.checked"><span class="togtr"></span></label>
+        <span style="font-size:12px;color:var(--muted)">Required</span>
+        <button class="btn-rm" onclick="removeEF(${f.id})">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+let _resId=0;
+function addReseller(){if(S.resellers.length>=5)return;S.resellers.push({id:++_resId,name:'',url:''});renderResellers();}
+function removeRes(id){S.resellers=S.resellers.filter(r=>r.id!==id);renderResellers();}
+function renderResellers(){
+  const list=document.getElementById('res-list');
+  if(!list) return;
+  if(!S.resellers.length){list.innerHTML='<div class="empty-exc" style="margin-bottom:8px">No reseller links yet.</div>';return;}
+  list.innerHTML=S.resellers.map((r,i)=>`
+    <div class="resrow">
+      <div class="f"><label class="lbl">Platform</label><input type="text" value="${r.name}" placeholder="e.g. Ticketmaster" onchange="S.resellers[${i}].name=this.value"></div>
+      <div class="f"><label class="lbl">URL</label><input type="url" value="${r.url}" placeholder="https://…" onchange="S.resellers[${i}].url=this.value"></div>
+      <button class="btn-rm" style="margin-top:22px;flex-shrink:0" onclick="removeRes(${r.id})">✕</button>
+    </div>`).join('');
+}
+
+function renderVerif(){
+  const a=S.arch;
+  const title=document.getElementById('s7-title');
+  const lead=document.getElementById('s7-lead');
+  const body=document.getElementById('s7-body');
+  if(a==='B'){
+    title.textContent='Additional registration data';
+    lead.textContent='Request up to 5 extra fields from visitors to verify eligibility before confirming their booking.';
+    body.innerHTML=`<div class="co co-note" style="margin-bottom:14px">Fields apply to bookings matching your criteria. Visitors who don't fill required fields cannot complete their booking.</div>
+    <div id="ef-list"></div>
+    <button type="button" class="btn-add" onclick="addExtraField()"${S.extra_fields.length>=5?' disabled style="opacity:.4;cursor:not-allowed"':''}>
+      ${S.extra_fields.length>=5?'Maximum 5 fields reached':'+ Add registration field'}
+    </button>`;
+    renderExtraFields();
+  } else if(a==='D'){
+    title.textContent='Official reseller links';
+    lead.textContent='Show visitors links to your official ticket seller or external booking platform before they confirm their booking.';
+    body.innerHTML=`<div class="co co-note" style="margin-bottom:14px">Links are displayed prominently on the queue booking page. Up to 5 platforms.</div>
+    <div id="res-list"></div>
+    <button type="button" class="btn-add" onclick="addReseller()"${S.resellers.length>=5?' disabled style="opacity:.4;cursor:not-allowed"':''}>
+      ${S.resellers.length>=5?'Maximum 5 reached':'+ Add reseller link'}
+    </button>`;
+    renderResellers();
+  } else {
+    // A and C
+    title.textContent='Payment gate';
+    lead.textContent='Optionally redirect visitors to an external payment provider before confirming their booking.';
+    body.innerHTML=`<div class="togrow" style="padding-top:0">
+      <div class="togi"><div class="tog-title">Enable external payment redirect</div><div class="tog-desc">Redirect visitors to your payment provider before their booking is confirmed.</div></div>
+      <label class="togsw"><input type="checkbox" id="tog-pay" onchange="document.getElementById('pay-cfg').classList.toggle('on',this.checked)"><span class="togtr"></span></label>
+    </div>
+    <div class="cond" id="pay-cfg">
+      <div class="cgrid c2" style="margin:12px 0">
+        <label class="copt${S.payment_mode==='best_attempt'?' on':''}" data-v="best_attempt"><input type="radio" name="pm" value="best_attempt"${S.payment_mode==='best_attempt'?' checked':''}><div class="cchk"></div><div class="ctitle">Best attempt</div><div class="cdesc">Booking confirmed even if payment unconfirmed. System retries.</div></label>
+        <label class="copt${S.payment_mode==='mandatory'?' on':''}" data-v="mandatory"><input type="radio" name="pm" value="mandatory"${S.payment_mode==='mandatory'?' checked':''}><div class="cchk"></div><div class="ctitle">Mandatory</div><div class="cdesc">Booking held until payment confirmed via webhook.</div></label>
+      </div>
+      <div class="togrow" style="padding-top:0">
+        <div class="togi"><div class="tog-title">Enable "have tickets?" prompt</div><div class="tog-desc">Show visitors an option to indicate they already have valid tickets.</div></div>
+        <label class="togsw"><input type="checkbox" id="tog-tix"><span class="togtr"></span></label>
+      </div>
+    </div>`;
+    wireCards(body);
+    document.querySelectorAll('input[name=pm]').forEach(r=>r.addEventListener('change',()=>S.payment_mode=r.value));
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PREVIEW (s9)
+───────────────────────────────────────────────────────────── */
+function updatePreview(){
+  const qn=document.getElementById('prev-qname');
+  const ve=document.getElementById('prev-venue');
+  if(qn) qn.textContent=S.queue_name||'Your Queue Name';
+  if(ve) ve.textContent=(S.venue_name||'Your Venue')+(S.address?(' · '+(S.address.split(',').slice(0,2).join(','))):'');
+}
+
+/* ─────────────────────────────────────────────────────────────
+   REVIEW (sR)
+───────────────────────────────────────────────────────────── */
+function renderReview(){
+  const body=document.getElementById('review-body');
+  const wb=document.getElementById('warnings-body');
+  const a=S.arch; const arch=ARCH[a]||{};
+  const opd=S.schedule.days.filter(d=>d.on).map(d=>d.n).join(', ')||'—';
+  const rv=(k,v,na)=>`<div class="revrow"><span class="revk">${k}</span><span class="revv${na?' na':''}">${na?'—':v}</span></div>`;
+  body.innerHTML=`
+    <div class="revgrp"><div class="revgtitle">Identity</div>
+      ${rv('Queue name',S.queue_name,!S.queue_name)}
+      ${rv('Venue',S.venue_name,!S.venue_name)}
+      ${rv('Location',S.address?S.address.split(',').slice(0,2).join(','):'Pinned on map',false)}
+      ${rv('Timezone',S.timezone,!S.timezone)}
+      ${rv('Language / Currency',S.language.toUpperCase()+' / '+S.currency,false)}
+    </div>
+    <div class="revgrp"><div class="revgtitle">Queue type</div>
+      ${rv('Archetype',a?arch.label:'—',!a)}
+      ${rv('Booking mode',S.formula||'—',!S.formula)}
+    </div>
+    <div class="revgrp"><div class="revgtitle">Schedule</div>
+      ${rv('Open days',opd,!opd||opd==='—')}
+      ${rv('Hours',S.schedule.sameHours?S.schedule.globalOpen+'–'+S.schedule.globalClose:'Per-day schedule',false)}
+      ${rv('Last-booking cutoff',S.schedule.cutoff+' min',false)}
+    </div>
+    <div class="revgrp"><div class="revgtitle">Configuration</div>
+      ${rv('Access',S.publics.map(p=>PUBS[p]?.title||p).join(', ')||'—',!S.publics.length)}
+      ${rv('Admission',{scan:'Scan at entry',no_scan:'No-scan (auto)'}[S.adm]||'Scan',false)}
+      ${rv('Notifications',S.channels.join(', ')||'None',!S.channels.length)}
+      ${rv('Calendar sync',S.cal_sync?'Enabled':'Disabled',false)}
+    </div>
+    <div class="revgrp"><div class="revgtitle">Operators</div>
+      ${S.operators.length
+        ? S.operators.filter(o=>o.display_name&&o.email).map(o=>
+            rv(o.display_name, o.email + (o.queue_scope==='this'?' · this queue only':' · all queues'), false)
+          ).join('')
+        : rv('Operators','None configured — can be added after creation',false)
+      }
+    </div>`;
+
+  const warns=[];
+  warns.push({icon:'🔒',title:'Immutable fields',body:`Home region (${S.home_region||'—'}) and archetype (${a||'—'}) are permanently locked.`});
+  if(S.adm==='no_scan') warns.push({icon:'⚠️',title:'No-scan mode active',body:`Bookings auto-complete ${S.noscan_win} min after their window.`});
+  if(S.channels.includes('wa')) warns.push({icon:'📱',title:'WhatsApp selected',body:'Full API setup is required before messages can be sent via WhatsApp.'});
+  if(!S.channels.length) warns.push({icon:'📭',title:'No notifications configured',body:'Visitors will not receive any booking confirmations or reminders.'});
+
+  wb.innerHTML=warns.map(w=>`<div class="witem"><div class="wi-icon">${w.icon}</div><div><div class="wi-title">${w.title}</div><div class="wi-desc">${w.body}</div></div></div>`).join('');
+}
+
+/* ─────────────────────────────────────────────────────────────
+   OPERATORS (s_op)
+───────────────────────────────────────────────────────────── */
+let _opId = 0;
+
+// Default capability set for a new operator (all ON)
+function defaultPerms(){ return {
+  can_call_next:     true,
+  can_scan_validate: true,
+  can_mark_noshow:   true,
+  can_view_bookings: true,
+  can_send_messages: true,
+  can_release_batch: true,
+};}
+
+// Human labels for each permission
+const PERM_LABELS = {
+  can_call_next:     { label:'Call next / manage flow',    desc:'Trigger calls and advance the queue' },
+  can_scan_validate: { label:'Scan &amp; validate arrivals', desc:'Use the scan tool to check visitors in' },
+  can_mark_noshow:   { label:'Mark no-show',               desc:'Mark a booked visitor as absent' },
+  can_view_bookings: { label:'View booking details',       desc:'See visitor names and booking info' },
+  can_send_messages: { label:'Send messages',              desc:'Contact visitors via configured channels' },
+  can_release_batch: { label:'Release batches',            desc:'For wave &amp; flow queues — release a group' },
+};
+
+function renderOperators(){
+  const list    = document.getElementById('op-list');
+  const addBtn  = document.getElementById('btn-add-op');
+  if(!list) return;
+
+  if(!S.operators.length){
+    list.innerHTML = `<div class="empty-exc" style="margin-bottom:12px">No operators added yet. You can also add them after queue creation from your host account page.</div>`;
+    if(addBtn){ addBtn.disabled = false; addBtn.textContent = '+ Add operator'; }
+    return;
+  }
+
+  list.innerHTML = S.operators.map((op, i) => {
+    const p = op.permissions;
+    const allOn = Object.values(p).every(Boolean);
+    return `
+    <div class="slotcard" style="margin-bottom:12px" id="opcard-${op._id}">
+      <div class="slothdr">
+        <span class="slotnum">Operator ${i+1}${op.display_name ? ' — '+escHtml(op.display_name) : ''}</span>
+        <button class="btn-rm" onclick="removeOperator(${op._id})">✕</button>
+      </div>
+
+      <div class="row">
+        <div class="f">
+          <label class="lbl">Display name <span class="req">*</span></label>
+          <input type="text" value="${escHtml(op.display_name||'')}" placeholder="e.g. Front desk"
+            oninput="updateOp(${op._id},'display_name',this.value)">
+        </div>
+        <div class="f">
+          <label class="lbl">Email address <span class="req">*</span></label>
+          <input type="email" value="${escHtml(op.email||'')}" placeholder="operator@yourcompany.com"
+            oninput="updateOp(${op._id},'email',this.value)">
+        </div>
+      </div>
+
+      <div class="f" style="max-width:320px;margin-top:4px">
+        <label class="lbl">Password <span class="req">*</span></label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="password" id="op-pwd-${op._id}" value="${escHtml(op.password||'')}"
+            placeholder="Set a secure password" oninput="updateOp(${op._id},'password',this.value)" style="flex:1">
+          <button type="button" class="btn-link" onclick="toggleOpPwd(${op._id})" title="Show/hide password">👁</button>
+        </div>
+        <p class="hint">You are responsible for communicating this password to the operator securely.</p>
+      </div>
+
+      <div class="f" style="margin-top:10px">
+        <label class="lbl">Queue access</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+          <label class="sc${op.queue_scope==='all'?' on':''}" style="flex:1;min-width:130px"
+            onclick="updateOp(${op._id},'queue_scope','all');renderOperators()">
+            <input type="radio" name="op-scope-${op._id}" value="all"${op.queue_scope==='all'?' checked':''}>
+            <span class="sc-icon">🌐</span>
+            <div><strong>All queues</strong><br><small style="font-weight:400;opacity:.75">Access every queue you own</small></div>
+          </label>
+          <label class="sc${op.queue_scope==='this'?' on':''}" style="flex:1;min-width:130px"
+            onclick="updateOp(${op._id},'queue_scope','this');renderOperators()">
+            <input type="radio" name="op-scope-${op._id}" value="this"${op.queue_scope==='this'?' checked':''}>
+            <span class="sc-icon">🎯</span>
+            <div><strong>This queue only</strong><br><small style="font-weight:400;opacity:.75">Restricted to this queue</small></div>
+          </label>
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <button type="button" class="collbtn" onclick="coll('op-perms-${op._id}',this)">
+          <span class="collarr">›</span> Restrict capabilities (optional)
+          ${!allOn ? '<span style="font-size:11px;color:var(--amber);margin-left:6px;font-weight:700">— some restricted</span>' : ''}
+        </button>
+        <div class="collbody" id="op-perms-${op._id}">
+          <div style="margin-top:10px;border:1.5px solid var(--bord);border-radius:10px;overflow:hidden">
+            ${Object.entries(PERM_LABELS).map(([k, meta]) => `
+            <div class="togrow" style="padding:10px 13px">
+              <div class="togi">
+                <div class="tog-title" style="font-size:13px">${meta.label}</div>
+                <div class="tog-desc">${meta.desc}</div>
+              </div>
+              <label class="togsw">
+                <input type="checkbox" ${p[k]?'checked':''} onchange="updateOpPerm(${op._id},'${k}',this.checked)">
+                <span class="togtr"></span>
+              </label>
+            </div>`).join('')}
+          </div>
+          <p class="hint" style="margin-top:6px">All capabilities are ON by default. Uncheck to restrict this operator.</p>
+        </div>
+      </div>
+    </div>`; }).join('');
+
+  if(addBtn){
+    addBtn.disabled = S.operators.length >= 5;
+    addBtn.textContent = S.operators.length >= 5 ? 'Maximum 5 operators reached' : '+ Add operator';
+  }
+}
+
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function addOperator(){
+  if(S.operators.length >= 5) return;
+  S.operators.push({ _id:++_opId, display_name:'', email:'', password:'',
+    queue_scope:'all', permissions:defaultPerms() });
+  renderOperators();
+}
+
+function removeOperator(id){
+  S.operators = S.operators.filter(o => o._id !== id);
+  renderOperators();
+}
+
+function updateOp(id, field, val){
+  const op = S.operators.find(o => o._id === id);
+  if(op) op[field] = val;
+}
+
+function updateOpPerm(id, perm, val){
+  const op = S.operators.find(o => o._id === id);
+  if(op) op.permissions[perm] = val;
+  // Re-render just the header line to update "some restricted" badge
+  renderOperators();
+}
+
+function toggleOpPwd(id){
+  const inp = document.getElementById('op-pwd-'+id);
+  if(inp) inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CREATE
+───────────────────────────────────────────────────────────── */
+async function createQueue(){
+  const btn=document.getElementById('btn-create');
+  btn.disabled=true; btn.textContent='Creating…';
+
+  // Build the payload using the field names the API expects.
+  // API reads: name, venue_name, internal_label, lat, lng, timezone, home_region,
+  //            formula (or queue_mode), archetype, access_publics, admission_mode.
+  // Everything else is stored client-side for now (schedule, slots, channels, etc.)
+  // and will be persisted once the API is extended.
+  const payload={
+    // Identity
+    name:         S.queue_name,
+    venue_name:   S.venue_name,
+    internal_label: S.internal_label,
+    // Location — API accepts lat/lng directly (patched)
+    lat:          S.lat,
+    lng:          S.lng,
+    timezone:     S.timezone,
+    home_region:  S.home_region,
+    // Queue type — send `formula` (API now accepts LIVE_ONLY / ADVANCE_ONLY / MIXED)
+    formula:      S.formula,
+    archetype:    S.arch,
+    // Access — send the array; API resolves to identity_policy
+    access_publics: S.publics,
+    // Admission — API derives no_scan_mode_enabled from this
+    admission_mode: S.adm,
+    // Status
+    status: 'active',
+  };
+
+  try{
+    const res=await fetch('/api/intime/queues',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Failed');
+
+    // If operators were configured in the wizard, provision them now.
+    // Each one is POSTed to /api/host/operators with the newly created queueId
+    // for 'this queue only' scope, or null for 'all queues'.
+    const queueId = data.queueId;
+    const validOps = S.operators.filter(o => o.display_name && o.email && o.password);
+    for(const op of validOps){
+      const scope = op.queue_scope === 'this' ? [queueId] : 'all';
+      try{
+        await fetch('/api/host/operators', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            display_name:  op.display_name,
+            email:         op.email,
+            password:      op.password,
+            queue_scope:   scope,
+            permissions:   op.permissions,
+          })
+        });
+        // Failures are non-fatal — host can add operators from account page
+      }catch(e){ console.warn('[OPERATOR CREATE]', e); }
+    }
+
+    window.location.href='../manage/page 2.html';
+  }catch(err){
+    showErr('sR',err.message);
+    btn.disabled=false; btn.textContent='🚀 Create Queue';
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   COLLAPSE
+───────────────────────────────────────────────────────────── */
+function coll(bodyId, btn){
+  const b=document.getElementById(bodyId);
+  if(!b) return;
+  const o=b.classList.toggle('on');
+  btn.classList.toggle('open',o);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   BOOT
+───────────────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded',()=>{
+  renderProg();
+  initMap();
+  initSched();
+  wireCards(document.getElementById('arch-cards'));
+  wireCards(document.getElementById('adm-cards'));
+  wireCards(document.getElementById('s-s9'));
+  wireCards(document.getElementById('s-s8'));
+
+  // Admission mode wiring
+  document.querySelectorAll('input[name=adm]').forEach(r=>{
+    r.addEventListener('change',()=>onCardChange('adm',r.value));
+  });
+
+  if(window.Drawer?.mount) window.Drawer.mount({mode:'host',onLogout:window.InTimeNav?.performLogout});
+  if(window.FAB?.mount) window.FAB.mount({
+    useTopBand:true,useBottomBand:true,
+    home:{title:'Home',label:'🏠',onClick:window.InTimeNav?.goHostHome},
+    config:{title:'Settings',label:'⚙️',onClick:window.InTimeNav?.goHostSettings},
+    onBack:window.InTimeNav?.goBackFromManage,
+  });
+});
+</script>
+</body>
+</html>

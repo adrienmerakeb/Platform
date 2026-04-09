@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>WanderPal — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    html,body{height:100%}
+    body{
+      margin:0;min-height:100vh;display:flex;flex-direction:column;
+      background:url("/wallpapers/test - hills.jpg") no-repeat center/cover fixed;
+      font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;color:#fff;
+    }
+    header.nav{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:14px 18px;position:sticky;top:0;z-index:20;
+      background:rgba(0,0,0,.28);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.28)
+    }
+    .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px}
+    .brand img{height:28px;width:auto;filter:drop-shadow(0 2px 10px rgba(0,0,0,.25))}
+    .userpill{
+      display:flex;gap:8px;align-items:center;border:1px solid rgba(255,255,255,.35);
+      background:rgba(255,255,255,.08);padding:6px 10px;border-radius:12px
+    }
+    .role-badge{
+      font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.35);
+      background:rgba(255,255,255,.06)
+    }
+    .logout{cursor:pointer;border:none;border-radius:10px;padding:8px 12px;font-weight:600;background:#fff;color:#111}
+    main{
+      width:min(1200px,92vw);margin:22px auto 36px;
+      border:2px solid rgba(255,255,255,.55);border-radius:20px;
+      background:transparent;backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);
+      box-shadow:0 24px 60px rgba(0,0,0,.35);padding:18px
+    }
+    .modules-grid{
+      display:grid;gap:16px;grid-template-columns:repeat(12,1fr);
+    }
+    /* default cards (multi-module) */
+    .module-card{
+      grid-column:span 6;
+      border:1px solid rgba(255,255,255,.35);border-radius:16px;overflow:hidden;
+      background:rgba(255,255,255,.06)
+    }
+    .module-head{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.12)
+    }
+    .module-title{font-weight:700}
+    .module-body{padding:14px 16px;min-height:180px}
+
+    /* Single-module focus mode */
+    .single .module-card{grid-column:1 / -1}
+    .single .module-body{min-height:380px}
+
+    /* Tiny toolbar for switching (visible if more modules exist but user wants focus) */
+    .toolbar{
+      display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px
+    }
+    .chip{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.08);padding:6px 10px;border-radius:999px;cursor:pointer}
+    .chip.active{background:#fff;color:#111;border-color:#fff;font-weight:700}
+
+    .empty{
+      text-align:center;opacity:.9;padding:30px 14px
+    }
+    a.link{color:#c7d2fe;text-decoration:none}
+    a.link:hover{text-decoration:underline}
+
+<style>
+.btn{
+  border:none;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer;
+  background:#fff;color:#111
+}
+.btn.ghost{
+  background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5)
+}
+</style>
+
+
+
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="brand">
+      <img src="/icons/letsgetout-logo2.png" alt="" />
+      WanderPal
+    </div>
+    <div class="userpill">
+      <span id="user-name">—</span>
+      <span class="role-badge" id="user-role">—</span>
+      <button class="logout" id="logout">Logout</button>
+    </div>
+  </header>
+
+  <main id="app">
+    <div class="toolbar" id="toolbar" hidden></div>
+    <section id="modules" class="modules-grid"></section>
+    <div id="empty" class="empty" hidden>
+      No services are active for this account yet.<br>
+      <small>Need help? <a class="link" href="/contact.html">Contact us</a>.</small>
+    </div>
+  </main>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

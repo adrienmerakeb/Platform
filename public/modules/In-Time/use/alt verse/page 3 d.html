@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Book a spot — In-Time</title>
+<link rel="stylesheet" href="/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --v:#7c3aed;--v-s:#ede9fc;--v-d:#6d28d9;
+  --blue:#2563eb;--blue-s:#eff6ff;
+  --green:#16a34a;--green-s:#f0fdf4;
+  --amber:#d97706;--amber-s:#fffbeb;
+  --red:#dc2626;--red-s:#fef2f2;
+  --txt:#1a1825;--muted:#6b6880;--hint:#9b98aa;
+  --surf:#fff;--bg:#f4f3f8;--bord:#e2e0ea;--bord-f:#7c3aed;
+  --gray:#f0eff5;--gray-m:#d4d2de;
+  --r:14px;--ri:9px;
+  --sh:0 2px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --ring:0 0 0 3px rgba(124,58,237,.18);
+  --font:"DM Sans",sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:var(--font);background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55}
+.shell{max-width:560px;margin:0 auto;padding:84px 18px 120px}
+.hero{background:linear-gradient(135deg,var(--v) 0%,var(--v-d) 100%);border-radius:var(--r);padding:20px 20px 18px;margin-bottom:20px;color:#fff;position:relative;overflow:hidden;box-shadow:0 6px 24px rgba(124,58,237,.3);background-size:cover;background-position:center;background-repeat:no-repeat;transition:background .3s ease;}
+.hero::before{content:"";position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.07);pointer-events:none;}
+.hero-tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:rgba(255,255,255,.18);border-radius:999px;padding:3px 10px;margin-bottom:10px;}
+.hero h1{font-size:20px;font-weight:700;margin-bottom:4px}
+.hero-sub{font-size:13px;opacity:.85;margin-bottom:2px}
+.hero-addr{font-size:12px;opacity:.65}
+.hero-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.hero-pill{font-size:11.5px;font-weight:600;padding:3px 11px;border-radius:999px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);}
+.card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);padding:18px 20px;margin-bottom:14px;}
+.card-title{font-size:14.5px;font-weight:700;color:var(--txt);margin-bottom:4px}
+.card-sub{font-size:13px;color:var(--muted);line-height:1.5}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+@media(max-width:380px){.mode-grid{grid-template-columns:1fr}}
+.mode-card{background:var(--surf);border:1.5px solid var(--bord);border-radius:var(--r);padding:20px 14px;cursor:pointer;transition:all .18s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.mode-card:hover{border-color:var(--v);background:var(--v-s);transform:translateY(-2px);box-shadow:0 6px 20px rgba(124,58,237,.12);}
+.mode-ico{font-size:30px}
+.mode-title{font-size:14px;font-weight:700;color:var(--txt)}
+.mode-desc{font-size:11.5px;color:var(--muted);line-height:1.4}
+.mode-card:hover .mode-title{color:var(--v)}
+.slot-type-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.slot-type-card{background:var(--surf);border:1.5px solid var(--bord);border-radius:var(--r);padding:14px 16px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:12px;}
+.slot-type-card:hover,.slot-type-card.sel{border-color:var(--v);background:var(--v-s)}
+.stc-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--bord);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;transition:all .15s;}
+.slot-type-card.sel .stc-check{background:var(--v);border-color:var(--v);color:#fff}
+.stc-name{font-size:14px;font-weight:700;color:var(--txt)}
+.stc-meta{font-size:12px;color:var(--muted);margin-top:2px}
+.date-row{display:flex;align-items:center;gap:10px;margin-bottom:16px;background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);padding:13px 16px;}
+.date-row label{font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap}
+.date-row input[type=date]{flex:1;border:1.5px solid var(--bord);border-radius:var(--ri);padding:8px 11px;font-family:var(--font);font-size:14px;color:var(--txt);background:var(--surf);outline:none;transition:border-color .18s,box-shadow .18s;}
+.date-row input:focus{border-color:var(--bord-f);box-shadow:var(--ring)}
+.sec-lbl{font-size:11.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;}
+.wave-outer{display:flex;align-items:center;gap:8px;margin-bottom:16px;}
+.wave-scroll{flex:1;display:flex;gap:10px;overflow-x:auto;padding:4px 2px 10px;scroll-snap-type:x mandatory;scrollbar-width:none;}
+.wave-scroll::-webkit-scrollbar{display:none}
+.nav-arr{flex-shrink:0;width:32px;height:32px;border-radius:50%;border:1.5px solid var(--bord);background:var(--surf);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:var(--muted);transition:all .15s;}
+.nav-arr:hover{background:var(--gray);border-color:var(--v);color:var(--v)}
+.wave-card{min-width:126px;max-width:146px;flex:0 0 auto;scroll-snap-align:center;background:var(--surf);border:1.5px solid var(--bord);border-radius:var(--r);padding:11px 12px 9px;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .12s;position:relative;}
+.wave-card:hover{border-color:var(--v);transform:translateY(-2px);box-shadow:0 6px 18px rgba(124,58,237,.12)}
+.wave-card.sel{border-color:var(--v);background:var(--v-s);box-shadow:0 6px 18px rgba(124,58,237,.18);transform:translateY(-2px)}
+.wave-card.past,.wave-card.full{opacity:.4;pointer-events:none}
+.wave-card.now-wave{border-color:var(--green)}
+.wave-card.now-wave .wave-time{color:var(--green)}
+.wave-now-badge{position:absolute;top:7px;right:7px;font-size:9.5px;font-weight:700;color:var(--green);background:var(--green-s);border-radius:999px;padding:1px 7px;}
+.wave-time{font-size:15px;font-weight:700;color:var(--txt);margin-bottom:1px}
+.wave-window{font-size:11px;color:var(--muted)}
+.wave-rem{font-size:11.5px;color:var(--muted);margin-top:5px}
+.wave-rem strong{color:var(--txt)}
+.party-row{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.party-lbl strong{display:block;font-size:14px;font-weight:600;color:var(--txt)}
+.party-lbl small{font-size:12px;color:var(--muted)}
+.party-ctrl{display:flex;align-items:center;gap:12px}
+.ps-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--bord);background:var(--surf);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;transition:all .12s;}
+.ps-btn:hover{background:var(--v);border-color:var(--v);color:#fff}
+.ps-val{font-size:22px;font-weight:700;color:var(--v);min-width:32px;text-align:center}
+.live-recap{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:14px;}
+.lr-hd{background:linear-gradient(135deg,var(--green-s),#f0fdf4);padding:14px 18px;border-bottom:1px solid var(--bord);display:flex;align-items:center;gap:10px;}
+.lr-hd-ico{font-size:22px}
+.lr-hd-title{font-size:14.5px;font-weight:700;color:var(--green)}
+.lr-hd-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.lr-row{display:flex;justify-content:space-between;align-items:center;padding:8px 18px;border-bottom:1px solid var(--bord);}
+.lr-row:last-child{border-bottom:none}
+.lr-key{font-size:13px;color:var(--muted);font-weight:500}
+.lr-val{font-size:13.5px;font-weight:700;color:var(--txt);text-align:right}
+.lr-val.hl{color:var(--v)}
+.time-badge{display:inline-flex;align-items:center;gap:5px;background:var(--amber-s);border:1.5px solid #fcd34d;border-radius:var(--ri);padding:4px 12px;font-size:13.5px;font-weight:700;color:var(--amber);}
+.time-badge.green{background:var(--green-s);border-color:#86efac;color:var(--green)}
+.recap-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:14px;overflow:hidden;}
+.recap-row{display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid var(--bord);}
+.recap-row:last-child{border-bottom:none}
+.rk{font-size:13px;color:var(--muted);font-weight:500}
+.rv{font-size:13.5px;font-weight:700;color:var(--txt);text-align:right}
+.book-btn{width:100%;padding:14px;border:none;border-radius:var(--r);background:var(--v);color:#fff;font-family:var(--font);font-size:15px;font-weight:700;cursor:pointer;transition:background .18s,transform .1s;box-shadow:0 4px 18px rgba(124,58,237,.28);}
+.book-btn:hover{background:var(--v-d)}
+.book-btn:active{transform:scale(.98)}
+.book-btn:disabled{opacity:.4;pointer-events:none}
+.book-btn.green{background:var(--green);box-shadow:0 4px 16px rgba(22,163,74,.25)}
+.book-btn.green:hover{background:#15803d}
+.back-link{display:inline-flex;align-items:center;gap:5px;font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer;margin-bottom:16px;background:none;border:none;font-family:var(--font);padding:0;}
+.back-link:hover{color:var(--v)}
+.conf-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);padding:26px 22px;text-align:center;margin-bottom:14px;}
+.conf-ico{font-size:48px;margin-bottom:12px}
+.conf-title{font-size:20px;font-weight:700;color:var(--green);margin-bottom:6px}
+.conf-sub{font-size:13.5px;color:var(--muted);margin-bottom:18px;line-height:1.6}
+.code-pill{display:inline-block;font-size:22px;font-weight:700;letter-spacing:.12em;color:var(--v);background:var(--v-s);border:1.5px solid var(--v);border-radius:var(--ri);padding:10px 24px;margin-bottom:8px;cursor:pointer;}
+.code-pill:hover{background:var(--v);color:#fff}
+.conf-qr{max-width:180px;border-radius:var(--ri);border:1px solid var(--bord);margin:12px auto 0;display:block}
+.conf-hint{font-size:12px;color:var(--hint);margin-top:8px}
+.conf-pos{display:inline-flex;align-items:center;gap:8px;background:var(--v-s);border:1.5px solid var(--v);border-radius:var(--ri);padding:8px 18px;margin:12px 0;font-size:14px;font-weight:700;color:var(--v);}
+.btn-row{display:flex;flex-direction:column;gap:10px}
+.sec-btn{width:100%;padding:12px;border-radius:var(--r);border:1.5px solid var(--bord);background:var(--gray);color:var(--txt);font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;}
+.sec-btn:hover{background:var(--bord)}
+.errbar{background:var(--red-s);border:1.5px solid #fca5a5;border-radius:var(--ri);padding:10px 14px;font-size:13px;color:var(--red);font-weight:500;margin-bottom:14px;display:none}
+.errbar.on{display:block}
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(26,24,37,.9);color:#fff;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:200;white-space:nowrap;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Inline toggle row ───────────────────────────────────────── */
+.togrow{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bord)}
+.togrow:last-child{border-bottom:none}
+.toglbl strong{display:block;font-size:13.5px;font-weight:600;color:var(--txt)}
+.toglbl small{display:block;font-size:12px;color:var(--muted);margin-top:1px}
+.togsw{position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0}
+.togsw input{opacity:0;width:0;height:0}
+.togtr{position:absolute;inset:0;background:var(--gray-m);border-radius:11px;transition:.25s;cursor:pointer}
+.togtr::before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.25s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+input:checked+.togtr{background:var(--v)}
+input:checked+.togtr::before{transform:translateX(18px)}
+/* email field */
+.email-field{width:100%;padding:10px 13px;border:1.5px solid var(--bord);border-radius:var(--ri);font-family:var(--font);font-size:14px;color:var(--txt);background:var(--surf);outline:none;transition:border-color .18s,box-shadow .18s;margin-top:10px;}
+.email-field:focus{border-color:var(--bord-f);box-shadow:var(--ring)}
+/* mode info pill (non-modifiable) */
+.mode-info{display:flex;align-items:center;gap:10px;padding:10px 0;}
+.mode-info-ico{font-size:22px}
+.mode-info-lbl{font-size:14px;font-weight:700;color:var(--txt)}
+.mode-info-sub{font-size:12px;color:var(--muted);margin-top:1px}
+
+/* ── Hero becomes the single outer frame ── */
+/* Remove tag/pills from hero */
+.hero-tag,.hero-pills,.hero-pill{display:none!important}
+/* hero header — centered */
+.hero-hd{text-align:center;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.18);margin-bottom:16px;}
+/* Frozen rows (prev-step locked data) */
+.frozen-block{margin-bottom:4px}
+.frozen-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.1);}
+.frozen-row:last-child{border-bottom:none}
+.fk{font-size:12px;font-weight:500;opacity:.7}.fv{font-size:13px;font-weight:700;text-align:right}
+.step-sep{border-top:1px solid rgba(255,255,255,.2);margin:12px 0 14px}
+/* Step area — transparent bg */
+.step-title{font-size:14px;font-weight:700;color:rgba(255,255,255,.95);margin-bottom:12px;text-align:center}
+/* Mode boxes */
+.mode-grid-h{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+@media(max-width:380px){.mode-grid-h{grid-template-columns:1fr}}
+.mode-box{background:rgba(255,255,255,.13);border:1.5px solid rgba(255,255,255,.28);border-radius:var(--r);padding:18px 12px;cursor:pointer;transition:all .18s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:7px;}
+.mode-box:hover{background:rgba(255,255,255,.24);border-color:rgba(255,255,255,.55)}
+.mb-ico{font-size:26px}.mb-title{font-size:13.5px;font-weight:700;color:#fff}
+.mb-desc{font-size:11px;color:rgba(255,255,255,.72);line-height:1.4}
+/* Capacity row */
+.cap-row{display:flex;gap:8px;margin-bottom:14px;align-items:flex-end}
+.cap-field{flex:1;display:flex;flex-direction:column;gap:4px}
+.cap-lbl{font-size:11px;font-weight:700;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.05em}
+.cap-sel{width:100%;padding:9px 10px;border:1.5px solid rgba(255,255,255,.35);border-radius:var(--ri);font-family:var(--font);font-size:13.5px;color:var(--txt);background:#fff;outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6880' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;transition:border-color .15s;}
+.cap-sel:focus{border-color:var(--bord-f);box-shadow:var(--ring)}
+.cap-static{width:100%;padding:9px 10px;border:1.5px solid rgba(255,255,255,.2);border-radius:var(--ri);font-family:var(--font);font-size:13.5px;color:rgba(255,255,255,.9);background:rgba(255,255,255,.1);font-weight:600;}
+/* Party size */
+.ps-wrap{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.22);border-radius:var(--ri);padding:10px 14px;margin-bottom:8px;}
+.ps-lbl-h{font-size:13px;font-weight:600;color:#fff}.ps-lbl-h small{display:block;font-size:11px;opacity:.7;margin-top:1px}
+.ps-ctrl-h{display:flex;align-items:center;gap:10px}
+.ps-btn-h{width:30px;height:30px;border-radius:50%;border:1.5px solid rgba(255,255,255,.4);background:rgba(255,255,255,.15);color:#fff;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;}
+.ps-btn-h:hover{background:rgba(255,255,255,.35)}
+.ps-val-h{font-size:20px;font-weight:700;color:#fff;min-width:26px;text-align:center}
+.ps-limit-h{font-size:11px;color:rgba(255,255,255,.65);text-align:center;margin-bottom:10px}
+/* Calendar A/B */
+.cal-date-row-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.cal-date-row-h label{font-size:12px;font-weight:600;color:rgba(255,255,255,.8);white-space:nowrap}
+.cal-date-inp{flex:1;padding:8px 10px;border:1.5px solid var(--bord);border-radius:var(--ri);font-family:var(--font);font-size:14px;color:var(--txt);background:#fff;outline:none;}
+.cal-date-inp:focus{border-color:var(--bord-f)}
+.time-grid-h{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.time-field-h{display:flex;flex-direction:column;gap:4px}
+.time-lbl-h{font-size:11px;font-weight:700;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.05em}
+.time-inp{padding:8px 10px;border:1.5px solid var(--bord);border-radius:var(--ri);font-family:var(--font);font-size:14px;color:var(--txt);background:#fff;outline:none;width:100%;}
+.time-inp:focus{border-color:var(--bord-f)}
+.time-inp:disabled{background:rgba(255,255,255,.15);color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.2);}
+/* Wave cards inside hero */
+.wave-lbl-h{font-size:11px;font-weight:700;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.wave-outer-h{display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.wave-scroll-h{flex:1;display:flex;gap:8px;overflow-x:auto;padding:3px 2px 8px;scroll-snap-type:x mandatory;scrollbar-width:none;}
+.wave-scroll-h::-webkit-scrollbar{display:none}
+.nav-arr-h{flex-shrink:0;width:28px;height:28px;border-radius:50%;border:1.5px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;color:#fff;transition:all .15s;}
+.nav-arr-h:hover{background:rgba(255,255,255,.28)}
+.wave-card-h{min-width:120px;flex:0 0 auto;scroll-snap-align:center;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);border-radius:var(--ri);padding:10px 10px 8px;cursor:pointer;transition:all .15s;position:relative;display:flex;flex-direction:column;gap:3px;}
+.wave-card-h:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.55)}
+.wave-card-h.wsel{background:rgba(255,255,255,.22);border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+.wave-card-h.wpast,.wave-card-h.wfull{opacity:.35;pointer-events:none}
+.wave-card-h.wnow{border-color:#4ade80}
+.wave-now-badge-h{position:absolute;top:5px;right:5px;font-size:9px;font-weight:700;color:var(--green);background:var(--green-s);border-radius:999px;padding:1px 5px;}
+.wave-title-h{font-size:10px;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.wave-time-h{font-size:14px;font-weight:700;color:#fff;margin-bottom:1px}
+.wave-win-h{font-size:10px;color:rgba(255,255,255,.7)}
+.wave-rem-h{font-size:10.5px;color:rgba(255,255,255,.65);margin-top:1px}
+.wave-rem-h strong{color:#fff}
+/* capacity bar */
+.wave-cap-bar{width:100%;height:5px;background:rgba(255,255,255,.18);border-radius:3px;margin-top:5px;overflow:hidden}
+.wave-cap-fill{height:100%;border-radius:3px;background:#fff;transition:width .2s}
+.wave-cap-fill.almost{background:#fde68a}
+.wave-cap-fill.full{background:#f87171}
+/* party controls inside card */
+.wave-ps-row{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:8px;border-top:1px solid rgba(255,255,255,.18);padding-top:8px}
+.wps-btn{width:26px;height:26px;border-radius:50%;border:1.5px solid rgba(255,255,255,.4);background:rgba(255,255,255,.15);color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;font-family:var(--font);}
+.wps-btn:hover{background:rgba(255,255,255,.35)}
+.wps-val{font-size:16px;font-weight:700;color:#fff;min-width:20px;text-align:center}
+/* recap-only party block below waves */
+.party-recap-block{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:var(--ri);padding:9px 14px;margin-top:2px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;}
+.prb-lbl{font-size:12.5px;font-weight:600;color:rgba(255,255,255,.8)}
+.prb-val{font-size:13px;font-weight:700;color:#fff}
+.prb-warn{font-size:11px;color:#fde68a;font-weight:600;margin-top:2px}
+.wave-dots-h{display:flex;flex-wrap:wrap;gap:2px;margin-top:3px}
+.wd{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.3)}
+.wd.wtaken{background:rgba(255,255,255,.12)}.wd.wmine{background:#fff}
+/* Recap — transparent, narrow, centered */
+.recap-wrap{background:transparent;border:none;padding:4px 0;margin-bottom:10px;max-width:320px;margin-left:auto;margin-right:auto;}
+.recap-row-h{display:flex;justify-content:space-between;align-items:center;padding:5px 4px;border-bottom:1px solid rgba(255,255,255,.1);}
+.recap-row-h:last-child{border-bottom:none}
+.rk-h{font-size:12px;color:rgba(255,255,255,.65);font-weight:500}.rv-h{font-size:12.5px;font-weight:700;color:#fff;text-align:right}.rv-h.hl{color:#fde68a}
+.time-badge-h{display:inline-flex;align-items:center;background:rgba(253,230,138,.2);border:1px solid #fcd34d;border-radius:var(--ri);padding:2px 9px;font-size:12px;font-weight:700;color:#fde68a;}
+.time-badge-h.tbg{background:rgba(134,239,172,.2);border-color:#86efac;color:#86efac}
+/* Options block — transparent, left-aligned */
+.opt-block{background:transparent;border:none;padding:4px 0;margin-bottom:10px}
+.opt-title{font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.email-tog-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.etlbl{flex:1;font-size:12.5px;font-weight:600;color:#fff}
+.etlbl small{display:block;font-size:11px;color:rgba(255,255,255,.6);margin-top:1px}
+.email-inp-h{width:100%;padding:7px 10px;border:1.5px solid rgba(255,255,255,.3);border-radius:var(--ri);font-family:var(--font);font-size:13px;color:var(--txt);background:#fff;outline:none;margin-top:6px;margin-bottom:2px;display:none}
+.email-inp-h.show{display:block}
+.email-inp-h:focus{border-color:var(--bord-f);box-shadow:var(--ring)}
+.togrow-h{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid rgba(255,255,255,.08);gap:10px}
+.togrow-h:first-child{border-top:none;padding-top:0}
+.toglbl-h{flex:1}.toglbl-h strong{display:block;font-size:12.5px;font-weight:600;color:#fff}
+.toglbl-h small{display:block;font-size:11px;color:rgba(255,255,255,.6);margin-top:1px}
+/* Smaller toggles */
+.togsw{position:relative;display:inline-block;width:32px;height:18px;flex-shrink:0}
+.togsw input{opacity:0;width:0;height:0}
+.togtr{position:absolute;inset:0;background:rgba(255,255,255,.25);border-radius:9px;transition:.22s;cursor:pointer}
+.togtr::before{content:'';position:absolute;width:12px;height:12px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.22s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+input:checked+.togtr{background:#a78bfa}
+input:checked+.togtr::before{transform:translateX(14px)}
+/* Hero buttons */
+.h-btn{width:100%;padding:13px;border:none;border-radius:var(--r);background:#fff;color:var(--v);font-family:var(--font);font-size:15px;font-weight:700;cursor:pointer;transition:all .15s;margin-top:4px;}
+.h-btn:hover{background:var(--v-s)}.h-btn:active{transform:scale(.98)}.h-btn:disabled{opacity:.4;pointer-events:none}
+.h-btn.hgreen{background:#dcfce7;color:var(--green)}.h-btn.hgreen:hover{background:#bbf7d0}
+.h-back{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:rgba(255,255,255,.72);cursor:pointer;background:none;border:none;font-family:var(--font);padding:10px 0 0;border-top:1px solid rgba(255,255,255,.14);width:100%;margin-top:8px;}
+.h-back:hover{color:#fff}
+.status-msg-h{text-align:center;padding:14px 8px;font-size:13.5px;font-weight:600;color:rgba(255,255,255,.85);line-height:1.6}
+.status-msg-h.warn{color:#fde68a}
+/* Final conf card */
+.conf-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);padding:26px 22px;text-align:center;margin-bottom:14px;}
+.conf-ico{font-size:48px;margin-bottom:12px}.conf-title{font-size:20px;font-weight:700;color:var(--green);margin-bottom:6px}
+.conf-sub{font-size:13.5px;color:var(--muted);margin-bottom:14px;line-height:1.6}
+.conf-pos{display:inline-flex;align-items:center;gap:8px;background:var(--v-s);border:1.5px solid var(--v);border-radius:var(--ri);padding:7px 16px;margin:8px 0 12px;font-size:14px;font-weight:700;color:var(--v);}
+.code-pill{display:inline-block;font-size:21px;font-weight:700;letter-spacing:.12em;color:var(--v);background:var(--v-s);border:1.5px solid var(--v);border-radius:var(--ri);padding:9px 22px;margin-bottom:6px;cursor:pointer;transition:all .15s;}
+.code-pill:hover{background:var(--v);color:#fff}
+.conf-hint{font-size:12px;color:var(--hint);margin-bottom:12px}
+.conf-qr{max-width:160px;border-radius:var(--ri);border:1px solid var(--bord);margin:8px auto 0;display:block}
+.conf-recap{border-top:1px solid var(--bord);margin-top:16px;padding-top:4px;max-width:300px;margin-left:auto;margin-right:auto;}
+.cr{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--bord);}
+.cr:last-child{border-bottom:none}.cr-k{font-size:12px;color:var(--muted);font-weight:500}.cr-v{font-size:12.5px;font-weight:700;color:var(--txt);text-align:right}
+.tbadge{display:inline-flex;align-items:center;background:var(--amber-s);border:1.5px solid #fcd34d;border-radius:var(--ri);padding:3px 10px;font-size:13px;font-weight:700;color:var(--amber);}
+.tbadge.tbg{background:var(--green-s);border-color:#86efac;color:var(--green)}
+.btn-row{display:flex;flex-direction:column;gap:10px}
+.book-btn{width:100%;padding:14px;border:none;border-radius:var(--r);background:var(--v);color:#fff;font-family:var(--font);font-size:15px;font-weight:700;cursor:pointer;transition:background .18s,transform .1s;box-shadow:0 4px 18px rgba(124,58,237,.28);}
+.book-btn:hover{background:var(--v-d)}.book-btn:active{transform:scale(.98)}.book-btn:disabled{opacity:.4;pointer-events:none}
+.sec-btn{width:100%;padding:12px;border-radius:var(--r);border:1.5px solid var(--bord);background:var(--gray);color:var(--txt);font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;}
+.sec-btn:hover{background:var(--bord)}
+.errbar{background:var(--red-s);border:1.5px solid #fca5a5;border-radius:var(--ri);padding:10px 14px;font-size:13px;color:var(--red);font-weight:500;margin-bottom:14px;display:none}
+.errbar.on{display:block}
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(26,24,37,.9);color:#fff;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:200;white-space:nowrap;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+
+/* ══════════════════════════════════════════════════════
+   FULL CALENDAR — A/B step
+   ══════════════════════════════════════════════════════ */
+/* Month grid */
+.fcal-wrap{margin-bottom:14px;background:#f4f3f8;border-radius:var(--r);padding:12px;border:1px solid var(--bord)}
+.fcal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.fcal-nav-title{font-size:14px;font-weight:700;color:var(--txt)}
+.fcal-nav-btn{background:var(--gray);border:1.5px solid var(--bord);color:var(--txt);border-radius:var(--ri);width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;transition:background .15s;font-family:var(--font);}
+.fcal-nav-btn:hover{background:var(--v-s);border-color:var(--v);color:var(--v)}
+.fcal-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px}
+.fcal-dow-h{text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:3px 0}
+.fcal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.fcal-day{border-radius:7px;padding:6px 2px;text-align:center;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;position:relative;min-height:36px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px;}
+.fcal-day.empty{pointer-events:none}
+.fcal-day.other-month{opacity:.28;pointer-events:none}
+.fcal-day.past{opacity:.28;pointer-events:none}
+.fcal-day.closed{opacity:.3;pointer-events:none;text-decoration:line-through}
+.fcal-day.available{background:#fff;border:1px solid var(--bord);color:var(--txt);}
+.fcal-day.available:hover{background:var(--v-s);border-color:var(--v);color:var(--v)}
+.fcal-day.selected{background:#fff;color:var(--v);border:2px solid #fff;font-weight:700}
+.fcal-day.today-dot::after{content:'';position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.7)}
+.fcal-day.selected.today-dot::after{background:var(--v)}
+
+/* Day view (time grid) */
+.dv-wrap{margin-bottom:12px}
+.dv-date-lbl{font-size:13px;font-weight:700;color:var(--txt);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.dv-back{font-size:12px;color:var(--v);cursor:pointer;background:none;border:none;font-family:var(--font);padding:0;text-decoration:underline;}
+.dv-back:hover{color:var(--v-d)}
+/* Scrollable time grid */
+.dv-scroller{overflow-y:auto;max-height:340px;border-radius:var(--ri);position:relative;scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.2) transparent;background:#f4f3f8;}
+.dv-scroller::-webkit-scrollbar{width:4px}
+.dv-scroller::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:2px}
+.dv-grid{position:relative;user-select:none;background:#f4f3f8;}
+.dv-row{display:flex;align-items:stretch;min-height:var(--slot-h,40px);border-bottom:1px solid rgba(0,0,0,.07);position:relative;}
+.dv-row.hour-start{border-bottom-color:rgba(0,0,0,.18)}
+.dv-row.closed-slot{background:rgba(0,0,0,.04)}
+.dv-row.open-slot{background:rgba(124,58,237,.05)}
+.dv-row.open-slot:hover{background:rgba(124,58,237,.10)}
+.dv-time-lbl{width:44px;flex-shrink:0;font-size:11px;font-weight:700;color:#7c3aed;padding:3px 6px 0;text-align:right;line-height:1}
+.dv-cell{flex:1;position:relative;cursor:crosshair}
+/* Booking block (drag selection) */
+.dv-block{position:absolute;left:4px;right:4px;border-radius:6px;pointer-events:none;transition:top .08s,background .12s;}
+.dv-block.valid{background:rgba(180,255,100,.55);border:2px solid rgba(180,255,100,.9)}
+.dv-block.invalid{background:rgba(239,68,68,.45);border:2px dashed rgba(239,68,68,.8)}
+.dv-block.committed{pointer-events:auto;cursor:grab;transition:background .12s}
+.dv-block.committed:active{cursor:grabbing}
+.dv-block-lbl{position:absolute;left:0;right:0;text-align:center;font-size:10.5px;font-weight:700;padding-top:3px;color:#fff;pointer-events:none}
+.dv-drag-hint{font-size:11px;color:rgba(255,255,255,.6);text-align:center;margin-top:4px}
+/* Closed overlay strips */
+.dv-closed-bar{position:absolute;left:0;right:0;background:repeating-linear-gradient(-45deg,rgba(255,255,255,.04) 0,rgba(255,255,255,.04) 4px,transparent 4px,transparent 8px);pointer-events:none}
+
+
+/* ── Light-grey calendar panel ─────────────────────────────── */
+.cal-panel{background:#f4f3f8;border-radius:12px;padding:14px 14px 10px;margin-bottom:12px}
+.cal-panel .fcal-nav-title{color:var(--txt)}
+.cal-panel .fcal-nav-btn{background:var(--surf);border:1.5px solid var(--bord);color:var(--txt)}
+.cal-panel .fcal-nav-btn:hover{background:var(--v-s);border-color:var(--v);color:var(--v)}
+.cal-panel .fcal-dow-h{color:var(--muted)}
+.cal-panel .fcal-day.available{background:#fff;border:1px solid var(--bord);color:var(--txt)}
+.cal-panel .fcal-day.available:hover{background:var(--v-s);border-color:var(--v)}
+.cal-panel .fcal-day.past,.cal-panel .fcal-day.closed{color:var(--hint)}
+.cal-panel .fcal-day.selected{background:var(--v);color:#fff;border-color:var(--v)}
+.cal-panel .fcal-day.today-dot::after{background:var(--v)}
+.cal-panel .fcal-day.selected.today-dot::after{background:#fff}
+.cal-panel .dv-date-lbl{color:var(--txt)}
+.cal-panel .dv-back{color:var(--muted)}
+.cal-panel .dv-scroller{scrollbar-color:var(--bord) transparent;border:1px solid var(--bord);border-radius:var(--ri)}
+.cal-panel .dv-scroller::-webkit-scrollbar-thumb{background:var(--bord)}
+.cal-panel .dv-row{border-bottom-color:var(--bord)}
+.cal-panel .dv-row.hour-start{border-bottom:2px solid #c4c0d8}
+.cal-panel .dv-row.closed-slot{background:#f0eff5}
+.cal-panel .dv-row.open-slot{background:#fff}
+.cal-panel .dv-row.open-slot:hover{background:var(--v-s)}
+.cal-panel .dv-time-lbl{color:var(--muted);font-weight:700}
+.cal-panel .dv-row.hour-start .dv-time-lbl{color:var(--txt);font-size:11.5px;font-weight:800}
+.cal-panel .dv-drag-hint{color:var(--muted)}
+/* ── Light-grey time/wave panel ───────────────────────────── */
+.time-panel{background:#f4f3f8;border-radius:12px;padding:14px;margin-bottom:12px}
+.time-panel .cal-date-row-h label{color:var(--muted)}
+.time-panel .cal-date-inp{border-color:var(--bord);color:var(--txt);background:#fff}
+.time-panel .wave-lbl-h{color:var(--muted)}
+.time-panel .wave-card-h{background:#fff;border-color:var(--bord)}
+.time-panel .wave-card-h:hover{background:var(--v-s);border-color:var(--v)}
+.time-panel .wave-card-h.wsel{background:var(--v-s);border-color:var(--v);box-shadow:0 4px 14px rgba(124,58,237,.18)}
+.time-panel .wave-time-h{color:var(--txt)}
+.time-panel .wave-win-h,.time-panel .wave-rem-h{color:var(--muted)}
+.time-panel .wave-rem-h strong{color:var(--txt)}
+.time-panel .nav-arr-h{background:var(--surf);border-color:var(--bord);color:var(--muted)}
+.time-panel .nav-arr-h:hover{border-color:var(--v);color:var(--v)}
+.time-panel .wave-now-badge-h{background:var(--green-s);color:var(--green)}
+.time-panel .wave-card-h.wnow{border-color:var(--green)}
+
+</style>
+</head>
+<body class="has-top-band has-bottom-band">
+<header class="site"><div class="title">Book a Spot</div></header>
+
+<div class="shell">
+  <div class="errbar" id="errbar"></div>
+
+  <!-- HERO: single outer frame — header stays fixed, steps render inside -->
+  <div class="hero" id="hero">
+    <div class="hero-hd" style="text-align:center;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.18);margin-bottom:16px">
+      <h1 id="heroTitle">Loading&hellip;</h1>
+      <div id="heroSub" style="display:none;font-size:13px;opacity:.85;margin-bottom:2px"></div>
+      <div id="heroAddr" style="font-size:12px;opacity:.65"></div>
+    </div>
+    <div id="stepArea"></div>
+  </div>
+
+  <!-- SCREEN: final confirmation (appears after booking API, hero is hidden) -->
+  <div id="scConf" style="display:none">
+    <div class="conf-card">
+      <div class="conf-ico">&#x1F389;</div>
+      <div class="conf-title">Booking confirmed!</div>
+      <div id="confPosWrap" style="display:none">
+        <div class="conf-pos">&#x1F522; Queue position: <span id="confPos">&mdash;</span></div>
+      </div>
+      <div class="code-pill" id="confCode" onclick="copyCode()" title="Tap to copy">&mdash;</div>
+      <div class="conf-hint">Tap to copy &middot; Show QR at entry</div>
+      <img class="conf-qr" id="confQr" src="" alt="Booking QR" style="display:none">
+      <div class="conf-recap" id="confRecap"></div>
+    </div>
+    <div class="btn-row">
+      <a class="book-btn" id="followBtn" href="#" style="text-align:center;text-decoration:none;display:block">
+        &#x1F4CD; Follow my progression &rarr;
+      </a>
+      <button class="sec-btn" onclick="bookAnother()">Book another spot</button>
+      <button class="sec-btn" onclick="location.href='/modules/In-Time/use/page 1.html'">My bookings &rarr;</button>
+    </div>
+  </div>
+</div>
+</div>
+<div id="toast"></div>
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+<script>
+'use strict';
+const params   = new URLSearchParams(location.search);
+const queueId  = params.get('queueId') || params.get('queue_id');
+const nameHint = params.get('name') || '';
+const addrHint = params.get('addr') || '';
+
+let queue = null, formula = 'LIVE_ONLY', arch = 'D';
+let horizonDate = null;
+function addDays(isoDate, n) {
+  const d = new Date(isoDate + 'T12:00:00'); d.setDate(d.getDate() + n);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+let slots = [];
+let selectedSlotType = null, selectedDuration = null, selectedWave = null;
+let selectedWaves = {}; /* {waveIdx: slotCount} — multi-wave selection */
+let partySize = 1, MAX_PS = 5;
+let chosenMode = null;
+let liveDate = null, liveStart = null, liveStop = null;
+let earlyEnabled = false;
+
+function defaultMaxPS(a) { return (a === 'A' || a === 'B') ? 1 : 5; }
+function showParty()     { return MAX_PS > 1; }
+function totalWaveSlots() {
+  return Object.values(selectedWaves).reduce(function(s,v){ return s+v; }, 0);
+}
+function waveTitle(idx) { return 'Wave ' + (idx + 1); }
+
+/* ── Utilities ── */
+let _tt;
+function toast(msg, ms) {
+  ms = ms || 2400;
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(_tt); _tt = setTimeout(function() { el.classList.remove('show'); }, ms);
+}
+function setErr(msg) {
+  const e = document.getElementById('errbar');
+  e.textContent = msg || ''; e.classList.toggle('on', !!msg);
+}
+function mapsUrl(txt,lat,lng){if(lat&&lng)return'https://www.google.com/maps?q='+encodeURIComponent(lat+','+lng);if(txt)return'https://www.google.com/maps/search/'+encodeURIComponent(txt);return null;}
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = String(s != null ? s : '');
+  return d.innerHTML;
+}
+function todayISO() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function getDeviceId() {
+  let id = localStorage.getItem('intime_device_id');
+  if (!id) { id = crypto.randomUUID(); localStorage.setItem('intime_device_id', id); }
+  return id;
+}
+function tMin(t) { const p = t.split(':').map(Number); return p[0]*60 + p[1]; }
+function toHHMM(min) {
+  return String(Math.floor(min/60)).padStart(2,'0') + ':' + String(min%60).padStart(2,'0');
+}
+function formatCode(raw) {
+  if (!raw) return '';
+  const s = String(raw).toUpperCase().replace(/-/g,'');
+  return s.length === 9 ? s.slice(0,3)+'-'+s.slice(3,6)+'-'+s.slice(6) : s;
+}
+
+/* ── Step stack ── */
+const stepStack = [];
+
+function renderHero() {
+  let html = '';
+  for (let i = 0; i < stepStack.length - 1; i++) {
+    html += '<div class="frozen-block">' + stepStack[i].frozen() + '</div>';
+    html += '<div class="step-sep"></div>';
+  }
+  if (stepStack.length > 0) html += stepStack[stepStack.length-1].render();
+  document.getElementById('stepArea').innerHTML = html;
+  window.scrollTo({top:0, behavior:'smooth'});
+  // Scroll active wave card into view after render
+  setTimeout(function() {
+    const scroll = document.getElementById('waveScrollH');
+    if (scroll) {
+      const cur = scroll.querySelector('.wnow') || scroll.querySelector('.wave-card-h');
+      if (cur) cur.scrollIntoView({behavior:'smooth', inline:'center', block:'nearest'});
+    }
+  }, 100);
+}
+
+function pushStep(step) { stepStack.push(step); renderHero(); }
+function popStep() {
+  stepStack.pop();
+  if (stepStack.length === 0) { location.href = '/modules/In-Time/use/page 2.html'; return; }
+  renderHero();
+}
+
+/* ── Wave / schedule config ── */
+function getWaveConfig(dateISO) {
+  let openMin = 9*60, closeMin = 18*60, cadence = 15, cap = 40;
+  if (queue.wave_config_json) {
+    const wc = typeof queue.wave_config_json === 'string' ? JSON.parse(queue.wave_config_json) : queue.wave_config_json;
+    if (wc.wave_duration) cadence = Number(wc.wave_duration);
+    if (wc.wave_capacity) cap     = Number(wc.wave_capacity);
+  }
+  if (selectedSlotType) {
+    if (selectedSlotType.duration) cadence = selectedSlotType.duration;
+    if (selectedSlotType.capacity) cap     = selectedSlotType.capacity;
+  }
+  if (selectedDuration) cadence = selectedDuration;
+  if (queue.schedule_json) {
+    const sc = typeof queue.schedule_json === 'string' ? JSON.parse(queue.schedule_json) : queue.schedule_json;
+    if (sc.globalOpen)  openMin  = tMin(sc.globalOpen);
+    if (sc.globalClose) closeMin = tMin(sc.globalClose);
+    const dn = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date((dateISO||todayISO())+'T12:00:00').getDay()];
+    const dc = sc.days ? sc.days.find(function(d) { return d.n === dn; }) : null;
+    if (dc && !dc.on) return null;
+    if (dc && !sc.sameHours) { openMin = tMin(dc.open||'09:00'); closeMin = tMin(dc.close||'17:00'); }
+  }
+  return {openMin:openMin, closeMin:closeMin, cadence:cadence, cap:cap};
+}
+
+function buildWaveList(dateISO) {
+  const cfg = getWaveConfig(dateISO);
+  if (!cfg) return null;
+  const waves = [];
+  let cur = cfg.openMin;
+  while (cur < cfg.closeMin) {
+    const stop = Math.min(cur + cfg.cadence, cfg.closeMin);
+    waves.push({start:cur, stop:stop, label:toHHMM(cur), capacity:cfg.cap, remaining:cfg.cap});
+    cur = stop;
+  }
+  return {waves:waves, cfg:cfg};
+}
+
+function findNextSlot() {
+  const nowMin = new Date().getHours()*60 + new Date().getMinutes();
+  const cfg = getWaveConfig(todayISO());
+  if (!cfg) return {closed:true, dayOff:true};
+  const o = cfg.openMin, c = cfg.closeMin, cd = cfg.cadence, cp = cfg.cap;
+  if (arch === 'D') {
+    if (nowMin >= c) return {closed:true, dayOff:false};
+    return {isOpen: nowMin >= o && nowMin < c, ns:nowMin, ne:nowMin+cd, openMin:o, closeMin:c, cadence:cd, cap:cp};
+  }
+  let ns = null, ne = null, cur = o;
+  while (cur < c) {
+    const stop = Math.min(cur+cd, c);
+    if (stop > nowMin) { ns = cur; ne = stop; break; }
+    cur = stop;
+  }
+  if (ns === null) return {closed:true, dayOff:false};
+  return {ns:ns, ne:ne, openMin:o, closeMin:c, cadence:cd, cap:cp,
+          minsUntil: Math.max(0, ns-nowMin), isNow: ns <= nowMin && nowMin < ne};
+}
+
+/* ══════════════════════════════════════════════════════════
+   STEP BUILDERS
+   ══════════════════════════════════════════════════════════ */
+
+/* STEP: Mode (MIXED) */
+function makeStepMode() {
+  return {
+    id: 'mode',
+    frozen: function() {
+      const lbl = chosenMode === 'live' ? '&#x26A1; Next available slot' : '&#x1F4C5; In calendar';
+      return '<div class="frozen-row"><span class="fk">Booking mode</span><span class="fv">' + lbl + '</span></div>';
+    },
+    render: function() {
+      return '<div class="step-title">Would you like to book:</div>' +
+        '<div class="mode-grid-h">' +
+          '<div class="mode-box" onclick="onChooseLive()">' +
+            '<div class="mb-ico">&#x26A1;</div>' +
+            '<div class="mb-title">Next available slot</div>' +
+            '<div class="mb-desc">Join the live queue now</div>' +
+          '</div>' +
+          '<div class="mode-box" onclick="onChooseAdvance()">' +
+            '<div class="mb-ico">&#x1F4C5;</div>' +
+            '<div class="mb-title">Later on, in calendar</div>' +
+            '<div class="mb-desc">Choose a date &amp; time</div>' +
+          '</div>' +
+        '</div>';
+    }
+  };
+}
+
+/* STEP: Capacity — A/B */
+function makeStepCapAB() {
+  // Pre-select if single slot type
+  if (slots.length === 1 && !selectedSlotType) {
+    selectedSlotType = slots[0];
+    if (selectedSlotType.duration && !selectedDuration) selectedDuration = selectedSlotType.duration;
+  }
+  const hasMultiType = slots.length > 1;
+  const hasDurs = selectedSlotType && Array.isArray(selectedSlotType.durations) && selectedSlotType.durations.length > 1;
+  const singleDur = selectedSlotType && selectedSlotType.duration && !hasDurs;
+
+  return {
+    id: 'cap_ab',
+    frozen: function() {
+      let r = '';
+      if (selectedSlotType) r += '<div class="frozen-row"><span class="fk">Slot type</span><span class="fv">' + esc(selectedSlotType.name) + '</span></div>';
+      if (selectedDuration) r += '<div class="frozen-row"><span class="fk">Duration</span><span class="fv">' + selectedDuration + ' min</span></div>';
+      return r;
+    },
+    render: function() {
+      const typeHtml = hasMultiType
+        ? '<select class="cap-sel" id="capTypeSel" onchange="onCapTypeChange()">' +
+            '<option value="">&#8212; Select type &#8212;</option>' +
+            slots.map(function(s) {
+              const sel = (selectedSlotType && selectedSlotType.id === s.id) ? ' selected' : '';
+              return '<option value="' + s.id + '"' + sel + '>' + esc(s.name) + '</option>';
+            }).join('') + '</select>'
+        : slots.length === 1
+          ? '<div class="cap-static">' + esc(slots[0].name) + '</div>'
+          : '<div class="cap-static" style="opacity:.5">No types defined</div>';
+
+      // Duration: always shown
+      let durHtml;
+      if (hasDurs) {
+        durHtml = '<select class="cap-sel" id="capDurSel" onchange="onCapDurChange()">' +
+          selectedSlotType.durations.map(function(d) {
+            const sel = selectedDuration === d.minutes ? ' selected' : '';
+            return '<option value="' + d.minutes + '"' + sel + '>' + d.minutes + ' min</option>';
+          }).join('') + '</select>';
+      } else if (singleDur) {
+        durHtml = '<div class="cap-static">' + selectedSlotType.duration + ' min</div>';
+      } else {
+        durHtml = '<select class="cap-sel" id="capDurSel" ' + (hasMultiType ? 'disabled' : '') + ' onchange="onCapDurChange()"><option value="">&#8212;</option></select>';
+      }
+
+      const canContinue = !hasMultiType || selectedSlotType;
+      return '<div class="step-title">Slot details</div>' +
+        '<div class="cap-row">' +
+          '<div class="cap-field"><div class="cap-lbl">Slot type</div>' + typeHtml + '</div>' +
+          '<div class="cap-field"><div class="cap-lbl">Duration</div>' + durHtml + '</div>' +
+        '</div>' +
+        '<button class="h-btn" id="btnCapABNext" onclick="onCapABConfirm()"' + (canContinue?'':' disabled') + '>Continue &#8594;</button>' +
+        '<button class="h-back" onclick="popStep()">&#8592; Back</button>';
+    }
+  };
+}
+
+/* STEP: Capacity — D (party size only) */
+function makeStepCapD() {
+  return {
+    id: 'cap_d',
+    frozen: function() {
+      return '<div class="frozen-row"><span class="fk">Party size</span><span class="fv">' + partySize + '</span></div>';
+    },
+    render: function() {
+      return '<div class="step-title">How many people?</div>' +
+        '<div class="ps-wrap">' +
+          '<div class="ps-lbl-h">Party size<small>Up to ' + MAX_PS + ' per booking</small></div>' +
+          '<div class="ps-ctrl-h">' +
+            '<button class="ps-btn-h" onclick="adjustPS(-1)">&#8722;</button>' +
+            '<div class="ps-val-h" id="psValH">' + partySize + '</div>' +
+            '<button class="ps-btn-h" onclick="adjustPS(+1)">+</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="ps-limit-h" id="psLimitH"></div>' +
+        '<button class="h-btn" onclick="onCapDConfirm()">Continue &#8594;</button>' +
+        '<button class="h-back" onclick="popStep()">&#8592; Back</button>';
+    }
+  };
+}
+
+/* STEP: Calendar A/B — date + time */
+function makeStepCalAB() {
+  return {
+    id: 'cal_ab',
+    frozen: function() {
+      const dateStr = liveDate || '';
+      const timeStr = (liveStart!=null ? toHHMM(liveStart) : '') +
+                      (liveStop!=null  ? ' \u2013 '+toHHMM(liveStop) : '');
+      return '<div class="frozen-row"><span class="fk">Date</span><span class="fv">' + esc(dateStr) + '</span></div>' +
+             (timeStr ? '<div class="frozen-row"><span class="fk">Time</span><span class="fv">' + esc(timeStr) + '</span></div>' : '');
+    },
+    render: function() {
+      calABView = 'month';
+      calABDate = null;
+      calABDragStart = null; calABDragEnd = null;
+      calABCommitted = false;
+      const today = todayISO();
+      if (!calABMonth) {
+        const d = new Date(today + 'T12:00:00');
+        calABMonth = { y: d.getFullYear(), m: d.getMonth() };
+      }
+      return '<div class="step-title" id="calABTitle">Choose a date</div>' +
+        '<div class="cal-panel" id="calArea">' + buildMonthGrid() + '</div>' +
+        '<button class="h-btn" id="btnCalABNext" onclick="onCalABConfirm()" disabled>Continue \u2192</button>' +
+        '<button class="h-back" onclick="popStep()">\u2190 Back</button>';
+    }
+  };
+}
+
+/* STEP: Wave calendar — C */
+function makeStepCalC(isLiveMode) {
+  return {
+    id: 'cal_c',
+    frozen: function() {
+      const dp = document.getElementById('calWaveDateH');
+      const d  = (!isLiveMode && dp) ? dp.value : todayISO();
+      let r = '';
+      if (!isLiveMode) r += '<div class="frozen-row"><span class="fk">Date</span><span class="fv">' + esc(d) + '</span></div>';
+      const tot = totalWaveSlots();
+      if (tot > 0) {
+        const wavesSummary = Object.keys(selectedWaves).sort(function(a,b){return a-b;}).map(function(i){
+          return 'W'+(parseInt(i)+1)+'×'+selectedWaves[i];
+        }).join(' + ');
+        r += '<div class="frozen-row"><span class="fk">Waves</span><span class="fv">' + esc(wavesSummary) + ' (' + tot + ' slots)</span></div>';
+      }
+      return r;
+    },
+    render: function() {
+      const today    = todayISO();
+      const dateVal  = isLiveMode ? today : today;
+      const waveData = buildWaveList(dateVal);
+      const wavesHTML= waveData ? renderWaveCardsH(waveData.waves) : '<div class="status-msg-h warn">&#x26A0; Closed today</div>';
+      const datePickerHTML = isLiveMode ? '' :
+        '<div class="cal-date-row-h" style="margin-bottom:10px">' +
+          '<label>&#x1F4C5;</label>' +
+          '<input class="cal-date-inp" type="date" id="calWaveDateH" min="' + today + '" max="' + (horizonDate||'') + '" value="' + today + '" onchange="onWaveDateChange()">' +
+        '</div>';
+      /* Party recap below waves — no buttons, just status + limit info */
+      const partyHTML = showParty()
+        ? '<div class="party-recap-block" id="partyRecapBlock">' +
+            '<div>' +
+              '<div class="prb-lbl">&#x1F465; Party size</div>' +
+              '<div class="prb-warn" id="prb-warn-c"></div>' +
+            '</div>' +
+            '<div class="prb-val" id="prb-val-c">0 / ' + MAX_PS + ' total</div>' +
+          '</div>'
+        : '';
+      return '<div class="step-title">' + (isLiveMode ? "Today&#39;s waves" : 'Select a wave') + '</div>' +
+        datePickerHTML +
+        '<div class="wave-lbl-h">Available waves</div>' +
+        '<div class="wave-outer-h">' +
+          '<button class="nav-arr-h" onclick="document.getElementById("waveScrollH").scrollBy({left:-280,behavior:"smooth"})">&#9664;</button>' +
+          '<div class="wave-scroll-h" id="waveScrollH">' + wavesHTML + '</div>' +
+          '<button class="nav-arr-h" onclick="document.getElementById("waveScrollH").scrollBy({left:280,behavior:"smooth"})">&#9654;</button>' +
+        '</div>' +
+        partyHTML +
+        '<button class="h-btn" id="btnWaveNext" onclick="onWaveConfirm()" disabled>Continue &#8594;</button>' +
+        '<button class="h-back" onclick="popStep()">&#8592; Back</button>';
+    }
+  };
+}
+
+function renderWaveCardsH(waves) {
+  const nowMin  = new Date().getHours()*60 + new Date().getMinutes();
+  const dp      = document.getElementById('calWaveDateH');
+  const dateVal = dp ? dp.value : todayISO();
+  const isToday = dateVal === todayISO();
+  const total   = totalWaveSlots();
+  let html = '';
+  waves.forEach(function(w, idx) {
+    const past    = isToday && w.stop <= nowMin;
+    const isCur   = isToday && w.start <= nowMin && nowMin < w.stop;
+    const full    = w.remaining <= 0;
+    const mySlots = selectedWaves[idx] || 0;
+    const hasSlots= mySlots > 0;
+    const cls     = 'wave-card-h' + (past||full?' wpast':'') + (isCur?' wnow':'') + (hasSlots?' wsel':'');
+
+    /* capacity bar */
+    const pct    = w.capacity > 0 ? Math.round((w.capacity - w.remaining) / w.capacity * 100) : 0;
+    const barCls = pct >= 90 ? 'full' : pct >= 70 ? 'almost' : '';
+
+    /* dots (up to 8) */
+    const dots  = Math.min(w.capacity, 8);
+    const taken = Math.round((w.capacity - w.remaining) / w.capacity * dots);
+    const mine  = Math.min(mySlots, Math.max(0, dots - taken));
+    let dotH = '';
+    for (var i = 0; i < dots; i++) {
+      if (i < taken)           dotH += '<div class="wd wtaken"></div>';
+      else if (i < taken+mine) dotH += '<div class="wd wmine"></div>';
+      else                     dotH += '<div class="wd"></div>';
+    }
+
+    /* +/− always visible; − disabled when 0, + disabled when total at MAX_PS */
+    const canAdd = total < MAX_PS && !past && !full;
+    const canSub = mySlots > 0;
+    const psRow = showParty()
+      ? '<div class="wave-ps-row" onclick="event.stopPropagation()">' +
+          '<button class="wps-btn" onclick="waveAdjPS(-1,' + idx + ')"' + (canSub?'':' disabled style="opacity:.3;pointer-events:none"') + '>&#8722;</button>' +
+          '<span class="wps-val" id="wpsVal' + idx + '">' + mySlots + '</span>' +
+          '<button class="wps-btn" onclick="waveAdjPS(+1,' + idx + ')"' + (canAdd?'':' disabled style="opacity:.3;pointer-events:none"') + '>+</button>' +
+        '</div>'
+      : '';
+
+    html += '<div class="' + cls + '" id="wcard' + idx + '">' +
+      (isCur ? '<div class="wave-now-badge-h">Now</div>' : '') +
+      '<div class="wave-title-h">Wave ' + (idx+1) + '</div>' +
+      '<div class="wave-time-h">' + esc(w.label) + '</div>' +
+      '<div class="wave-win-h">' + esc(toHHMM(w.start)) + '&#8211;' + esc(toHHMM(w.stop)) + '</div>' +
+      '<div class="wave-rem-h">Left: <strong>' + w.remaining + '</strong></div>' +
+      '<div class="wave-cap-bar"><div class="wave-cap-fill ' + barCls + '" style="width:' + pct + '%"></div></div>' +
+      '<div class="wave-dots-h">' + dotH + '</div>' +
+      psRow +
+    '</div>';
+  });
+  return html || '<div class="status-msg-h">No waves available.</div>';
+}
+
+/* Adjust slots for a specific wave */
+function waveAdjPS(delta, waveIdx) {
+  const current = selectedWaves[waveIdx] || 0;
+  const total   = totalWaveSlots();
+  if (delta > 0 && total >= MAX_PS) {
+    toast('Maximum ' + MAX_PS + ' slots per booking');
+    return;
+  }
+  const next = Math.max(0, current + delta);
+  if (next === 0) delete selectedWaves[waveIdx];
+  else selectedWaves[waveIdx] = next;
+
+  /* Keep selectedWave pointing to last touched wave for compat */
+  const dateVal = (document.getElementById('calWaveDateH')||{}).value || todayISO();
+  const wd = buildWaveList(dateVal);
+  if (wd) selectedWave = wd.waves[waveIdx];
+
+  /* Re-render all cards to update disabled states */
+  const sc = document.getElementById('waveScrollH');
+  if (sc && wd) sc.innerHTML = renderWaveCardsH(wd.waves);
+
+  updatePartyRecap();
+  /* Enable Continue once at least 1 slot selected */
+  const btn = document.getElementById('btnWaveNext');
+  if (btn) btn.disabled = totalWaveSlots() === 0;
+}
+
+function updatePartyRecap() {
+  const rb  = document.getElementById('partyRecapBlock');
+  if (!rb) return;
+  const tot = totalWaveSlots();
+  const atMax = tot >= MAX_PS;
+  /* Build per-wave breakdown */
+  const dateVal = (document.getElementById('calWaveDateH')||{}).value || todayISO();
+  const wd = buildWaveList(dateVal);
+  let detail = '';
+  if (wd) {
+    Object.keys(selectedWaves).sort(function(a,b){return a-b;}).forEach(function(idxStr) {
+      const i = parseInt(idxStr);
+      const w = wd.waves[i];
+      const n = selectedWaves[i];
+      if (w && n > 0) detail += 'Wave ' + (i+1) + ': ' + n + (n===1?' slot':' slots') + '  ';
+    });
+  }
+  const valEl = rb.querySelector('.prb-val');
+  if (valEl) valEl.textContent = (tot > 0 ? detail.trim() + ' — ' : '') + tot + ' / ' + MAX_PS + ' total';
+  const warnEl = rb.querySelector('.prb-warn');
+  if (warnEl) warnEl.textContent = atMax ? '⚠ Maximum ' + MAX_PS + ' slots per booking reached' : (tot === 0 ? 'Select slots using + on each wave' : '');
+}
+
+/* STEP: Live recap (A/B/D — auto next slot) */
+function makeStepLiveRecap() {
+  const slot = findNextSlot();
+  if (!slot.closed) {
+    liveDate  = todayISO();
+    liveStart = slot.ns != null ? slot.ns : (new Date().getHours()*60+new Date().getMinutes());
+    liveStop  = liveStart + slot.cadence;
+  }
+  return {
+    id: 'live_recap',
+    frozen: function() {
+      return liveStart!=null
+        ? '<div class="frozen-row"><span class="fk">&#x23F0; Time slot</span><span class="fv">' + esc(toHHMM(liveStart)+' &#8211; '+toHHMM(liveStop)) + '</span></div>'
+        : '';
+    },
+    render: function() {
+      const slot2 = findNextSlot();
+      if (slot2.closed) {
+        const msg = slot2.dayOff
+          ? 'Queue inactive today, please check operating hours.'
+          : 'We have reached our maximum capacity, please check bookings another day.';
+        return '<div class="status-msg-h warn">&#x26A0; ' + esc(msg) + '</div>' +
+          '<button class="h-back" onclick="popStep()">&#8592; Back</button>';
+      }
+      liveDate  = todayISO();
+      liveStart = slot2.ns != null ? slot2.ns : (new Date().getHours()*60+new Date().getMinutes());
+      liveStop  = liveStart + slot2.cadence;
+
+      const showEET = queue.show_eet !== false;
+      const showETE = !!queue.show_ete;
+      let rows = '';
+      rows += '<div class="recap-row-h"><span class="rk-h">&#x1F4CD; Venue</span><span class="rv-h">' + esc(queue.venue_name||queue.name||'&#8212;') + '</span></div>';
+      rows += '<div class="recap-row-h"><span class="rk-h">&#x1F4C5; Date</span><span class="rv-h">' + esc(todayISO()) + '</span></div>';
+      if (arch === 'D') {
+        rows += '<div class="recap-row-h"><span class="rk-h">&#x23F0; Hours</span><span class="rv-h">' + esc(toHHMM(slot2.openMin)+' &#8211; '+toHHMM(slot2.closeMin)) + '</span></div>';
+        if (showETE) rows += '<div class="recap-row-h"><span class="rk-h">&#x23F1; Est. wait</span><span class="rv-h"><span class="time-badge-h">~' + slot2.cadence + ' min</span></span></div>';
+        rows += '<div class="recap-row-h"><span class="rk-h">Status</span><span class="rv-h"><span class="time-badge-h ' + (slot2.isOpen?'tbg':'') + '">' + (slot2.isOpen?'Open ✓':'Not open yet') + '</span></span></div>';
+      } else {
+        rows += '<div class="recap-row-h"><span class="rk-h">&#x23F0; Time slot</span><span class="rv-h hl">' + esc(toHHMM(liveStart)+' &#8211; '+toHHMM(liveStop)) + '</span></div>';
+        if (arch==='C') rows += '<div class="recap-row-h"><span class="rk-h">&#x1F3DF; Wave cap.</span><span class="rv-h">' + slot2.cap + ' spots</span></div>';
+        if (showEET && slot2.minsUntil>0) rows += '<div class="recap-row-h"><span class="rk-h">&#x23F1; Entry in</span><span class="rv-h"><span class="time-badge-h">' + slot2.minsUntil + ' min</span></span></div>';
+        else if (showEET && slot2.isNow)  rows += '<div class="recap-row-h"><span class="rk-h">&#x23F1; Entry</span><span class="rv-h"><span class="time-badge-h tbg">Now ✓</span></span></div>';
+        if (showETE) rows += '<div class="recap-row-h"><span class="rk-h">&#x231B; Duration</span><span class="rv-h">~' + slot2.cadence + ' min</span></div>';
+      }
+      if (selectedSlotType) rows += '<div class="recap-row-h"><span class="rk-h">&#x1F3F7; Type</span><span class="rv-h">' + esc(selectedSlotType.name) + '</span></div>';
+      if (selectedDuration)  rows += '<div class="recap-row-h"><span class="rk-h">&#x23F1; Duration</span><span class="rv-h">' + selectedDuration + ' min</span></div>';
+      if (arch==='D'&&!slot2.isOpen) {
+        return '<div class="status-msg-h warn">&#x26A0; Queue opens at ' + esc(toHHMM(slot2.openMin)) + '</div>' +
+          '<button class="h-back" onclick="popStep()">&#8592; Back</button>';
+      }
+      return '<div class="step-title">&#x26A1; Your next slot</div>' +
+        '<div class="recap-wrap">' + rows + '</div>' +
+        renderOptBlock('L') +
+        '<button class="h-btn hgreen" id="btnLiveCfm" onclick="onConfirmBooking()">&#x2713; Confirm my spot</button>' +
+        '<button class="h-back" onclick="popStep()">&#8592; Back</button>';
+    }
+  };
+}
+
+/* STEP: Advance recap */
+function makeStepAdvRecap() {
+  return {
+    id: 'adv_recap',
+    frozen: function() { return ''; },
+    render: function() {
+      const dp2  = document.getElementById('calWaveDateH');
+      let dateStr = '', timeStr = '';
+      if (arch === 'C') {
+        dateStr = dp2 ? dp2.value : todayISO();
+        liveDate = dateStr;
+        if (Object.keys(selectedWaves).length > 0) {
+          const wd2 = buildWaveList(dateStr);
+          const sortedIdx = Object.keys(selectedWaves).sort(function(a,b){return a-b;});
+          const firstIdx = parseInt(sortedIdx[0]);
+          const lastIdx  = parseInt(sortedIdx[sortedIdx.length-1]);
+          if (wd2) {
+            const fw = wd2.waves[firstIdx], lw = wd2.waves[lastIdx];
+            liveStart = fw ? fw.start : null;
+            liveStop  = lw ? lw.stop  : null;
+            selectedWave = fw;
+            timeStr = sortedIdx.map(function(i){
+              const wi = wd2.waves[parseInt(i)];
+              return 'Wave '+(parseInt(i)+1)+' ('+esc(toHHMM(wi.start))+'&#8211;'+esc(toHHMM(wi.stop))+')';
+            }).join(', ');
+          }
+        } else if (selectedWave) {
+          timeStr = toHHMM(selectedWave.start) + ' &#8211; ' + toHHMM(selectedWave.stop);
+          liveDate=dateStr; liveStart=selectedWave.start; liveStop=selectedWave.stop;
+        }
+      } else {
+        const dpAB = document.getElementById('calDateAB');
+        const tsEl = document.getElementById('calTimeS');
+        const teEl = document.getElementById('calTimeE');
+        dateStr = dpAB ? dpAB.value : todayISO();
+        timeStr = (tsEl?tsEl.value:'') + (teEl&&teEl.value?' &#8211; '+teEl.value:'');
+        liveDate  = dateStr;
+        liveStart = tsEl ? tMin(tsEl.value) : null;
+        liveStop  = teEl && teEl.value ? tMin(teEl.value) : null;
+      }
+      const showEET = queue.show_eet !== false;
+      let rows = '';
+      rows += '<div class="recap-row-h"><span class="rk-h">&#x1F4CD; Venue</span><span class="rv-h">' + esc(queue.venue_name||queue.name||'&#8212;') + '</span></div>';
+      rows += '<div class="recap-row-h"><span class="rk-h">&#x1F4C5; Date</span><span class="rv-h">' + esc(dateStr) + '</span></div>';
+      rows += '<div class="recap-row-h"><span class="rk-h">&#x23F0; Time</span><span class="rv-h hl">' + timeStr + '</span></div>';
+      if (selectedSlotType) rows += '<div class="recap-row-h"><span class="rk-h">&#x1F3F7; Type</span><span class="rv-h">' + esc(selectedSlotType.name) + '</span></div>';
+      if (selectedDuration)  rows += '<div class="recap-row-h"><span class="rk-h">&#x23F1; Duration</span><span class="rv-h">' + selectedDuration + ' min</span></div>';
+      if (arch==='C'&&showParty()) rows += '<div class="recap-row-h"><span class="rk-h">&#x1F465; Party</span><span class="rv-h">' + partySize + '</span></div>';
+      if (showEET && liveStart!=null) rows += '<div class="recap-row-h"><span class="rk-h">&#x23F0; EET (your slot)</span><span class="rv-h"><span class="time-badge-h tbg">' + toHHMM(liveStart) + '</span></span></div>';
+      return '<div class="step-title">Confirm your booking</div>' +
+        '<div class="recap-wrap">' + rows + '</div>' +
+        renderOptBlock('A') +
+        '<button class="h-btn" id="btnAdvCfm" onclick="onConfirmBooking()">&#x2713; Confirm booking</button>' +
+        '<button class="h-back" onclick="popStep()">&#8592; Back</button>';
+    }
+  };
+}
+
+/* Options block */
+function renderOptBlock(sfx) {
+  const earlyRow = (arch === 'C' && earlyEnabled)
+    ? '<div class="togrow-h"><div class="toglbl-h"><strong>&#x1F514; Earlier spot</strong><small>Notify me if an earlier wave opens</small></div>' +
+        '<label class="togsw"><input type="checkbox" id="togEarly' + sfx + '"><span class="togtr"></span></label></div>' : '';
+  return '<div class="opt-block">' +
+    '<div class="opt-title">Options</div>' +
+    '<div class="email-tog-row">' +
+      '<div class="etlbl">&#x1F4E7; Email confirmation<small>Receive your booking details</small></div>' +
+      '<label class="togsw"><input type="checkbox" id="togEmail' + sfx + '" onchange="toggleEmailH(&#39;' + sfx + '&#39;)"><span class="togtr"></span></label>' +
+    '</div>' +
+    '<input class="email-inp-h" type="email" id="emailH' + sfx + '" placeholder="your@email.com">' +
+    '<div class="togrow-h"><div class="toglbl-h"><strong>Updates by email</strong><small>Reminders &amp; notifications</small></div>' +
+      '<label class="togsw"><input type="checkbox" id="togNotif' + sfx + '"><span class="togtr"></span></label></div>' +
+    earlyRow +
+  '</div>';
+}
+
+/* ══════════════════════════════════════════════════════════
+   INLINE EVENT HANDLERS
+   ══════════════════════════════════════════════════════════ */
+
+function onChooseLive()    { chosenMode='live';    stepStack[stepStack.length-1].frozen=makeStepMode().frozen; goAfterMode(); }
+function onChooseAdvance() { chosenMode='advance'; stepStack[stepStack.length-1].frozen=makeStepMode().frozen; goAfterMode(); }
+
+function goAfterMode() {
+  if (arch === 'C') { pushStep(makeStepCalC(chosenMode==='live')); return; }
+  if (arch === 'D') {
+    if (chosenMode==='live') { pushStep(makeStepLiveRecap()); return; }
+    pushStep(makeStepCapD()); return;
+  }
+  // A/B
+  if (slots.length <= 1) {
+    if (slots.length===1) { selectedSlotType=slots[0]; if(selectedSlotType.duration)selectedDuration=selectedSlotType.duration; }
+    if (chosenMode==='live') pushStep(makeStepLiveRecap());
+    else pushStep(makeStepCalAB());
+    return;
+  }
+  pushStep(makeStepCapAB());
+}
+
+function onCapTypeChange() {
+  const sel = document.getElementById('capTypeSel');
+  const id  = parseInt(sel.value);
+  selectedSlotType = id ? (slots.find(function(s){ return s.id===id; })||null) : null;
+  selectedDuration = null;
+  // Rebuild duration dropdown
+  const durSel = document.getElementById('capDurSel');
+  if (!durSel) return;
+  if (selectedSlotType) {
+    const durs = Array.isArray(selectedSlotType.durations) ? selectedSlotType.durations : [];
+    if (durs.length > 1) {
+      durSel.innerHTML = durs.map(function(d){ return '<option value="'+d.minutes+'">'+d.minutes+' min</option>'; }).join('');
+      durSel.disabled = false;
+      selectedDuration = durs[0].minutes;
+    } else if (selectedSlotType.duration) {
+      durSel.innerHTML = '<option value="'+selectedSlotType.duration+'">'+selectedSlotType.duration+' min</option>';
+      durSel.disabled = false;
+      selectedDuration = selectedSlotType.duration;
+    } else {
+      durSel.innerHTML = '<option value="">&#8212;</option>';
+      durSel.disabled = true;
+    }
+  } else {
+    durSel.innerHTML = '<option value="">&#8212;</option>';
+    durSel.disabled = true;
+  }
+  const btn = document.getElementById('btnCapABNext');
+  if (btn) btn.disabled = !selectedSlotType;
+}
+function onCapDurChange() {
+  const sel = document.getElementById('capDurSel');
+  selectedDuration = sel && sel.value ? parseInt(sel.value) : null;
+}
+function onCapABConfirm() {
+  if (!selectedSlotType && slots.length>1) { toast('Please select a slot type'); return; }
+  if (selectedSlotType&&selectedSlotType.duration&&!selectedDuration) selectedDuration=selectedSlotType.duration;
+  if (selectedSlotType&&selectedSlotType.capacity>=1) { MAX_PS=selectedSlotType.capacity; partySize=Math.min(partySize,MAX_PS); }
+  if (chosenMode==='live') pushStep(makeStepLiveRecap());
+  else pushStep(makeStepCalAB());
+}
+
+function adjustPS(delta) {
+  const n = Math.max(1, Math.min(MAX_PS, partySize+delta));
+  if (n===MAX_PS && delta>0) toast('Maximum '+MAX_PS+' places per booking');
+  partySize = n;
+  ['psValH','psValC'].forEach(function(id){ const el=document.getElementById(id); if(el)el.textContent=partySize; });
+  const limH=document.getElementById('psLimitH'), limC=document.getElementById('psLimitC');
+  const msg = partySize===MAX_PS ? 'Maximum '+MAX_PS+' places reached.' : '';
+  if (limH) { limH.textContent=msg; limH.style.color='#fde68a'; }
+  if (limC) { limC.textContent=msg; limC.style.color='#fde68a'; }
+}
+function onCapDConfirm() {
+  if (chosenMode==='live') pushStep(makeStepLiveRecap());
+  else pushStep(makeStepCalAB()); // D advance → auto-booking → skip to recap
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CALENDAR A/B — full month + day-view with drag selection
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* State shared across renders */
+var calABView    = 'month';   // 'month' | 'day'
+var calABDate    = null;      // selected ISO date string
+var calABMonth   = null;      // { y, m } currently shown month
+var calABDragStart  = null;   // committed slot start (mins)
+var calABDragEnd    = null;   // committed slot end (mins)
+var calABIsDragging = false;
+var calABCommitted  = false;  // true once a valid slot has been locked in
+var calABDragMode   = 'place'; // 'place' = initial drop, 'move' = reposition committed block
+var calABMoveOffset = 0;      // minutes from block-top to drag-point during 'move'
+var SLOT_H = 40;              // px per 15-min row in day view
+
+/* Minute-resolution helpers */
+function calDur() { return selectedDuration || (selectedSlotType&&selectedSlotType.duration) || 30; }
+
+/* Returns array of {open,close} in mins for a given ISO date (from schedule_json) */
+function calGetOpenIntervals(dateISO) {
+  var cfg = getWaveConfig(dateISO);
+  if (!cfg) return [];     // closed
+  return [{ open: cfg.openMin, close: cfg.closeMin }];
+}
+
+/* Is a given minute inside open intervals? */
+function calIsOpen(min, intervals) {
+  return intervals.some(function(iv) { return min >= iv.open && min < iv.close; });
+}
+
+/* Can we place a slot of duration 'dur' starting at 'startMin'? */
+function calCanPlace(startMin, dur, intervals) {
+  if (!intervals.length) return false;
+  if (calABDate === todayISO()) {
+    var nowMin = new Date().getHours()*60 + new Date().getMinutes();
+    if (startMin < nowMin) return false;
+  }
+  var endMin = startMin + dur;
+  return intervals.some(function(iv) {
+    return startMin >= iv.open && endMin <= iv.close;
+  });
+}
+
+/* Snap startMin to nearest open boundary, returns corrected startMin or null */
+function calSnap(startMin, dur, intervals) {
+  if (!intervals.length) return null;
+  var nowMin = (calABDate === todayISO()) ? (new Date().getHours()*60 + new Date().getMinutes()) : 0;
+  var effectiveStart = Math.max(startMin, nowMin);
+  if (calCanPlace(effectiveStart, dur, intervals)) return effectiveStart;
+  for (var iv of intervals) {
+    var ivStart = Math.max(iv.open, nowMin);
+    if (ivStart + dur <= iv.close) {
+      if (effectiveStart <= ivStart) return ivStart;
+      var snap = Math.ceil(effectiveStart / 15) * 15;
+      while (snap + dur <= iv.close) {
+        if (snap >= ivStart) return snap;
+        snap += 15;
+      }
+      return ivStart;
+    }
+  }
+  return null;
+}
+
+/* ── Month grid ── */
+function buildMonthGrid() {
+  var y = calABMonth.y, m = calABMonth.m;
+  var today = todayISO();
+  var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var dow = ['Mo','Tu','We','Th','Fr','Sa','Su'];
+
+  // First day of month (0=Sun..6=Sat), convert to Mon-first
+  var firstDay = new Date(y, m, 1).getDay(); // 0=Sun
+  var mondayFirst = (firstDay + 6) % 7;      // 0=Mon
+  var daysInMonth = new Date(y, m+1, 0).getDate();
+
+  var html = '<div class="fcal-nav">' +
+    '<button class="fcal-nav-btn" onclick="calABPrevMonth()">&#8249;</button>' +
+    '<span class="fcal-nav-title">' + monthNames[m] + ' ' + y + '</span>' +
+    '<button class="fcal-nav-btn" onclick="calABNextMonth()">&#8250;</button>' +
+  '</div>' +
+  '<div class="fcal-dow">' + dow.map(function(d){ return '<div class="fcal-dow-h">'+d+'</div>'; }).join('') + '</div>' +
+  '<div class="fcal-grid">';
+
+  // Leading empty cells
+  for (var i = 0; i < mondayFirst; i++) html += '<div class="fcal-day empty"></div>';
+
+  for (var day = 1; day <= daysInMonth; day++) {
+    var iso = y + '-' + String(m+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+    var isPast    = iso < today;
+    var isBeyond  = horizonDate && iso > horizonDate;
+    var isToday   = iso === today;
+    var ivals     = calGetOpenIntervals(iso);
+    var isClosed  = ivals.length === 0;
+    var isSelected= iso === calABDate;
+    var cls = 'fcal-day';
+    if (isPast||isBeyond) cls += ' past';
+    else if (isClosed) cls += ' closed';
+    else             cls += ' available';
+    if (isToday)     cls += ' today-dot';
+    if (isSelected)  cls += ' selected';
+    html += '<div class="' + cls + '" onclick="calABSelectDay(\'' + iso + '\')">' + day + '</div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function calABPrevMonth() {
+  var today = todayISO();
+  var prevM = calABMonth.m - 1, prevY = calABMonth.y;
+  if (prevM < 0) { prevM = 11; prevY--; }
+  if (prevY < parseInt(today.slice(0,4)) || (prevY === parseInt(today.slice(0,4)) && prevM < parseInt(today.slice(5,7))-1)) return;
+  calABMonth.m = prevM; calABMonth.y = prevY;
+  var area = document.getElementById('calArea');
+  if (area) area.innerHTML = buildMonthGrid();
+}
+function calABNextMonth() {
+  var nextM = calABMonth.m + 1, nextY = calABMonth.y;
+  if (nextM > 11) { nextM = 0; nextY++; }
+  if (horizonDate) {
+    var horizonY = parseInt(horizonDate.slice(0,4)), horizonM = parseInt(horizonDate.slice(5,7))-1;
+    if (nextY > horizonY || (nextY === horizonY && nextM > horizonM)) return;
+  }
+  calABMonth.m = nextM; calABMonth.y = nextY;
+  var area = document.getElementById('calArea');
+  if (area) area.innerHTML = buildMonthGrid();
+}
+
+function calABSelectDay(iso) {
+  calABDate      = iso;
+  calABView      = 'day';
+  calABDragStart = null;
+  calABDragEnd   = null;
+  calABCommitted = false;
+  // Swap the whole calArea to day view
+  var area = document.getElementById('calArea');
+  if (area) area.innerHTML = buildDayView(iso);
+  var title = document.getElementById('calABTitle');
+  if (title) title.style.display = 'none';  // date label now inside day view
+  var btn = document.getElementById('btnCalABNext');
+  if (btn) btn.disabled = true;
+  // Auto-scroll to open hours
+  setTimeout(function() {
+    var sc = document.getElementById('dvScroller');
+    if (!sc) return;
+    var ivals = calGetOpenIntervals(iso);
+    if (ivals.length) {
+      var START_DISP = 6*60;
+      var openPx = ((ivals[0].open - START_DISP) / 15) * SLOT_H;
+      sc.scrollTop = Math.max(0, openPx - 40);
+    }
+  }, 60);
+}
+
+/* ── Day view ── */
+function buildDayView(iso) {
+  var ivals   = calGetOpenIntervals(iso);
+  var dur     = calDur();
+  var today   = todayISO();
+  var nowMin  = new Date().getHours()*60 + new Date().getMinutes();
+
+  // Full day: 00:00–24:00 in 15-min increments = 96 rows
+  // But we show 06:00–22:00 (64 rows) for brevity — covers most venues
+  var START_MIN = 6*60, END_MIN = 22*60, STEP = 15;
+  var slotCount = (END_MIN - START_MIN) / STEP;
+
+  var html = '<div class="cal-panel"><div class="dv-date-lbl">' +
+    new Date(iso+'T12:00:00').toLocaleDateString('en',{weekday:'long',day:'numeric',month:'long'}) +
+    ' <button class="dv-back" onclick="calABBackToMonth()">&#8592; Change date</button>' +
+  '</div>' +
+  '<div class="dv-scroller" id="dvScroller" onmousedown="calABGridMouseDown(event)" ontouchstart="calABGridTouchStart(event)">' +
+  '<div class="dv-grid" id="dvGrid" style="--slot-h:' + SLOT_H + 'px">';
+
+  for (var i = 0; i < slotCount; i++) {
+    var min    = START_MIN + i * STEP;
+    var isHour = (min % 60 === 0);
+    var isOpen = calIsOpen(min, ivals);
+    // Past time on today
+    var isPast = (iso === today) && (min + STEP <= nowMin);
+    var rowCls = 'dv-row' + (isHour?' hour-start':'') + (isOpen&&!isPast?' open-slot':' closed-slot');
+    var timeLbl = (min % 60 === 0) ? toHHMM(min) : '';
+    html += '<div class="' + rowCls + '" data-min="' + min + '">' +
+      '<div class="dv-time-lbl">' + timeLbl + '</div>' +
+      '<div class="dv-cell"></div>' +
+    '</div>';
+  }
+
+  html += '<div class="dv-block" id="dvBlock" style="display:none"' +
+    ' onmousedown="calABBlockMouseDown(event)" ontouchstart="calABBlockTouchStart(event)">' +
+    '<div class="dv-block-lbl" id="dvBlockLbl"></div></div>';
+  html += '</div></div>';   // close dv-grid + dv-scroller
+
+  html += '<div class="dv-drag-hint" id="dvDragHint"></div>';
+  html += '<div id="dvMsgArea"></div>';
+  html += '</div>'; // close cal-panel
+  return html;
+}
+
+function calABBackToMonth() {
+  calABView      = 'month';
+  calABDragStart = null;
+  calABDragEnd   = null;
+  calABCommitted = false;
+  var area = document.getElementById('calArea');
+  if (area) area.innerHTML = buildMonthGrid();
+  var title = document.getElementById('calABTitle');
+  if (title) { title.textContent = 'Choose a date'; title.style.display = ''; }
+  var btn = document.getElementById('btnCalABNext');
+  if (btn) btn.disabled = true;
+}
+
+/* ── Coordinate helpers ── */
+var CAL_START_MIN = 6*60;  // display starts at 06:00
+
+function clientYToMin(clientY) {
+  var grid = document.getElementById('dvGrid');
+  if (!grid) return null;
+  var rect = grid.getBoundingClientRect();
+  var relY = Math.max(0, clientY - rect.top);
+  var row  = Math.floor(relY / SLOT_H);
+  var maxRow = (22*60 - CAL_START_MIN) / 15 - 1;
+  row = Math.min(row, maxRow);
+  return CAL_START_MIN + row * 15;
+}
+
+/* Snap startMin to 15-min grid */
+function snapTo15(min) { return Math.round(min / 15) * 15; }
+
+/* ── Grid mouse/touch — 'place' mode (initial drop on empty area) ── */
+function calABGridMouseDown(evt) {
+  // If click is on the block itself, let calABBlockMouseDown handle it
+  if (evt.target.closest('#dvBlock')) return;
+  evt.preventDefault();
+  var min = clientYToMin(evt.clientY);
+  if (min === null) return;
+  calABDragMode   = 'place';
+  calABIsDragging = true;
+  calABCommitted  = false;
+  calABDragStart  = min;
+  calABDragEnd    = min + calDur();
+  updateDvBlock(false);
+  document.addEventListener('mousemove', calABMouseMove_h);
+  document.addEventListener('mouseup',   calABMouseUp_h);
+}
+function calABGridTouchStart(evt) {
+  if (evt.target.closest('#dvBlock')) return;
+  var min = clientYToMin(evt.touches[0].clientY);
+  if (min === null) return;
+  calABDragMode   = 'place';
+  calABIsDragging = true;
+  calABCommitted  = false;
+  calABDragStart  = min;
+  calABDragEnd    = min + calDur();
+  updateDvBlock(false);
+  document.addEventListener('touchmove', calABTouchMove_h, {passive:false});
+  document.addEventListener('touchend',  calABTouchEnd_h,  {passive:true});
+}
+
+/* ── Block mouse/touch — 'move' mode (drag existing committed block) ── */
+function calABBlockMouseDown(evt) {
+  if (!calABCommitted) return;
+  evt.preventDefault();
+  evt.stopPropagation();
+  var min = clientYToMin(evt.clientY);
+  if (min === null) return;
+  calABDragMode   = 'move';
+  calABIsDragging = true;
+  // Offset = how many mins from block top the user grabbed
+  calABMoveOffset = min - calABDragStart;
+  document.addEventListener('mousemove', calABMouseMove_h);
+  document.addEventListener('mouseup',   calABMouseUp_h);
+}
+function calABBlockTouchStart(evt) {
+  if (!calABCommitted) return;
+  evt.stopPropagation();
+  var min = clientYToMin(evt.touches[0].clientY);
+  if (min === null) return;
+  calABDragMode   = 'move';
+  calABIsDragging = true;
+  calABMoveOffset = min - calABDragStart;
+  document.addEventListener('touchmove', calABTouchMove_h, {passive:false});
+  document.addEventListener('touchend',  calABTouchEnd_h,  {passive:true});
+}
+
+/* ── Shared move / end handlers ── */
+function calABMouseMove_h(evt) {
+  if (!calABIsDragging) return;
+  evt.preventDefault();
+  calABHandleMove(evt.clientY);
+}
+function calABTouchMove_h(evt) {
+  if (!calABIsDragging) return;
+  evt.preventDefault();
+  calABHandleMove(evt.touches[0].clientY);
+}
+function calABHandleMove(clientY) {
+  var rawMin = clientYToMin(clientY);
+  if (rawMin === null) return;
+  var dur = calDur();
+  if (calABDragMode === 'move') {
+    // Move: keep offset between grab point and block top
+    var newStart = snapTo15(rawMin - calABMoveOffset);
+    calABDragStart = newStart;
+    calABDragEnd   = newStart + dur;
+  } else {
+    // Place: start = where user pressed, end follows
+    calABDragStart = rawMin;
+    calABDragEnd   = rawMin + dur;
+  }
+  updateDvBlock(false);
+}
+function calABMouseUp_h(evt) {
+  document.removeEventListener('mousemove', calABMouseMove_h);
+  document.removeEventListener('mouseup',   calABMouseUp_h);
+  if (!calABIsDragging) return;
+  calABIsDragging = false;
+  calABCommitSlot();
+}
+function calABTouchEnd_h() {
+  document.removeEventListener('touchmove', calABTouchMove_h);
+  document.removeEventListener('touchend',  calABTouchEnd_h);
+  if (!calABIsDragging) return;
+  calABIsDragging = false;
+  calABCommitSlot();
+}
+
+/* ── Render the floating block ── */
+function updateDvBlock(committed) {
+  var block = document.getElementById('dvBlock');
+  var lbl   = document.getElementById('dvBlockLbl');
+  if (!block || !lbl) return;
+
+  var dur    = calDur();
+  var start  = calABDragStart;
+  var ivals  = calGetOpenIntervals(calABDate);
+  var valid  = calCanPlace(start, dur, ivals);
+
+  var topPx = ((start - CAL_START_MIN) / 15) * SLOT_H;
+  var htPx  = (dur / 15) * SLOT_H;
+
+  block.style.display = '';
+  block.style.top     = topPx + 'px';
+  block.style.height  = Math.max(htPx, 20) + 'px';
+  lbl.textContent     = toHHMM(start) + ' \u2013 ' + toHHMM(start + dur);
+
+  var cls = 'dv-block ' + (valid ? 'valid' : 'invalid');
+  if (committed === true || (committed === undefined && calABCommitted)) cls += ' committed';
+  block.className = cls;
+}
+
+function calABCommitSlot() {
+  var dur   = calDur();
+  var ivals = calGetOpenIntervals(calABDate);
+  var start = snapTo15(calABDragStart);  // always snap to 15-min grid on release
+
+  var hint = document.getElementById('dvDragHint');
+  var msg  = document.getElementById('dvMsgArea');
+
+  if (calCanPlace(start, dur, ivals)) {
+    liveDate  = calABDate;
+    liveStart = start;
+    liveStop  = start + dur;
+    calABDragStart = start;
+    calABDragEnd   = start + dur;
+    calABCommitted = true;
+    updateDvBlock(true);   // mark as committed (enables grab cursor)
+    var btn = document.getElementById('btnCalABNext');
+    if (btn) btn.disabled = false;
+    if (hint) { hint.textContent = '&#x21D5; Drag the block to adjust'; hint.innerHTML = '&#x21D5; Drag to adjust · Tap Continue when ready'; }
+    if (msg)  msg.innerHTML = '';
+  } else {
+    // Snap to nearest valid slot
+    var snapped = calSnap(start, dur, ivals);
+    if (snapped !== null) {
+      liveDate  = calABDate;
+      liveStart = snapped;
+      liveStop  = snapped + dur;
+      calABDragStart = snapped;
+      calABDragEnd   = snapped + dur;
+      calABCommitted = true;
+      updateDvBlock(true);
+      var btn = document.getElementById('btnCalABNext');
+      if (btn) btn.disabled = false;
+      if (hint) hint.innerHTML = '&#x21D5; Drag to adjust · Tap Continue when ready';
+      if (msg)  msg.innerHTML = '<div style="font-size:12px;color:#fde68a;text-align:center;margin-top:4px">&#x26A0; Snapped to nearest slot: ' + toHHMM(snapped) + ' – ' + toHHMM(snapped+dur) + '</div>';
+    } else {
+      calABDragStart = null; calABDragEnd = null;
+      calABCommitted = false;
+      var block = document.getElementById('dvBlock');
+      if (block) block.style.display = 'none';
+      var btn = document.getElementById('btnCalABNext');
+      if (btn) btn.disabled = true;
+      if (hint) hint.textContent = '';
+      if (msg)  msg.innerHTML = '<div style="font-size:12px;color:#fca5a5;text-align:center;margin-top:4px">&#x274C; No available slots on this day. Choose another date.</div>';
+    }
+  }
+}
+
+function onCalABConfirm() {
+  if (!calABDate || liveStart == null || !calABCommitted) {
+    toast('Please select a date and time slot');
+    return;
+  }
+  liveStop = liveStart + calDur();
+  pushStep(makeStepAdvRecap());
+}
+
+/* Legacy stubs — kept so any stray references don't crash */
+function onCalABDateChange() {}
+function onCalABTimeChange() {}
+
+function onWaveDateChange() {
+  const dp=document.getElementById('calWaveDateH');
+  selectedWave=null;
+  const wd=buildWaveList(dp.value);
+  const sc=document.getElementById('waveScrollH');
+  if (sc) sc.innerHTML=wd?renderWaveCardsH(wd.waves):'<div class="status-msg-h warn">Closed on this day.</div>';
+  const btn=document.getElementById('btnWaveNext'); if(btn)btn.disabled=true;
+}
+function onSelectWave(idx) { /* selection now via +/− buttons inside each card */ }
+function onWaveConfirm() {
+  if (totalWaveSlots() === 0) { toast('Please add at least 1 slot using +'); return; }
+  /* Set partySize to total for API */
+  partySize = totalWaveSlots();
+  const dp=document.getElementById('calWaveDateH');
+  liveDate=dp?dp.value:todayISO();
+  /* Use first selected wave for liveStart/liveStop in recap */
+  const dateVal = liveDate;
+  const wd = buildWaveList(dateVal);
+  if (wd) {
+    const firstIdx = parseInt(Object.keys(selectedWaves).sort(function(a,b){return a-b;})[0]);
+    selectedWave = wd.waves[firstIdx];
+    liveStart = selectedWave.start;
+    liveStop  = selectedWave.stop;
+  }
+  pushStep(makeStepAdvRecap());
+}
+
+function toggleEmailH(sfx) {
+  const tog=document.getElementById('togEmail'+sfx), inp=document.getElementById('emailH'+sfx);
+  if (!inp) return;
+  if (tog.checked) inp.classList.add('show');
+  else { inp.classList.remove('show'); inp.value=''; }
+}
+
+/* ── Book ── */
+async function onConfirmBooking() {
+  if (!queue) { toast('Queue not loaded yet'); return; }
+  setErr('');
+  const isLive = chosenMode==='live' || formula==='LIVE_ONLY';
+  const sfx    = isLive ? 'L' : 'A';
+  const slotDate = liveDate || todayISO();
+  const deviceId = getDeviceId();
+  const emailEl  = document.getElementById('emailH'+sfx);
+  const notifEl  = document.getElementById('togNotif'+sfx);
+  const earlyEl  = document.getElementById('togEarlyL') || document.getElementById('togEarlyA');
+  const email       = emailEl&&emailEl.value.trim() ? emailEl.value.trim() : null;
+  const wantsNotif  = !!(notifEl&&notifEl.checked);
+  const wantsEarly  = !!(earlyEl&&earlyEl.checked);
+  const btnId = isLive ? 'btnLiveCfm' : 'btnAdvCfm';
+  const btnEl = document.getElementById(btnId);
+  if (btnEl) { btnEl.disabled=true; btnEl.textContent='Booking…'; }
+  try {
+    const body = {
+      queue_id:Number(queueId), device_id:deviceId,
+      source: isLive?'live':'advance',
+      slots:[{slot_date:slotDate, party_size:partySize}],
+      include_qr:true,
+      visitor_email:email, wants_notifications:wantsNotif, wants_early_slot:wantsEarly,
+    };
+    if (liveStart!=null) body.slots[0].start_min=liveStart;
+    const r = await fetch('/api/intime/bookings', {
+      method:'POST', credentials:'same-origin',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify(body),
+    });
+    const d = await r.json().catch(function(){ return {}; });
+    if (!r.ok||!d.ok) throw new Error(d.error||'HTTP '+r.status);
+    showConf(d, slotDate, isLive, email);
+  } catch(err) {
+    setErr('Booking failed: '+err.message);
+    if (btnEl) { btnEl.disabled=false; btnEl.textContent=isLive?'\u2713 Confirm my spot':'\u2713 Confirm booking'; }
+  }
+}
+
+function showConf(d, slotDate, isLive, email) {
+  document.getElementById('hero').style.display='none';
+  document.getElementById('scConf').style.display='';
+  const b    = d.bookings&&d.bookings[0];
+  const code = formatCode(b&&b.human_ref);
+  document.getElementById('confCode').textContent = code||'\u2014';
+  /* recap table below carries all detail */
+  const posWrap=document.getElementById('confPosWrap');
+  if (arch==='D'&&b&&b.booking_id) { document.getElementById('confPos').textContent='#'+b.booking_id; posWrap.style.display=''; }
+  else posWrap.style.display='none';
+  const qrImg=d.qr&&d.qr[0]&&d.qr[0].image_base64;
+  const qi=document.getElementById('confQr');
+  if (qrImg) { qi.src=qrImg; qi.style.display=''; } else qi.style.display='none';
+  const showEET=queue.show_eet!==false, showETE=!!queue.show_ete;
+  const dur=selectedDuration||(selectedSlotType&&selectedSlotType.duration)||15;
+  /* Build wave breakdown for arch C */
+  const waveBreakdown = (arch==='C' && Object.keys(selectedWaves).length>0)
+    ? (function(){
+        const dateVal2 = slotDate;
+        const wd3 = buildWaveList(dateVal2);
+        if (!wd3) return null;
+        const lines = Object.keys(selectedWaves).sort(function(a,b){return a-b;}).map(function(i){
+          const wi = wd3.waves[parseInt(i)];
+          return wi ? 'Wave '+(parseInt(i)+1)+' '+toHHMM(wi.start)+'–'+toHHMM(wi.stop)+' ×'+selectedWaves[i] : null;
+        }).filter(Boolean).join(' | ');
+        return ['&#x1F30A; Waves', lines];
+      })()
+    : null;
+  const items=[
+    ['\x1F4CD Venue',   queue.venue_name||queue.name||'\u2014'],
+    (function(){var lt=queue.location_text;var mu=mapsUrl(lt,queue.gps_lat,queue.gps_lng);return lt?['&#x1F5FA; Location',mu?'<a href="'+mu+'" target="_blank" rel="noopener" style="color:var(--v);font-weight:700;text-decoration:none">'+esc(lt)+' &#x2197;</a>':esc(lt)]:null;})(),
+    ['\x1F4C5 Date',    slotDate],
+    waveBreakdown,
+    (!waveBreakdown && liveStart!=null)?['\x23F0 Time', toHHMM(liveStart)+(liveStop?' \u2013 '+toHHMM(liveStop):'')]:null,
+    selectedSlotType?['\x1F3F7 Type', selectedSlotType.name]:null,
+    selectedDuration?['\x23F1 Duration', selectedDuration+' min']:null,
+    (showParty()&&partySize>1)?['\x1F465 Party', partySize+' people']:null,
+    (showEET&&liveStart!=null&&!isLive)?['EET', toHHMM(liveStart)]:null,
+    (showETE&&isLive)?['ETE', '~'+dur+' min']:null,
+    email?['\x1F4E7 Sent to', email]:null,
+  ].filter(Boolean);
+  document.getElementById('confRecap').innerHTML=items.map(function(p){
+    var v=String(p[1]); var html=v.indexOf('<')!==-1;
+    return '<div class="cr"><span class="cr-k">'+p[0]+'</span><span class="cr-v">'+(html?v:esc(v))+'</span></div>';
+  }).join('');
+  const fu=new URL('/modules/In-Time/use/page 4.html',location.origin);
+  if (b&&b.token_id)   fu.searchParams.set('token',b.token_id);
+  if (b&&b.booking_id) fu.searchParams.set('bid',b.booking_id);
+  fu.searchParams.set('queueId',queueId);
+  document.getElementById('followBtn').href=fu.toString();
+}
+
+function copyCode() {
+  const c=document.getElementById('confCode').textContent;
+  navigator.clipboard.writeText(c).then(function(){ toast('Copied!'); }).catch(function(){ toast(c); });
+}
+function bookAnother() {
+  selectedSlotType=null; selectedDuration=null; selectedWave=null; selectedWaves={};
+  partySize=1; chosenMode=null; liveDate=null; liveStart=null; liveStop=null;
+  MAX_PS=defaultMaxPS(arch);
+  document.getElementById('hero').style.display='';
+  document.getElementById('scConf').style.display='none';
+  stepStack.length=0;
+  startFlow();
+}
+
+/* ── Hero header ── */
+function updateHeroHeader(q) {
+  document.getElementById('heroTitle').textContent = q.name||nameHint||'Virtual Queue';
+  const sub=document.getElementById('heroSub');
+  if (q.venue_name&&q.venue_name!==q.name) { sub.textContent=q.venue_name; sub.style.display=''; } else sub.style.display='none';
+  const addr=q.location_text||addrHint||'';
+  var addrMu=mapsUrl(addr,q.gps_lat,q.gps_lng);
+  document.getElementById('heroAddr').innerHTML = addr ? ('&#x1F4CD; '+(addrMu?'<a href="'+addrMu+'" target="_blank" rel="noopener" style="color:rgba(255,255,255,.82);text-decoration:underline;text-underline-offset:2px">'+esc(addr)+' &#x2197;</a>':esc(addr))) : '';
+  document.title='Book \u2014 '+(q.name||'Queue')+' \u2014 In-Time';
+  /* Apply queue wallpaper to hero frame */
+  const hero=document.getElementById('hero');
+  if (q.wallpaper_data) {
+    hero.style.backgroundImage='linear-gradient(rgba(10,6,30,.55),rgba(10,6,30,.55)),url('+encodeURI(q.wallpaper_data)+')';
+    hero.style.backgroundSize='cover';
+    hero.style.backgroundPosition='center';
+  } else {
+    hero.style.backgroundImage='';
+  }
+}
+
+/* ── Start flow ── */
+function startFlow() {
+  stepStack.length=0;
+  earlyEnabled=false;
+  if (queue.early_spot_json) {
+    try { const e=typeof queue.early_spot_json==='string'?JSON.parse(queue.early_spot_json):queue.early_spot_json; earlyEnabled=!!e.enabled; } catch(ex){}
+  }
+  if (formula==='MIXED') { pushStep(makeStepMode()); return; }
+  chosenMode=formula==='LIVE_ONLY'?'live':'advance';
+  if (arch==='C') { pushStep(makeStepCalC(chosenMode==='live')); return; }
+  if (arch==='D') {
+    if (chosenMode==='live') pushStep(makeStepLiveRecap());
+    else pushStep(makeStepCapD());
+    return;
+  }
+  // A/B
+  if (slots.length===1) { selectedSlotType=slots[0]; if(selectedSlotType.duration)selectedDuration=selectedSlotType.duration; }
+  if (slots.length<=1) { if(chosenMode==='live')pushStep(makeStepLiveRecap()); else pushStep(makeStepCalAB()); return; }
+  pushStep(makeStepCapAB());
+}
+
+/* ── Load ── */
+async function loadQueue() {
+  document.getElementById('heroTitle').textContent=nameHint||'Loading\u2026';
+  if (addrHint) document.getElementById('heroAddr').innerHTML='\x1F4CD '+esc(addrHint);
+  if (!queueId) { setErr('No queue ID in URL. Please scan a venue QR code.'); return; }
+  try {
+    const ctrl=new AbortController();
+    const tmo=setTimeout(function(){ ctrl.abort(); },8000);
+    let r;
+    try { r=await fetch('/api/intime/queues/'+encodeURIComponent(queueId),{credentials:'same-origin',headers:{Accept:'application/json'},signal:ctrl.signal}); }
+    finally { clearTimeout(tmo); }
+    const d=await r.json().catch(function(){ return {}; });
+    if (!r.ok||!d.ok||!d.queue) throw new Error(d.error||'Queue not found');
+    queue=d.queue; formula=queue.booking_formula||'LIVE_ONLY'; arch=queue.archetype||'D';
+    horizonDate = addDays(todayISO(), queue.sync_horizon || 90);
+    MAX_PS=defaultMaxPS(arch); partySize=1;
+    if (queue.slots_json) {
+      const raw=typeof queue.slots_json==='string'?JSON.parse(queue.slots_json):queue.slots_json;
+      if (Array.isArray(raw)) slots=raw;
+    }
+    updateHeroHeader(queue); startFlow();
+  } catch(err) {
+    const isAbort=err.name==='AbortError';
+    setErr(isAbort?'Request timed out. Check connection and retry.':'Could not load queue: '+err.message);
+    document.getElementById('heroTitle').textContent='Error';
+    console.error('[p3]',err.name,err.message);
+  }
+}
+loadQueue();
+if (window.Drawer&&window.Drawer.mount) Drawer.mount({mode:'visitor'});
+if (window.FAB&&window.FAB.mount) FAB.mount({
+  useTopBand:true, useBottomBand:true,
+  home:  {label:'\x1F3E0',title:'Home',    onClick:function(){ if(window.Drawer)Drawer.open(); }},
+  config:{label:'\u21BA', title:'Restart', onClick:function(){ bookAnother(); }},
+  onBack:function(){
+    if (document.getElementById('scConf').style.display!=='none') { bookAnother(); return; }
+    if (stepStack.length>1) popStep();
+    else location.href='/modules/In-Time/use/page 2.html';
+  },
+});
+</script>
+</body>
+</html>

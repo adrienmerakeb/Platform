@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Let’s Get Out! — Manage</title>
+
+  <!-- Shared app styles -->
+  <link rel="stylesheet" href="/css/style.css"/>
+  <link rel="stylesheet" href="/css/pages/main.css"/>
+
+  <style>
+    /* LGO-specific: role pill + role switch only */
+
+    .lgo-role-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      background: rgba(0,0,0,0.25);
+      margin-top: 6px;
+    }
+
+    /* ----- Role switch dropdown (bottom-right, same as dashboard) ----- */
+    .role-switch {
+      position: fixed;
+      right: 16px;
+      bottom: calc(var(--band-h, 68px) + 12px);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      font-size: 0.9rem;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      z-index: 9999;
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+
+    .role-switch.open {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .role-switch-title {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      opacity: .75;
+      margin-bottom: 4px;
+    }
+
+    .role-switch-option {
+      border: none;
+      background: transparent;
+      color: inherit;
+      padding: 4px 10px;
+      text-align: left;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+
+    .role-switch-option:hover,
+    .role-switch-option.active {
+      background: rgba(255,255,255,0.18);
+    }
+  </style>
+</head>
+
+<body class="has-top-band has-bottom-band">
+<header class="site">
+  <div class="title">Let’s Get Out!</div>
+  <div class="subtitle">
+    Create and manage your guidings here
+  </div>
+</header>
+
+<main class="container">
+  <section class="manage-hero">
+    <h1>Let’s Get Out! - My Guidings</h1>
+    <p id="lgo-role-text">
+      Loading your profile…
+    </p>
+    <div id="lgo-role-pill" class="lgo-role-pill" style="display:none;">
+      <span id="lgo-role-label">Role</span>
+    </div>
+  </section>
+
+  <section class="manage-cards-grid">
+    <!-- Card: Create a new Guiding -->
+    <article class="manage-card">
+      <div>
+        <div class="manage-card-header">
+          <div class="manage-card-icon">➕</div>
+          <h2>Create a new Guiding</h2>
+        </div>
+        <p>
+          Start a new online / live / IRL guiding experience. You can save it as
+          draft or publish it later.
+        </p>
+      </div>
+      <div class="manage-card-footer">
+        <button
+          type="button"
+          class="manage-btn manage-btn-primary"
+          id="btnCreateGuiding"
+        >
+          Start new Guiding
+        </button>
+      </div>
+    </article>
+
+    <!-- Card: Manage my Guidings -->
+    <article class="manage-card">
+      <div>
+        <div class="manage-card-header">
+          <div class="manage-card-icon">📂</div>
+          <h2>Manage my Guidings</h2>
+        </div>
+        <p>
+          Review, edit or deactivate your existing guidings. Check status,
+          monetization and feedback.
+        </p>
+      </div>
+      <div class="manage-card-footer">
+        <button
+          type="button"
+          class="manage-btn manage-btn-primary"
+          id="btnManageGuidings"
+        >
+          Open my Guidings
+        </button>
+      </div>
+    </article>
+  </section>
+</main>
+
+<!-- Role switch dropdown (same as dashboard, controlled by FAB) -->
+<div class="role-switch" id="role-switch" aria-hidden="true">
+  <div class="role-switch-title">View as</div>
+  <button class="role-switch-option" data-view="visitor">Visitor</button>
+  <button class="role-switch-option" data-view="guide">Guide</button>
+  <button class="role-switch-option" data-view="vg">Visitor &amp; Guide</button>
+</div>
+
+<!-- Shared chrome: drawer + FAB -->
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+
+<!-- Page-specific logic -->
+<script type="module" src="/modules/Let's Get Out!/manage/letsgetout-main.js"></script>
+
+<!-- FAB config: map action on bottom-left, no usable bottom-right (hidden by CSS) -->
+<script>
+  FAB.mount({
+    useTopBand: true,
+    useBottomBand: true,
+
+    home: {
+      title: 'Home & Services',
+      label: '🏠',
+      onClick: () => Drawer.open()
+    },
+
+    config: {
+      title: 'Settings',
+      label: '⚙️',
+      href: '/pages/guide/settings.html'
+    },
+
+    // 🔹 Back button always goes to host dashboard
+    onBack: () => {
+      window.location.href = '/public/dashboard-host.html';
+    }
+  });
+
+  // ======= HARD HIDE: bottom-right FAB button (geometry-based) =======
+  function hideBottomRightFabButton() {
+    const bandH = parseInt(
+      getComputedStyle(document.documentElement).getPropertyValue('--band-h')
+    ) || 68;
+
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+
+    const candidates = Array.from(document.querySelectorAll('button, a'))
+      .filter(el => {
+        const rect = el.getBoundingClientRect();
+        if (!rect.width || !rect.height) return false;
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+
+        const nearBottom = cy > vh - bandH - 80 && cy < vh;
+        const rightSide  = cx > vw * 0.6;
+
+        return nearBottom && rightSide;
+      });
+
+    candidates.forEach(el => {
+      el.style.display       = 'none';
+      el.style.visibility    = 'hidden';
+      el.style.pointerEvents = 'none';
+    });
+  }
+
+  hideBottomRightFabButton();
+
+  const fabObserver = new MutationObserver(() => {
+    hideBottomRightFabButton();
+  });
+  fabObserver.observe(document.body, { childList: true, subtree: true });
+
+  window.addEventListener('resize', hideBottomRightFabButton);
+</script>
+</body>
+</html>

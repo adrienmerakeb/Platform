@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Calendar Review</title>
+  <style>
+    html, body{
+      height:100%;
+      margin:0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:#fff;
+      color:#000;
+      overflow:hidden;
+    }
+
+    .wrap{
+      height:100%;
+      display:flex;
+      flex-direction:column;
+      padding:16px 16px 12px;
+      box-sizing:border-box;
+      gap:10px;
+    }
+
+    header h2{
+      margin:0 0 6px 0;
+      font-size:1.05rem;
+      font-weight:900;
+    }
+    header p{
+      margin:0;
+      font-size:0.9rem;
+      color:#555;
+      line-height:1.35;
+    }
+
+    .preview{
+      flex:1;
+      min-height:260px;
+      border-radius:14px;
+      background:#fff;
+      overflow:hidden;
+    }
+
+    .status{
+      font-size:0.9rem;
+      color:#555;
+      padding:8px 0;
+    }
+
+    .footer{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      margin-top:2px;
+    }
+
+    button{
+      appearance:none;
+      border-radius:999px;
+      font-weight:900;
+      font-size:0.95rem;
+      padding:10px 16px;
+      cursor:pointer;
+      min-width:120px;
+    }
+
+    #cancelBtn{
+      border:1px solid #999;
+      background:#fff;
+      color:#000;
+    }
+
+    #approveBtn{
+      border:none;
+      background:#2e7d32;
+      color:#fff;
+      min-width:140px;
+      box-shadow:0 6px 16px rgba(46,125,50,0.25);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <h2>Please review data extracted from your connected calendar</h2>
+      <p>Busy blocks will be imported into this queue’s internal calendar. Please verify accuracy before approving.</p>
+    </header>
+
+    <div class="status" id="statusLine">Loading calendar availability…</div>
+    <div class="preview" id="preview"></div>
+
+    <div class="footer">
+      <button id="cancelBtn" type="button">Cancel</button>
+      <button id="approveBtn" type="button">Approve</button>
+    </div>
+  </div>
+
+  <script>
+    /* -------------------------------------------------------------------------- */
+    /* CONFIG (copied from your current calendar-sync.js renderer section)         */
+    /* -------------------------------------------------------------------------- */
+
+    const DAYS_RANGE = 91;       // today..D+90
+    const START_HOUR = 0;
+    const END_HOUR = 24;
+
+    const ACTIVE_START = 8;
+    const ACTIVE_END = 18;
+
+    const ROW_H = 38;
+    const COL_W = 104;
+    const LEFT_W = 88;
+
+    const CIRCLE_SIZE = 70;
+
+    const SCROLLBAR_WIDTH = 'thin';
+    const SCROLLBAR_OPACITY = 0.35;
+
+    const LUNCH_START_HOUR = 12;
+    const LUNCH_END_HOUR = 13;
+
+    /* -------------------------------------------------------------------------- */
+    /* HELPERS                                                                    */
+    /* -------------------------------------------------------------------------- */
+
+    const pad2 = (n) => String(n).padStart(2, '0');
+
+    function fmtHM(d) {
+      return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+    }
+
+    function weekday3(d) {
+      return d.toLocaleDateString(undefined, { weekday: 'short' });
+    }
+
+    function monthLabel(d) {
+      const m = d.toLocaleDateString(undefined, { month: 'short' });
+      return `${m}. ${d.getFullYear()}`;
+    }
+
+    function isoLocalDate(d) {
+      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+    }
+
+    function isWeekend(d) {
+      const day = d.getDay();
+      return day === 0 || day === 6;
+    }
+
+    function isMonday(d) { return d.getDay() === 1; }
+    function isFirstOfMonth(d) { return d.getDate() === 1; }
+    function isFirstOfYear(d) { return d.getMonth() === 0 && d.getDate() === 1; }
+
+    /* -------------------------------------------------------------------------- */
+    /* Availability fetch (same backend as before)                                */
+    /* -------------------------------------------------------------------------- */
+
+    async function fetchAvailability(provider) {
+      try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const chunks = [];
+        for (let i = 0; i < Math.ceil(DAYS_RANGE / 7); i++) {
+          const d = new Date(today);
+          d.setDate(d.getDate() + i * 7);
+
+          const params = new URLSearchParams({
+            provider,
+            view: 'week',
+            date: isoLocalDate(d),
+          });
+
+          chunks.push(`/api/host/calendar/availability?${params.toString()}`);
+        }
+
+        const allBusy = [];
+        let timezone = null;
+
+        for (const url of chunks) {
+          const res = await fetch(url, {
+            method: 'GET',
+            credentials: 'include',
+            headers: { Accept: 'application/json' },
+          });
+
+          if (!res.ok) continue;
+
+          const json = await res.json();
+          if (!json || json.ok !== true) continue;
+
+          timezone = timezone || json.timezone || null;
+
+          const busySlots = Array.isArray(json.busySlots) ? json.busySlots : [];
+          busySlots.forEach((b) => {
+            if (b && b.start && b.end) allBusy.push({ start: b.start, end: b.end });
+          });
+        }
+
+        return { ok: true, timezone, busySlots: allBusy };
+      } catch (e) {
+        console.error('[CalendarPopupFrame] availability fetch error:', e);
+        return null;
+      }
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* Busy blocks processing (same as before)                                    */
+    /* -------------------------------------------------------------------------- */
+
+    function buildMergedBusyByDay(busySlots) {
+      const byDay = new Map();
+
+      const pushSeg = (dateKey, seg) => {
+        if (!byDay.has(dateKey)) byDay.set(dateKey, []);
+        byDay.get(dateKey).push(seg);
+      };
+
+      (busySlots || []).forEach((slot) => {
+        const s = new Date(slot.start);
+        const e = new Date(slot.end);
+        if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return;
+        if (e <= s) return;
+
+        let curStart = new Date(s);
+        while (curStart < e) {
+          const dayEnd = new Date(curStart);
+          dayEnd.setHours(24, 0, 0, 0);
+
+          const curEnd = e < dayEnd ? new Date(e) : dayEnd;
+          const key = isoLocalDate(curStart);
+
+          pushSeg(key, { start: new Date(curStart), end: new Date(curEnd) });
+          curStart = new Date(curEnd);
+        }
+      });
+
+      for (const [day, segs] of byDay.entries()) {
+        segs.sort((a, b) => a.start - b.start);
+
+        const merged = [];
+        for (const seg of segs) {
+          const last = merged[merged.length - 1];
+          if (!last) { merged.push(seg); continue; }
+
+          if (seg.start <= last.end) {
+            if (seg.end > last.end) last.end = seg.end;
+          } else {
+            merged.push(seg);
+          }
+        }
+        byDay.set(day, merged);
+      }
+
+      return byDay;
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* Grid renderer (same visuals & busy overlay)                                */
+    /* -------------------------------------------------------------------------- */
+
+    function renderD90Grid(container, availability) {
+      container.innerHTML = '';
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const days = Array.from({ length: DAYS_RANGE }, (_, i) => {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        return d;
+      });
+
+      const busyByDay = availability?.busySlots
+        ? buildMergedBusyByDay(availability.busySlots)
+        : new Map();
+
+      const scroller = document.createElement('div');
+      scroller.style.position = 'relative';
+      scroller.style.overflow = 'auto';
+      scroller.style.maxHeight = '62vh';
+      scroller.style.border = '1px solid #e0e0e0';
+      scroller.style.borderRadius = '14px';
+      scroller.style.background = '#fff';
+
+      scroller.style.scrollbarWidth = SCROLLBAR_WIDTH;
+      scroller.style.scrollbarColor = `rgba(0,0,0,${SCROLLBAR_OPACITY}) rgba(0,0,0,0.06)`;
+
+      scroller.id = 'calendarGridScroller';
+
+      const styleTag = document.createElement('style');
+      styleTag.textContent = `
+        #calendarGridScroller::-webkit-scrollbar { height: 8px; width: 8px; }
+        #calendarGridScroller::-webkit-scrollbar-track { background: rgba(0,0,0,0.06); border-radius: 999px; }
+        #calendarGridScroller::-webkit-scrollbar-thumb { background: rgba(0,0,0,${SCROLLBAR_OPACITY}); border-radius: 999px; }
+      `;
+      document.head.appendChild(styleTag);
+
+      const table = document.createElement('table');
+      table.style.borderCollapse = 'separate';
+      table.style.borderSpacing = '0';
+      table.style.tableLayout = 'fixed';
+      table.style.width = `${LEFT_W + days.length * COL_W}px`;
+
+      const colgroup = document.createElement('colgroup');
+      const colLeft = document.createElement('col');
+      colLeft.style.width = `${LEFT_W}px`;
+      colgroup.appendChild(colLeft);
+
+      days.forEach(() => {
+        const col = document.createElement('col');
+        col.style.width = `${COL_W}px`;
+        colgroup.appendChild(col);
+      });
+      table.appendChild(colgroup);
+
+      const thead = document.createElement('thead');
+
+      const trMonth = document.createElement('tr');
+      const thMonthCorner = document.createElement('th');
+      thMonthCorner.style.position = 'sticky';
+      thMonthCorner.style.left = '0';
+      thMonthCorner.style.top = '0';
+      thMonthCorner.style.zIndex = '20';
+      thMonthCorner.style.background = '#f7f7f7';
+      thMonthCorner.style.borderBottom = '1px solid #ddd';
+      thMonthCorner.style.width = `${LEFT_W}px`;
+      thMonthCorner.textContent = '';
+      trMonth.appendChild(thMonthCorner);
+
+      days.forEach((d) => {
+        const th = document.createElement('th');
+        th.style.position = 'sticky';
+        th.style.top = '0';
+        th.style.zIndex = '15';
+        th.style.background = '#f7f7f7';
+        th.style.borderBottom = '1px solid #ddd';
+        th.style.padding = '6px 6px';
+        th.style.color = '#000';
+        th.style.fontWeight = '900';
+        th.style.fontSize = '0.85rem';
+        th.style.textAlign = 'left';
+
+        if (isFirstOfYear(d)) th.style.borderLeft = '4px double #333';
+        else if (isFirstOfMonth(d)) th.style.borderLeft = '2px solid #666';
+        else if (isMonday(d)) th.style.borderLeft = '1px solid rgba(0,0,0,0.18)';
+        else th.style.borderLeft = '1px solid rgba(0,0,0,0.06)';
+
+        th.textContent = isFirstOfMonth(d) ? monthLabel(d) : '';
+        trMonth.appendChild(th);
+      });
+
+      thead.appendChild(trMonth);
+
+      const trDay = document.createElement('tr');
+
+      const thDayCorner = document.createElement('th');
+      thDayCorner.style.position = 'sticky';
+      thDayCorner.style.left = '0';
+      thDayCorner.style.top = '38px';
+      thDayCorner.style.zIndex = '20';
+      thDayCorner.style.background = '#fafafa';
+      thDayCorner.style.borderBottom = '1px solid #ddd';
+      thDayCorner.textContent = '';
+      trDay.appendChild(thDayCorner);
+
+      days.forEach((d) => {
+        const th = document.createElement('th');
+        th.style.position = 'sticky';
+        th.style.top = '38px';
+        th.style.zIndex = '15';
+        th.style.background = '#fafafa';
+        th.style.borderBottom = '1px solid #ddd';
+        th.style.padding = '8px 0';
+        th.style.textAlign = 'center';
+        th.style.color = '#000';
+        th.style.fontWeight = '900';
+
+        if (isFirstOfYear(d)) th.style.borderLeft = '4px double #333';
+        else if (isFirstOfMonth(d)) th.style.borderLeft = '2px solid #666';
+        else if (isMonday(d)) th.style.borderLeft = '1px solid rgba(0,0,0,0.18)';
+        else th.style.borderLeft = '1px solid rgba(0,0,0,0.06)';
+
+        const circle = document.createElement('div');
+        circle.style.width = `${CIRCLE_SIZE}px`;
+        circle.style.height = `${CIRCLE_SIZE}px`;
+        circle.style.borderRadius = '999px';
+        circle.style.background = '#e0e0e0';
+        circle.style.margin = '0 auto';
+        circle.style.display = 'flex';
+        circle.style.flexDirection = 'column';
+        circle.style.alignItems = 'center';
+        circle.style.justifyContent = 'center';
+        circle.style.gap = '4px';
+        circle.style.boxShadow = 'inset 0 0 0 1px rgba(0,0,0,0.12)';
+
+        const wd = document.createElement('div');
+        wd.textContent = weekday3(d);
+        wd.style.fontSize = '0.95rem';
+        wd.style.fontWeight = '900';
+        wd.style.color = '#000';
+
+        const dn = document.createElement('div');
+        dn.textContent = String(d.getDate());
+        dn.style.fontSize = '1.2rem';
+        dn.style.fontWeight = '900';
+        dn.style.color = '#000';
+
+        circle.appendChild(wd);
+        circle.appendChild(dn);
+        th.appendChild(circle);
+
+        trDay.appendChild(th);
+      });
+
+      thead.appendChild(trDay);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+
+      for (let h = START_HOUR; h < END_HOUR; h++) {
+        const tr = document.createElement('tr');
+        tr.style.height = `${ROW_H}px`;
+
+        const tdTime = document.createElement('td');
+        tdTime.style.position = 'sticky';
+        tdTime.style.left = '0';
+        tdTime.style.zIndex = '10';
+        tdTime.style.background = '#fafafa';
+        tdTime.style.borderRight = '1px solid rgba(0,0,0,0.08)';
+        tdTime.style.color = '#000';
+        tdTime.style.width = `${LEFT_W}px`;
+
+        const tLabel = document.createElement('div');
+        tLabel.textContent = `${pad2(h)}:00`;
+        tLabel.style.position = 'relative';
+        tLabel.style.top = '-9px';
+        tLabel.style.paddingLeft = '10px';
+        tLabel.style.fontWeight = '900';
+        tLabel.style.fontSize = '0.85rem';
+        tdTime.appendChild(tLabel);
+
+        tr.appendChild(tdTime);
+
+        const isOffHoursRow = h < ACTIVE_START || h >= ACTIVE_END;
+        const isLunchRow = h >= LUNCH_START_HOUR && h < LUNCH_END_HOUR;
+
+        days.forEach((d) => {
+          const td = document.createElement('td');
+          const weekend = isWeekend(d);
+          const grey = weekend || isOffHoursRow;
+
+          if (isLunchRow) td.style.background = '#e9f7e9';
+          else if (grey) td.style.background = '#f2f2f2';
+          else td.style.background = '#fff';
+
+          td.style.borderBottom = '1px solid rgba(0,0,0,0.06)';
+          td.style.padding = '0';
+          td.style.position = 'relative';
+
+          if (isFirstOfYear(d)) td.style.borderLeft = '4px double #333';
+          else if (isFirstOfMonth(d)) td.style.borderLeft = '2px solid #666';
+          else if (isMonday(d)) td.style.borderLeft = '1px solid rgba(0,0,0,0.18)';
+          else td.style.borderLeft = '1px solid rgba(0,0,0,0.06)';
+
+          tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+      }
+
+      table.appendChild(tbody);
+
+      const overlay = document.createElement('div');
+      overlay.style.position = 'absolute';
+      overlay.style.left = '0';
+      overlay.style.top = '0';
+      overlay.style.pointerEvents = 'none';
+
+      const rel = document.createElement('div');
+      rel.style.position = 'relative';
+      rel.style.width = table.style.width;
+
+      rel.appendChild(table);
+      rel.appendChild(overlay);
+      scroller.appendChild(rel);
+      container.appendChild(scroller);
+
+      requestAnimationFrame(() => {
+        const monthRowH = trMonth.getBoundingClientRect().height || 38;
+        Array.from(trDay.children).forEach((th) => { th.style.top = `${monthRowH}px`; });
+        thDayCorner.style.top = `${monthRowH}px`;
+        thMonthCorner.style.top = '0';
+      });
+
+      const stickyMonth = document.createElement('div');
+      stickyMonth.style.position = 'sticky';
+      stickyMonth.style.left = `${LEFT_W}px`;
+      stickyMonth.style.top = '0';
+      stickyMonth.style.zIndex = '30';
+      stickyMonth.style.background = '#f7f7f7';
+      stickyMonth.style.padding = '6px 10px';
+      stickyMonth.style.fontWeight = '900';
+      stickyMonth.style.color = '#000';
+      stickyMonth.style.borderBottom = '1px solid #ddd';
+      stickyMonth.style.borderRadius = '10px';
+      stickyMonth.style.width = 'fit-content';
+      stickyMonth.style.marginLeft = `${LEFT_W}px`;
+      stickyMonth.style.pointerEvents = 'none';
+
+      scroller.insertBefore(stickyMonth, scroller.firstChild);
+
+      function updateStickyMonthLabel() {
+        const scrollLeft = scroller.scrollLeft;
+        const firstVisibleIndex = Math.max(0, Math.floor(scrollLeft / COL_W));
+        const d = days[Math.min(firstVisibleIndex, days.length - 1)];
+        stickyMonth.textContent = monthLabel(d);
+      }
+      scroller.addEventListener('scroll', updateStickyMonthLabel);
+      updateStickyMonthLabel();
+
+      const monthHNow = trMonth.getBoundingClientRect().height || 38;
+      const dayHNow = trDay.getBoundingClientRect().height || 92;
+      const headerHNow = monthHNow + dayHNow;
+
+      overlay.style.width = `${LEFT_W + days.length * COL_W}px`;
+      overlay.style.height = `${headerHNow + (END_HOUR - START_HOUR) * ROW_H}px`;
+
+      function dayIndexFromDateKey(key) {
+        const [yy, mm, dd] = key.split('-').map(Number);
+        const d = new Date(yy, (mm - 1), dd);
+        d.setHours(0, 0, 0, 0);
+        const diffDays = Math.round((d - today) / (24 * 3600 * 1000));
+        return diffDays;
+      }
+
+      for (const [dayKey, segs] of busyByDay.entries()) {
+        const idx = dayIndexFromDateKey(dayKey);
+        if (idx < 0 || idx >= days.length) continue;
+
+        segs.forEach((seg) => {
+          const start = seg.start;
+          const end = seg.end;
+
+          const sHour = start.getHours() + start.getMinutes() / 60;
+          const eHour = end.getHours() + end.getMinutes() / 60;
+
+          const x = LEFT_W + idx * COL_W;
+          const y = headerHNow + sHour * ROW_H;
+          const h = Math.max(10, (eHour - sHour) * ROW_H);
+          const w = COL_W;
+
+          const block = document.createElement('div');
+          block.style.position = 'absolute';
+          block.style.left = `${x}px`;
+          block.style.top = `${y}px`;
+          block.style.width = `${w}px`;
+          block.style.height = `${h}px`;
+          block.style.boxSizing = 'border-box';
+
+          block.style.background = 'rgba(255, 152, 0, 0.18)';
+          block.style.border = '1px solid rgba(255, 152, 0, 0.55)';
+          block.style.borderRadius = '10px';
+          block.style.overflow = 'hidden';
+
+          const label = document.createElement('div');
+          label.textContent = `${fmtHM(start)} - ${fmtHM(end)}`;
+          label.style.fontSize = '0.8rem';
+          label.style.fontWeight = '900';
+          label.style.color = '#000';
+          label.style.padding = '6px 6px';
+          label.style.whiteSpace = 'nowrap';
+          label.style.textOverflow = 'ellipsis';
+          label.style.overflow = 'hidden';
+          label.style.background = 'rgba(255,255,255,0.55)';
+          label.style.borderBottom = '1px solid rgba(255, 152, 0, 0.25)';
+
+          block.appendChild(label);
+          overlay.appendChild(block);
+        });
+      }
+
+      requestAnimationFrame(() => {
+        const focusTop = headerHNow + ACTIVE_START * ROW_H;
+        const focusBottom = headerHNow + ACTIVE_END * ROW_H;
+        const focusMid = (focusTop + focusBottom) / 2;
+        scroller.scrollTop = Math.max(0, focusMid - scroller.clientHeight / 2);
+      });
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* Messaging back to parent                                                   */
+    /* -------------------------------------------------------------------------- */
+
+    function sendDecisionToParent({ provider, enableForQueue }) {
+      window.parent.postMessage(
+        {
+          type: 'INTIME_CALENDAR_REVIEW_DECISION',
+          provider,
+          enableForQueue: !!enableForQueue
+        },
+        window.location.origin
+      );
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* Boot                                                                       */
+    /* -------------------------------------------------------------------------- */
+
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const provider = (params.get('provider') || '').toLowerCase().trim();
+
+      const statusLine = document.getElementById('statusLine');
+      const preview = document.getElementById('preview');
+
+      const cancelBtn = document.getElementById('cancelBtn');
+      const approveBtn = document.getElementById('approveBtn');
+
+      cancelBtn.addEventListener('click', () => {
+        sendDecisionToParent({ provider, enableForQueue: false });
+      });
+
+      approveBtn.addEventListener('click', () => {
+        sendDecisionToParent({ provider, enableForQueue: true });
+      });
+
+      if (!provider || (provider !== 'google' && provider !== 'microsoft' && provider !== 'other')) {
+        statusLine.textContent = 'Missing or invalid provider.';
+        preview.innerHTML = '<div style="padding:10px; color:#555; font-size:0.9rem;">No provider provided.</div>';
+        return;
+      }
+
+      if (provider === 'other') {
+        statusLine.textContent = 'Other providers are not configured yet.';
+        preview.innerHTML = '<div style="padding:10px; color:#555; font-size:0.9rem;">Other providers are not configured yet.</div>';
+        return;
+      }
+
+      statusLine.textContent = 'Loading calendar availability…';
+
+      const data = await fetchAvailability(provider);
+      if (!data || !data.ok) {
+        statusLine.textContent = 'Unable to load availability from server.';
+        preview.innerHTML =
+          '<div style="padding:10px; color:#555; font-size:0.9rem;">Please verify directly in your calendar app.</div>';
+        return;
+      }
+
+      statusLine.textContent = 'Showing extracted busy slots (orange).';
+      renderD90Grid(preview, data);
+    })();
+  </script>
+</body>
+</html>

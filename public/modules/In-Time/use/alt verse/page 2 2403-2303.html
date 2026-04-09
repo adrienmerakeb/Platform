@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Visitor — Q-less Scan</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+  <style>
+    /* Scanner layout */
+    .scan-wrap{display:flex;flex-direction:column;gap:18px;padding:12px}
+    .cam-frame{
+      position:relative;
+      margin-top: 20px;
+      margin-left: 10px;
+      margin-right: 10px;
+      height:60vh;
+      border-radius:22px;
+      overflow:hidden;
+      box-shadow:0 10px 30px rgba(0,0,0,.18);
+      background:#000;
+    }
+    .cam-frame video{
+      width:100%; height:100%; object-fit:cover; display:block;
+      filter:contrast(1.05) saturate(1.05);
+    }
+    .cam-frame::after{
+      content:""; position:absolute; inset:0; pointer-events:none;
+      box-shadow:inset 0 0 0 3px rgba(255,255,255,.08), inset 0 0 120px rgba(0,0,0,.35);
+      border-radius:22px;
+    }
+    .qr-watermark{
+      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+      background:rgba(255,255,255,.85); color:#222; padding:8px 14px;
+      border-radius:9999px; font-weight:700; letter-spacing:.4px;
+      box-shadow:0 6px 18px rgba(0,0,0,.18);
+      user-select:none; pointer-events:none;
+    }
+    .qr-watermark small{opacity:.7; font-weight:600}
+
+    /* Host details card */
+    .host-card{background:#fff;border:1px solid #eee;border-radius:14px;padding:12px}
+    .host-card .row{display:flex;gap:10px;align-items:center}
+    .host-card .row .ico{font-size:18px}
+    .host-card .muted{font-size:13px}
+    .host-card .ok{color:#2e7d32}
+    .host-card .err{color:#b71c1c}
+
+    .fab.br[aria-disabled="true"]{opacity:.45; pointer-events:none}
+  </style>
+</head>
+<body>
+
+<header class="site">
+  <div class="header-content">
+    <img src="/icons/qless-logo2.png"
+         alt="Q-less Logo"
+         class="logo">
+    <div class="title">Scan</div>
+  </div>
+</header>
+
+<main class="container map-full" style="padding:0">
+  <div class="map-wrap" style="position:relative; height:auto;">
+    <div class="scan-wrap">
+      <!-- Camera preview -->
+      <div class="cam-frame">
+        <video id="preview" playsinline autoplay muted></video>
+        <div class="qr-watermark">Q-less <small>scanner</small></div>
+        <canvas id="qrCanvas" width="640" height="480" style="display:none"></canvas>
+      </div>
+
+      <!-- Host details -->
+      <div id="hostInfo" class="host-card">
+        <div class="row">
+          <div class="ico">🎯</div>
+          <div>
+            <strong>Ready to scan</strong>
+            <div class="muted">Point your camera at the venue’s QR code.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="site"></footer>
+
+<!-- Fallback QR decoder if BarcodeDetector not supported -->
+<script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
+
+<!-- Drawer + FABs -->
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+
+<script type="module">
+  const video   = document.getElementById('preview');
+  const canvas  = document.getElementById('qrCanvas');
+  const ctx     = canvas.getContext('2d');
+  const hostInfo= document.getElementById('hostInfo');
+
+  let stream       = null;
+  let scanning     = false;
+  let recognized   = null;
+  let rafId        = null;
+  let redirecting  = false;
+
+  const detector = ('BarcodeDetector' in window)
+    ? new window.BarcodeDetector({ formats: ['qr_code'] })
+    : null;
+
+  async function startCamera(){
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false
+    });
+    video.srcObject = stream;
+    await video.play().catch(()=>{});
+  }
+  function stopCamera(){
+    try { stream?.getTracks()?.forEach(t => t.stop()); } catch {}
+    stream = null;
+  }
+
+  function getAutoRedirectPref(){
+    try {
+      const s = JSON.parse(localStorage.getItem('app_settings_v1') || '{}');
+      return !!(s.general && s.general.autoRedirectScan);
+    } catch { return true; } // default ON
+  }
+
+  function updateHostInfo(state, data) {
+    if (state === 'ready') {
+      hostInfo.innerHTML = `
+        <div class="row"><div class="ico">🎯</div>
+        <div><strong>Ready to scan</strong>
+        <div class="muted">Point your camera at the venue’s QR code.</div></div></div>`;
+    } else if (state === 'found') {
+      const v = data || {};
+      hostInfo.innerHTML = `
+        <div class="row"><div class="ico">🏛️</div>
+          <div><strong>${v.venueName || 'Virtual Queue'}</strong>
+            <div class="muted">${v.venueAddress || 'Location will show on next screen.'}</div>
+          </div>
+        </div>
+      `;
+    } else if (state === 'error') {
+      hostInfo.innerHTML = `
+        <div class="row"><div class="ico err">⚠️</div>
+        <div><strong>Error</strong><div class="muted">${data || 'Camera not available.'}</div></div></div>`;
+    }
+  }
+
+  // ---- NEW: parse QR payload compatible with real backend ----
+  async function parseQrPayload(rawText){
+    const raw = String(rawText || '').trim();
+
+    // 1) JSON payload (recommended): {"kind":"intime-queue","queue_id":4,"name":"...","location":"...","gps_lat":...,"gps_lng":...}
+    try {
+      const j = JSON.parse(raw);
+      const queueId = j.queue_id || j.queueId;
+      if (queueId) {
+        const gps =
+          j.gps ||
+          (j.gps_lat != null && j.gps_lng != null
+            ? `${j.gps_lat},${j.gps_lng}`
+            : undefined);
+
+        return {
+          kind: 'queue',
+          raw,
+          queueId: String(queueId),
+          venueName: j.name || j.queue_name || 'Virtual Queue',
+          venueAddress: j.location || j.address || '',
+          gps: gps
+        };
+      }
+    } catch { /* not JSON */ }
+
+    // 2) URL form: https://.../something?queueId=4&name=...&addr=...
+    if (/^https?:\/\//i.test(raw)) {
+      try {
+        const u = new URL(raw);
+        const qid = u.searchParams.get('queueId') || u.searchParams.get('queue_id');
+        if (qid) {
+          return {
+            kind: 'queue',
+            raw,
+            queueId: String(qid),
+            venueName: u.searchParams.get('name') || 'Virtual Queue',
+            venueAddress: u.searchParams.get('addr') || '',
+            gps: u.searchParams.get('gps') || ''
+          };
+        }
+      } catch {/* ignore */}
+    }
+
+    // 3) Just a numeric id → treat as queueId
+    if (/^\d+$/.test(raw)) {
+      return {
+        kind: 'queue',
+        raw,
+        queueId: raw,
+        venueName: 'Virtual Queue',
+        venueAddress: ''
+      };
+    }
+
+    return { kind: 'unknown', raw };
+  }
+
+  function buildBookingUrl(parsed){
+    // REAL booking page: adjust path if your file is named differently
+    const url = new URL('/modules/In-Time/use/page 3.html', location.origin);
+    url.searchParams.set('queueId', parsed.queueId);
+
+    if (parsed.venueName)   url.searchParams.set('name', parsed.venueName);
+    if (parsed.venueAddress)url.searchParams.set('addr', parsed.venueAddress);
+    if (parsed.gps)         url.searchParams.set('gps', parsed.gps);
+
+    return url;
+  }
+
+  async function onRecognized(rawText){
+    scanning = false;
+    const parsed = await parseQrPayload(rawText);
+    recognized = parsed;
+
+    if (parsed.kind === 'queue') {
+      updateHostInfo('found', {
+        venueName: parsed.venueName,
+        venueAddress: parsed.venueAddress
+      });
+
+      if (getAutoRedirectPref()) {
+        if (redirecting) return;
+        redirecting = true;
+        stopCamera();
+        const url = buildBookingUrl(parsed);
+        location.href = url.toString();
+        return;
+      }
+
+      setButtonsState({ hasData: true });
+    } else {
+      updateHostInfo('error', 'Unrecognized QR format. Make sure this is a valid In-Time / Q-less QR code.');
+      setButtonsState({ hasData: false });
+      scanning = true;
+      rafId = requestAnimationFrame(scanLoop);
+    }
+  }
+
+  function resumeScanning(){
+    recognized = null;
+    scanning = true;
+    updateHostInfo('ready');
+    setButtonsState({ hasData: false });
+    if (!rafId) rafId = requestAnimationFrame(scanLoop);
+  }
+
+  function proceed(){
+    if (!recognized || recognized.kind !== 'queue') return;
+    stopCamera();
+    const url = buildBookingUrl(recognized);
+    location.href = url.toString();
+  }
+
+  async function scanLoop(){
+    if (!scanning || !video.videoWidth) {
+      rafId = requestAnimationFrame(scanLoop);
+      return;
+    }
+
+    try {
+      if (detector) {
+        const barcodes = await detector.detect(video);
+        if (barcodes && barcodes.length) {
+          await onRecognized(barcodes[0].rawValue || barcodes[0].rawData || '');
+          return;
+        }
+      } else {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = window.jsQR && jsQR(img.data, img.width, img.height);
+        if (code && code.data) {
+          await onRecognized(code.data);
+          return;
+        }
+      }
+    } catch {}
+    rafId = requestAnimationFrame(scanLoop);
+  }
+
+  function setButtonsState({ hasData }){
+    const left = document.querySelector('.fab.bl');
+    const right = document.querySelector('.fab.br');
+
+    if (!left || !right) return;
+
+    if (hasData) {
+      left.onclick = (e)=>{ e.preventDefault(); resumeScanning(); };
+      left.title = 'Ignore & rescan';
+
+      right.removeAttribute('aria-disabled');
+      right.onclick = (e)=>{ e.preventDefault(); proceed(); };
+      right.title = 'Proceed';
+    } else {
+      left.onclick = (e)=>{ e.preventDefault(); location.href='/pages/visitor/booking.html'; };
+      left.title = 'Back to bookings';
+
+      right.setAttribute('aria-disabled','true');
+      right.onclick = (e)=>{ e.preventDefault(); };
+      right.title = 'Proceed (inactive)';
+    }
+  }
+
+  Drawer.mount({ mode: 'visitor' });
+  FAB.mount({
+    home:   { onClick: () => Drawer.open(), title: "Home" },
+    config: { href: '/pages/visitor/settings.html#autoRedirectScan-section', title: 'Configuration' },
+    br:     { label: "→", title: "Proceed" }
+  });
+
+  (async () => {
+    try {
+      await startCamera();
+      scanning = true;
+      updateHostInfo('ready');
+      setButtonsState({ hasData: false });
+      rafId = requestAnimationFrame(scanLoop);
+    } catch (err) {
+      updateHostInfo('error', err.message || err);
+    }
+  })();
+
+  window.addEventListener('beforeunload', () => {
+    if (rafId) cancelAnimationFrame(rafId);
+    stopCamera();
+  });
+</script>
+</html>

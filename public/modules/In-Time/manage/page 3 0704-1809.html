@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Manage Entries — In-Time</title>
+<link rel="stylesheet" href="/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{--v:#7c3aed;--v-s:#ede9fc;--v-d:#6d28d9;--green:#16a34a;--green-s:#f0fdf4;--amber:#d97706;--amber-s:#fffbeb;--red:#dc2626;--red-s:#fef2f2;--blue:#2563eb;--blue-s:#eff6ff;--txt:#1a1825;--muted:#6b6880;--hint:#9b98aa;--surf:#fff;--bg:#f4f3f8;--bord:#e2e0ea;--gray:#f0eff5;--gray-m:#d4d2de;--r:14px;--ri:9px;--sh:0 2px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);--font:'DM Sans',sans-serif}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:var(--font);background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55;overflow-x:hidden}
+
+/* ── Shell: simple flex column, handles poke outside via negative left/right ── */
+.shell{max-width:720px;margin:0 auto;padding:84px 16px 120px;display:flex;flex-direction:column;gap:0px}
+
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(26,24,37,.92);color:#fff;padding:8px 20px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:400;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Context bar ─────────────────────────────────────── */
+.ctx-bar{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ctx-title{font-size:16px;font-weight:800;color:var(--txt);flex-shrink:0}
+.ctx-sep{width:1px;height:20px;background:var(--bord);flex-shrink:0}
+.queue-sel{flex:1;min-width:140px;padding:7px 10px;border:1.5px solid var(--bord);border-radius:var(--ri);font-family:var(--font);font-size:13.5px;color:var(--txt);background:var(--surf);outline:none;cursor:pointer}
+.queue-sel:focus{border-color:var(--v)}
+.arch-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:999px;flex-shrink:0}
+.arch-A{background:#dbeafe;color:#1e40af}.arch-B{background:#fce7f3;color:#9d174d}.arch-C{background:#d1fae5;color:#065f46}.arch-D{background:var(--v-s);color:var(--v)}
+.state-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:4px 11px;border-radius:999px;flex-shrink:0;cursor:default}
+.state-normal{background:var(--green-s);color:var(--green);border:1px solid #86efac}.state-paused{background:var(--amber-s);color:var(--amber);border:1px solid #fcd34d}.state-hardstop{background:var(--red-s);color:var(--red);border:1px solid #fca5a5}.state-resuming{background:var(--blue-s);color:var(--blue);border:1px solid #93c5fd}
+.ctx-settings{margin-left:auto;padding:7px 12px;border:1.5px solid var(--bord);border-radius:var(--ri);background:var(--surf);font-family:var(--font);font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:5px;flex-shrink:0}
+.ctx-settings:hover{background:var(--gray);border-color:var(--gray-m)}
+#archBadge,#stateBadge,.ctx-settings{display:none!important}
+
+/* ══════════════════════════════════════════════════════
+   COLLAPSIBLE PANELS
+   Two stacked full-width cards between ctx-bar and scan-panel.
+   Each panel has a 30px head row containing a tiny handle
+   button absolutely positioned at the shell's left or right edge.
+   Panels collapse vertically via max-height transition.
+   ══════════════════════════════════════════════════════ */
+
+.panels-section{
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
+
+/* Each collapsible panel */
+.dp-item{
+  display:flex;
+  flex-direction:column;
+}
+
+/* Gap between ctrl and ops panels */
+#opsItem{margin-top:0px}
+
+/* Handle row — always 30px tall, contains the tiny button */
+.dp-head{
+  position:relative;
+  height:14px;
+  flex-shrink:0;
+}
+
+/* Tiny handle button — 26×26, sits just outside the card, at shell edge */
+.dp-btn{
+  position:absolute;
+  top:2px;
+  width:26px;
+  height:26px;
+  border:1px solid var(--bord);
+  border-radius:var(--ri);
+  background:var(--surf);
+  box-shadow:var(--sh);
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:13px;
+  line-height:1;
+  color:var(--muted);
+  transition:background .15s,border-color .15s,color .15s;
+  user-select:none;
+  z-index:5;
+}
+.dp-btn:hover{background:var(--v-s);border-color:var(--v);color:var(--v)}
+.dp-btn:active{transform:scale(.92)}
+
+/* Left handle: shell padding = 16px → left:-16px puts it at the shell's outer left edge */
+.dp-btn-left{left:-16px}
+/* Right handle: symmetrically at the right outer edge */
+.dp-btn-right{right:-16px}
+
+/* Arrow indicator: rotates when collapsed */
+.dp-arr{font-size:9px;display:inline-block;transition:transform .28s ease;color:var(--hint)}
+.dp-item.collapsed .dp-arr{transform:rotate(180deg)}
+
+/* Panel body — collapses vertically */
+.dp-body{
+  overflow:hidden;
+  max-height:1400px;
+  opacity:1;
+  transition:
+    max-height .35s cubic-bezier(.4,0,.2,1),
+    opacity .22s ease;
+}
+.dp-item.collapsed .dp-body{
+  max-height:0;
+  opacity:0;
+}
+
+/* ── Controls panel ──────────────────────────────────── */
+.ctrl-panel{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);padding:14px 16px}
+.ctrl-hd{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--hint);margin-bottom:10px}
+.ctrl-row{display:flex;gap:8px;flex-wrap:wrap}
+.ctrl-btn{flex:1;min-width:120px;padding:11px;border:none;border-radius:var(--ri);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:background .15s,transform .1s;display:flex;align-items:center;justify-content:center;gap:7px}
+.ctrl-btn:active{transform:scale(.97)}
+.ctrl-pause{background:var(--amber-s);color:var(--amber);border:1.5px solid #fcd34d}.ctrl-pause:hover{background:#fef3c7}
+.ctrl-pause.active{background:var(--amber);color:#fff;border-color:var(--amber)}
+.ctrl-stop{background:var(--red-s);color:var(--red);border:1.5px solid #fca5a5}.ctrl-stop:hover{background:#fee2e2}
+.ctrl-resume{background:var(--green-s);color:var(--green);border:1.5px solid #86efac}.ctrl-resume:hover{background:#dcfce7}
+
+/* ── Operations/entries panel ────────────────────────── */
+.ops-panel{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
+.ops-tabs{display:flex;border-bottom:1px solid var(--bord);background:var(--gray)}
+.ops-tab{flex:1;padding:10px 6px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;text-align:center;border:none;background:none;font-family:var(--font);transition:all .15s;border-bottom:2px solid transparent}
+.ops-tab.active{color:var(--v);background:var(--surf);border-bottom-color:var(--v)}
+.ops-tab:hover:not(.active){color:var(--txt);background:var(--bord)}
+.ops-layer{padding:0}
+.layer-hd{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:var(--gray);border-bottom:1px solid var(--bord);cursor:pointer;user-select:none}
+.layer-hd-left{display:flex;align-items:center;gap:10px}
+.layer-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.dot-now{background:var(--red);box-shadow:0 0 0 3px rgba(220,38,38,.2);animation:pulse-dot 1.5s infinite}
+.dot-next{background:var(--amber)}.dot-later{background:var(--hint)}
+@keyframes pulse-dot{0%,100%{box-shadow:0 0 0 3px rgba(220,38,38,.2)}50%{box-shadow:0 0 0 7px rgba(220,38,38,.05)}}
+.layer-title{font-size:13px;font-weight:700;color:var(--txt)}
+.layer-count{font-size:11px;font-weight:700;background:var(--v-s);color:var(--v);border-radius:999px;padding:1px 8px}
+.layer-count.red{background:var(--red-s);color:var(--red)}.layer-count.amber{background:var(--amber-s);color:var(--amber)}
+.layer-chevron{font-size:11px;color:var(--hint);transition:transform .2s}
+.layer-chevron.open{transform:rotate(180deg)}
+.layer-body{display:none}.layer-body.open{display:block}
+.layer-empty{padding:16px;text-align:center;font-size:13px;color:var(--hint);font-style:italic}
+.entry-card{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-bottom:1px solid var(--bord);transition:background .12s}
+.entry-card:last-child{border-bottom:none}.entry-card:hover{background:var(--gray)}
+.entry-card.selectable{cursor:pointer}
+.entry-card.selected{background:var(--v-s);border-left:3px solid var(--v)}.entry-card.selected:hover{background:var(--v-s)}
+.entry-left{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;width:44px}
+.entry-pos{font-size:18px;font-weight:800;color:var(--v);line-height:1}.entry-pos.live{color:var(--amber)}
+.entry-time{font-size:10px;font-weight:600;color:var(--hint)}
+.entry-body{flex:1;min-width:0}
+.entry-top{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:3px}
+.entry-name{font-size:14px;font-weight:700;color:var(--txt)}
+.entry-ppl{font-size:12px;color:var(--muted);white-space:nowrap}
+.entry-type-tag{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:999px;flex-shrink:0}
+.tag-advance{background:#dbeafe;color:#1e40af}.tag-live{background:var(--amber-s);color:var(--amber)}
+.entry-status{margin-top:3px}
+.entry-status-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:.03em}
+.es-auto-call{background:var(--v-s);color:var(--v)}
+.es-calling{background:var(--green-s);color:var(--green);animation:callpulse 1.2s infinite}
+.es-arrived{background:var(--green-s);color:var(--green)}.es-redeemed{background:var(--gray);color:var(--hint)}
+.es-eligible{background:var(--amber-s);color:var(--amber)}.es-waiting{background:var(--gray);color:var(--muted)}
+.es-called{background:var(--blue-s);color:var(--blue)}.es-blocked{background:var(--red-s);color:var(--red)}
+@keyframes callpulse{0%,100%{opacity:1}50%{opacity:.6}}
+.entry-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
+.entry-check{width:22px;height:22px;border-radius:6px;border:2px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .12s}
+.entry-card.selected .entry-check{background:var(--v);border-color:var(--v);color:#fff}
+.call-btn{padding:5px 12px;border:none;border-radius:var(--ri);background:var(--v);color:#fff;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;transition:background .12s;white-space:nowrap}
+.call-btn:hover{background:var(--v-d)}.call-btn:disabled{opacity:.4;pointer-events:none}
+.countdown{font-size:11px;font-weight:700;color:var(--amber);white-space:nowrap}
+.wave-view{padding:16px}
+.wave-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.wave-nav-btn{padding:7px 14px;border:1.5px solid var(--bord);border-radius:var(--ri);background:var(--surf);font-family:var(--font);font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .12s}
+.wave-nav-btn:hover{background:var(--gray);border-color:var(--gray-m)}.wave-nav-btn:disabled{opacity:.35;pointer-events:none}
+.wave-title{font-size:16px;font-weight:800;color:var(--txt);text-align:center}
+.wave-subtitle{font-size:12px;color:var(--hint);text-align:center}
+.wave-card{background:var(--v-s);border:2px solid rgba(124,58,237,.2);border-radius:12px;padding:16px;text-align:center;margin-bottom:12px}
+.wave-card-time{font-size:28px;font-weight:800;color:var(--v);line-height:1.1}
+.wave-card-cap{font-size:13px;color:var(--muted);margin-top:5px}.wave-card-status{margin-top:8px}
+.wave-entries-list{display:flex;flex-direction:column;gap:0}
+.d-engine{padding:16px;display:flex;flex-direction:column;gap:2px}
+.d-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px}
+.d-stat{background:var(--gray);border-radius:var(--ri);padding:10px;text-align:center}
+.d-stat-val{font-size:24px;font-weight:800;color:var(--v);line-height:1}
+.d-stat-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--hint);margin-top:2px}
+.d-controls{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.d-ctrl{display:flex;flex-direction:column;gap:4px;flex:1;min-width:100px}
+.d-ctrl label{font-size:11.5px;font-weight:600;color:var(--muted)}
+.d-ctrl input{padding:8px 10px;border:1.5px solid var(--bord);border-radius:var(--ri);font-family:var(--font);font-size:14px;color:var(--txt);background:var(--surf);outline:none;width:100%}
+.d-ctrl input:focus{border-color:var(--v)}
+.d-inject-row{display:flex;gap:8px;flex-wrap:wrap}
+.d-inject-btn{flex:1;padding:10px;border:none;border-radius:var(--ri);background:var(--v);color:#fff;font-family:var(--font);font-size:13.5px;font-weight:700;cursor:pointer;transition:background .12s;min-width:120px}
+.d-inject-btn:hover{background:var(--v-d)}.d-inject-btn.sec{background:var(--gray);color:var(--txt);border:1.5px solid var(--bord)}.d-inject-btn.sec:hover{background:var(--bord)}
+.sel-toolbar{display:none;align-items:center;gap:10px;padding:10px 16px;background:var(--v-s);border-bottom:1px solid rgba(124,58,237,.15);flex-wrap:wrap}
+.sel-toolbar.show{display:flex}
+.sel-count{font-size:13px;font-weight:700;color:var(--v)}
+.sel-call-btn{padding:8px 18px;border:none;border-radius:var(--ri);background:var(--v);color:#fff;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:background .12s}
+.sel-call-btn:hover{background:var(--v-d)}
+.sel-clear{padding:8px 14px;border:1.5px solid rgba(124,58,237,.25);border-radius:var(--ri);background:transparent;font-family:var(--font);font-size:13px;font-weight:600;color:var(--v);cursor:pointer}
+
+/* ── Scan panel ──────────────────────────────────────── */
+.scan-panel{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-top:14px}
+.scan-panel-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;user-select:none;border-bottom:1px solid var(--bord)}
+.scan-panel-hd.collapsed{border-bottom:none}
+.scan-panel-title{font-size:14px;font-weight:700;color:var(--txt);display:flex;align-items:center;gap:8px}
+.scan-panel-toggle{font-size:11px;color:var(--hint);transition:transform .2s}
+.scan-panel-toggle.open{transform:rotate(180deg)}
+.scan-body{display:none}.scan-body.open{display:block}
+.scan-frame-wrap{position:relative;width:100%;height:42vh;max-height:360px;background:#111;overflow:hidden}
+.scan-frame-wrap video{width:100%;height:100%;object-fit:cover;display:block}
+#finder-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.finder{width:58%;max-width:220px;aspect-ratio:1;border:2.5px solid rgba(255,255,255,.7);border-radius:16px;position:relative;box-shadow:0 0 0 2000px rgba(0,0,0,.38)}
+.scan-line{position:absolute;left:6%;right:6%;height:2.5px;background:linear-gradient(90deg,transparent,#7c3aed,transparent);animation:scanmove 2.4s ease-in-out infinite;border-radius:2px}
+@keyframes scanmove{0%,100%{top:6%}50%{top:90%}}
+#cam-status{position:absolute;top:12px;left:50%;transform:translateX(-50%);padding:5px 14px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(26,24,37,.7);color:#fff;border:1px solid rgba(255,255,255,.15);pointer-events:none}
+#cam-status.ok{background:rgba(22,163,74,.85);border-color:transparent}
+#cam-status.err{background:rgba(220,38,38,.85);border-color:transparent}
+#no-camera{display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;height:42vh;max-height:360px;background:var(--gray);color:var(--muted);font-size:13px;text-align:center;padding:24px}
+.nc-icon{font-size:36px}
+.code-row{display:flex;gap:8px;padding:12px 16px;border-bottom:1px solid var(--bord)}
+.code-input{flex:1;padding:10px 12px;border:1.5px solid var(--bord);border-radius:var(--ri);font-family:var(--font);font-size:14px;color:var(--txt);background:var(--surf);outline:none;transition:border-color .18s;letter-spacing:.8em;text-transform:uppercase;text-align:center}
+.code-input:focus{border-color:var(--v)}
+.code-search{padding:10px 18px;border:none;border-radius:var(--ri);background:var(--v);color:#fff;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .15s}
+.code-search:hover{background:var(--v-d)}
+.booking-result{padding:14px 16px}
+.bk-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.bk-ico{font-size:20px;flex-shrink:0;line-height:1.3}
+.bk-label{font-size:11.5px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.04em}
+.bk-val{font-size:14px;font-weight:700;color:var(--txt)}.bk-muted{font-size:13px;color:var(--muted)}
+.scan-actions{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--bord);flex-wrap:wrap}
+.scan-btn{flex:1;min-width:100px;padding:11px;border-radius:var(--ri);border:none;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.scan-btn:disabled{opacity:.35;pointer-events:none}
+.sbtn-reject{background:var(--gray);color:var(--txt);border:1.5px solid var(--bord)}.sbtn-reject:hover{background:var(--bord)}
+.sbtn-one{background:var(--blue-s);color:var(--blue);border:1.5px solid #93c5fd}.sbtn-one:hover{background:#dbeafe}
+.sbtn-all{background:var(--v);color:#fff;box-shadow:0 3px 10px rgba(124,58,237,.2)}.sbtn-all:hover{background:var(--v-d)}
+
+/* ── Settings overlay ────────────────────────────────── */
+.settings-panel{position:fixed;inset:0;z-index:300;display:none;align-items:flex-start;justify-content:flex-end;padding:84px 16px 0;pointer-events:none}
+.settings-panel.open{display:flex}
+.settings-box{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:0 20px 60px rgba(0,0,0,.18);padding:20px;width:320px;max-height:80vh;overflow-y:auto;pointer-events:all}
+.settings-panel-title{font-size:15px;font-weight:800;color:var(--txt);margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.settings-close{cursor:pointer;font-size:18px;color:var(--hint);line-height:1;border:none;background:none;font-family:var(--font)}
+.settings-section{margin-bottom:16px}
+.settings-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--hint);margin-bottom:8px}
+.settings-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.settings-lbl{font-size:13.5px;font-weight:500;color:var(--txt)}
+.settings-inp{padding:7px 10px;border:1.5px solid var(--bord);border-radius:var(--ri);font-family:var(--font);font-size:13.5px;color:var(--txt);background:var(--surf);outline:none;width:90px;text-align:right}
+.settings-inp:focus{border-color:var(--v)}
+.settings-sw{position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0}
+.settings-sw input{opacity:0;width:0;height:0}
+.sw-tr{position:absolute;inset:0;background:var(--gray-m);border-radius:11px;cursor:pointer;transition:.22s}
+.sw-tr::before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.22s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.settings-sw input:checked+.sw-tr{background:var(--v)}
+.settings-sw input:checked+.sw-tr::before{transform:translateX(18px)}
+
+/* ── Modals ──────────────────────────────────────────── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:350;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--surf);border-radius:var(--r);box-shadow:0 24px 60px rgba(0,0,0,.25);padding:26px 24px;max-width:400px;width:100%}
+.modal-title{font-size:18px;font-weight:800;color:var(--txt);margin-bottom:8px}
+.modal-desc{font-size:13.5px;color:var(--muted);line-height:1.6;margin-bottom:16px}
+.modal-textarea{width:100%;padding:10px 12px;border:1.5px solid var(--bord);border-radius:var(--ri);font-family:var(--font);font-size:13.5px;color:var(--txt);background:var(--surf);outline:none;resize:vertical;min-height:80px;margin-bottom:16px}
+.modal-textarea:focus{border-color:var(--v)}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end}
+.mbtn{padding:9px 20px;border-radius:var(--ri);font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;border:none}
+.mbtn-cancel{background:var(--gray);color:var(--txt);border:1.5px solid var(--bord)}.mbtn-cancel:hover{background:var(--bord)}
+.mbtn-stop{background:var(--red);color:#fff}.mbtn-stop:hover{background:#b91c1c}
+.mbtn-resume{background:var(--green);color:#fff}.mbtn-resume:hover{background:#15803d}
+
+/* ═══════════════════════════════════════════════════════
+   TYPE D ENGINE — call release console
+   ═══════════════════════════════════════════════════════ */
+.d2-wrap{padding:0}
+
+/* State summary row ─ people in queue / calling now / redeemed */
+.d2-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--bord)}
+.d2-stat{background:var(--surf);padding:14px 10px;text-align:center;display:flex;flex-direction:column;gap:2px}
+.d2-stat:first-child{border-radius:0}
+.d2-stat-val{font-size:30px;font-weight:900;line-height:1;letter-spacing:-.02em}
+.d2-stat-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--hint)}
+.d2-stat.s-queue  .d2-stat-val{color:var(--amber)}
+.d2-stat.s-calling .d2-stat-val{color:var(--green);animation:statpulse 2s infinite}
+.d2-stat.s-redeemed .d2-stat-val{color:var(--hint)}
+@keyframes statpulse{0%,100%{opacity:1}50%{opacity:.65}}
+
+/* Divider row */
+.d2-divider{height:1px;background:var(--bord)}
+
+/* Queue intake strip */
+.d2-intake{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px}
+.d2-intake-lbl{font-size:13px;font-weight:600;color:var(--txt);display:flex;align-items:center;gap:8px}
+.d2-intake-status{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px}
+.intake-open{background:var(--green-s);color:var(--green);border:1px solid #86efac}
+.intake-paused{background:var(--amber-s);color:var(--amber);border:1px solid #fcd34d}
+.d2-intake-btn{padding:7px 16px;border:none;border-radius:var(--ri);font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;transition:background .15s}
+.d2-intake-btn.open{background:var(--amber-s);color:var(--amber);border:1.5px solid #fcd34d}
+.d2-intake-btn.open:hover{background:#fef3c7}
+.d2-intake-btn.paused{background:var(--green-s);color:var(--green);border:1.5px solid #86efac}
+.d2-intake-btn.paused:hover{background:#dcfce7}
+
+/* Section headers (Mode labels) */
+.d2-section{border-top:1px solid var(--bord)}
+.d2-section-hd{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:var(--gray)}
+.d2-section-title{font-size:12px;font-weight:700;color:var(--txt);display:flex;align-items:center;gap:7px}
+.d2-section-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}
+.badge-always{background:var(--v-s);color:var(--v)}
+.badge-optional{background:var(--gray-m);color:var(--muted)}
+.badge-active{background:var(--green-s);color:var(--green);border:1px solid #86efac}
+.d2-section-toggle{display:flex;align-items:center;gap:8px}
+.d2-tog-lbl{font-size:12px;color:var(--muted);font-weight:600}
+
+/* Toggle switch */
+.tog-sw{position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0}
+.tog-sw input{opacity:0;width:0;height:0}
+.tog-tr{position:absolute;inset:0;background:var(--gray-m);border-radius:10px;cursor:pointer;transition:.22s}
+.tog-tr::before{content:'';position:absolute;width:14px;height:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.22s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.tog-sw input:checked+.tog-tr{background:var(--v)}
+.tog-sw input:checked+.tog-tr::before{transform:translateX(16px)}
+
+/* Collapsible section body */
+.d2-section-body{overflow:hidden;max-height:1200px;transition:max-height .32s cubic-bezier(.4,0,.2,1),opacity .22s ease;opacity:1}
+.d2-section-body.hidden{max-height:0;opacity:0}
+.d2-section-content{padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+
+/* Manual call releases */
+.d2-field-calc{flex:0 0 auto;min-width:80px}
+.d2-calc-val{padding:8px 10px;border:1.5px solid var(--bord);border-radius:var(--ri);font-family:var(--font);font-size:14px;font-weight:700;color:var(--v);background:var(--v-s);text-align:center;white-space:nowrap}
+
+/* Mode selector segmented toggle */
+.d2-mode-seg-wrap{display:flex;gap:0;padding:12px 16px 0;flex-wrap:wrap}
+.d2-seg-btn{flex:1;padding:9px 14px;border:1.5px solid var(--bord);background:var(--surf);font-family:var(--font);font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap;min-width:160px}
+.d2-seg-btn:first-child{border-radius:var(--ri) 0 0 var(--ri)}
+.d2-seg-btn:last-child{border-radius:0 var(--ri) var(--ri) 0;border-left:none}
+.d2-seg-btn.active{background:var(--v);color:#fff;border-color:var(--v)}
+.d2-seg-btn.active+.d2-seg-btn{border-left:1.5px solid var(--v)}
+
+
+.d2-release-row{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+.d2-field{display:flex;flex-direction:column;gap:4px;flex:1;min-width:90px}
+.d2-field label{font-size:11.5px;font-weight:600;color:var(--muted)}
+.d2-field input{padding:8px 10px;border:1.5px solid var(--bord);border-radius:var(--ri);font-family:var(--font);font-size:14px;color:var(--txt);background:var(--surf);outline:none;width:100%}
+.d2-field input:focus{border-color:var(--v)}
+.d2-release-btn{flex-shrink:0;padding:9px 20px;border:none;border-radius:var(--ri);background:var(--v);color:#fff;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:background .15s;white-space:nowrap}
+.d2-release-btn:hover{background:var(--v-d)}
+.d2-release-btn:disabled{opacity:.4;pointer-events:none}
+.d2-feedback{font-size:12px;color:var(--muted);font-style:italic;margin-top:-4px;min-height:16px}
+
+/* Set call releases frequency */
+.d2-sched-list{display:flex;flex-direction:column;gap:6px}
+.d2-sched-item{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--gray);border-radius:var(--ri);font-size:13px}
+.d2-sched-time{font-weight:700;color:var(--txt);min-width:50px}
+.d2-sched-count{color:var(--muted);flex:1}
+.d2-sched-del{background:none;border:none;color:var(--hint);cursor:pointer;font-size:14px;padding:2px 4px;border-radius:4px}
+.d2-sched-del:hover{color:var(--red);background:var(--red-s)}
+.d2-add-row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.d2-add-btn{padding:8px 14px;border:none;border-radius:var(--ri);background:var(--v-s);color:var(--v);border:1.5px solid rgba(124,58,237,.2);font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;transition:background .15s}
+.d2-add-btn:hover{background:var(--v);color:#fff}
+
+/* Schedule call releases */
+.d2-cap-params{display:flex;gap:8px;flex-wrap:wrap}
+.d2-scope-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+.d2-scope-opt{flex:1;min-width:160px;padding:10px 12px;border:1.5px solid var(--bord);border-radius:var(--ri);cursor:pointer;transition:all .15s;background:var(--surf);display:flex;align-items:flex-start;gap:8px}
+.d2-scope-opt.active{border-color:var(--v);background:var(--v-s)}
+.d2-scope-opt input{margin-top:2px;accent-color:var(--v)}
+.d2-scope-label{display:flex;flex-direction:column;gap:2px}
+.d2-scope-title{font-size:13px;font-weight:700;color:var(--txt)}
+.d2-scope-desc{font-size:11.5px;color:var(--muted)}
+
+/* Release chart (reused from page_1 visual) */
+.d2-chart-wrap{background:linear-gradient(180deg,#1e1b3a 0%,#16132e 100%);border-radius:10px;overflow:hidden;position:relative}
+.d2-chart-wrap canvas{width:100%;height:140px;cursor:crosshair;display:block}
+.d2-chart-tooltip{position:absolute;pointer-events:none;display:none;background:rgba(30,27,58,.92);color:#e0e7ff;font-size:11px;padding:4px 8px;border-radius:6px;white-space:nowrap;z-index:10}
+.d2-chart-day-label{font-size:12px;font-weight:700;color:var(--txt);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.d2-chart-reset{font-size:11px;color:var(--v);cursor:pointer;background:none;border:none;font-family:var(--font);font-weight:600}
+.d2-chart-reset:hover{text-decoration:underline}
+
+/* Mutual exclusion warning */
+.d2-mutex-warn{font-size:12px;color:var(--amber);background:var(--amber-s);border:1px solid #fcd34d;border-radius:var(--ri);padding:7px 12px;display:none}
+.d2-mutex-warn.show{display:block}
+</style>
+</head>
+<body class="has-top-band has-bottom-band">
+<header class="site"><div class="title">Manage Entries</div></header>
+
+<div class="shell">
+
+  <!-- ① Context / search bar -->
+  <div class="ctx-bar">
+    <span class="ctx-title">Entries</span>
+    <div class="ctx-sep"></div>
+    <select id="queueSelect" class="queue-sel"><option value="">Loading queues…</option></select>
+    <span class="arch-badge arch-D" id="archBadge" style="display:none">Type D</span>
+    <span class="state-badge state-normal" id="stateBadge">● Normal</span>
+    <button class="ctx-settings" onclick="openSettings()">⚙️ Settings</button>
+  </div>
+
+  <!-- ② Collapsible panels — stacked vertically, full width -->
+  <div class="panels-section">
+
+    <!-- Controls panel — left handle -->
+    <div class="dp-item" id="ctrlItem">
+      <div class="dp-head">
+        <button class="dp-btn dp-btn-left" onclick="toggleDock('ctrl')" title="Toggle controls">
+          ⚙<span class="dp-arr">▲</span>
+        </button>
+      </div>
+      <div class="dp-body">
+        <div class="ctrl-panel" id="ctrlPanel">
+          <div class="ctrl-hd">Queue controls</div>
+          <div class="ctrl-row" id="ctrlRow">
+            <button class="ctrl-btn ctrl-pause" id="btnPause" onclick="togglePause()">⏸ Pause</button>
+            <button class="ctrl-btn ctrl-stop"  id="btnStop"  onclick="triggerHardStop()">🛑 Hard stop</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Entries / operations panel — right handle -->
+    <div class="dp-item" id="opsItem">
+      <div class="dp-head">
+        <button class="dp-btn dp-btn-right" onclick="toggleDock('ops')" title="Toggle entries">
+          ≡<span class="dp-arr">▲</span>
+        </button>
+      </div>
+      <div class="dp-body">
+        <div class="ops-panel" id="opsPanel">
+          <div class="ops-tabs" id="opsTabs">
+            <button class="ops-tab active" data-tab="all">All entries</button>
+            <button class="ops-tab" data-tab="advance">In-Advance</button>
+            <button class="ops-tab" data-tab="live">Live Flow</button>
+          </div>
+          <div class="sel-toolbar" id="selToolbar">
+            <span class="sel-count" id="selCount">0 selected</span>
+            <button class="sel-call-btn" onclick="callSelected()">📣 Call selected</button>
+            <button class="sel-clear" onclick="clearSelection()">Clear</button>
+          </div>
+          <div id="dEngineView" style="display:none">
+          <div class="d2-wrap">
+
+            <!-- ── State summary: queue / calling / redeemed (in this order) ── -->
+            <div class="d2-stats">
+              <div class="d2-stat s-queue">
+                <div class="d2-stat-val" id="d2StatQueue">0</div>
+                <div class="d2-stat-lbl">In queue</div>
+              </div>
+              <div class="d2-stat s-calling">
+                <div class="d2-stat-val" id="d2StatCalling">0</div>
+                <div class="d2-stat-lbl">Calling now</div>
+              </div>
+              <div class="d2-stat s-redeemed">
+                <div class="d2-stat-val" id="d2StatRedeemed">0</div>
+                <div class="d2-stat-lbl">Redeemed</div>
+              </div>
+            </div>
+
+            <div class="d2-divider"></div>
+
+            <!-- ── Queue intake: Start / Pause ── -->
+            <div class="d2-intake">
+              <span class="d2-intake-lbl">
+                Queue intake
+                <span class="d2-intake-status intake-open" id="d2IntakeStatus">Open</span>
+              </span>
+              <button class="d2-intake-btn open" id="d2IntakeBtn" onclick="toggleQueueIntake()">⏸ Pause intake</button>
+            </div>
+
+            <div class="d2-divider"></div>
+
+            <!-- ══ Manual call releases (always visible) ══ -->
+            <div class="d2-section">
+              <div class="d2-section-hd">
+                <span class="d2-section-title">
+                  🖐 Manual call releases
+                  <span class="d2-section-badge badge-always">Always active</span>
+                </span>
+              </div>
+              <div class="d2-section-body">
+                <div class="d2-section-content">
+                  <div class="d2-release-row">
+                    <div class="d2-field">
+                      <label>Nbr of people to call</label>
+                      <input type="number" id="d2ManualCount" min="1" max="500" value="5" oninput="dUpdateFrequency()">
+                    </div>
+                    <div class="d2-field">
+                      <label>In the next (minutes)</label>
+                      <input type="number" id="d2ManualWindow" min="1" max="480" value="60" oninput="dUpdateFrequency()">
+                    </div>
+                    <div class="d2-field d2-field-calc">
+                      <label>Frequency</label>
+                      <div class="d2-calc-val" id="d2FrequencyDisplay">5 / hr</div>
+                    </div>
+                    <button class="d2-release-btn" id="d2ReleaseBtn" onclick="dManualRelease()">▶ Release calls</button>
+                  </div>
+                  <div class="d2-feedback" id="d2Feedback"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ══ Add options toggle ══ -->
+            <div class="d2-section">
+              <div class="d2-section-hd">
+                <span class="d2-section-title">Add options</span>
+                <div class="d2-section-toggle">
+                  <span class="d2-tog-lbl" id="d2AddOptionsLbl">Off</span>
+                  <label class="tog-sw">
+                    <input type="checkbox" id="d2AddOptionsToggle" onchange="onAddOptionsToggle(this)">
+                    <span class="tog-tr"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- ══ Options panel: mode selector + content (hidden until Add options on) ══ -->
+            <div class="d2-section-body hidden" id="d2OptionsPanel">
+
+              <!-- Segment toggle: Set call releases frequency ↔ Schedule call releases -->
+              <div class="d2-mode-seg-wrap">
+                <button class="d2-seg-btn active" id="d2SegBtnB" onclick="dSelectOptionMode('B')">Set call releases frequency</button>
+                <button class="d2-seg-btn" id="d2SegBtnC" onclick="dSelectOptionMode('C')">Schedule call releases</button>
+              </div>
+
+              <!-- "Set call releases frequency" content (mode B) -->
+              <div id="d2ModeBBody" class="d2-section-content">
+                <div class="d2-mutex-warn" id="d2ModeBWarn" style="display:none">⚠ Cannot combine with Schedule call releases.</div>
+                <div class="d2-release-row">
+                  <div class="d2-field">
+                    <label>Nbr of people to call</label>
+                    <input type="number" id="d2BCount" min="1" max="500" value="10" oninput="dUpdateBFrequency()">
+                  </div>
+                  <div class="d2-field">
+                    <label>In the next (minutes)</label>
+                    <input type="number" id="d2BWindow" min="1" max="480" value="60" oninput="dUpdateBFrequency()">
+                  </div>
+                  <div class="d2-field d2-field-calc">
+                    <label>Frequency</label>
+                    <div class="d2-calc-val" id="d2BFrequencyDisplay">10 / hr</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- "Schedule call releases" content (mode C) -->
+              <div id="d2ModeCBody" class="d2-section-content hidden">
+                <div class="d2-mutex-warn" id="d2ModeCWarn" style="display:none">⚠ Cannot combine with Set call releases frequency.</div>
+                <div class="d2-cap-params">
+                  <div class="d2-field">
+                    <label>Max per release (people)</label>
+                    <input type="number" id="d2CMaxPerRelease" min="1" max="500" value="10" oninput="dCParamsChanged()">
+                  </div>
+                  <div class="d2-field">
+                    <label>Duration per release (min)</label>
+                    <input type="number" id="d2CDuration" min="5" max="240" value="60" oninput="dCParamsChanged()">
+                  </div>
+                </div>
+                <div class="d2-scope-row">
+                  <label class="d2-scope-opt active" id="d2ScopeAllLbl">
+                    <input type="radio" name="d2scope" value="all" checked onchange="dCScopeChanged('all')">
+                    <div class="d2-scope-label">
+                      <span class="d2-scope-title">One template for all days</span>
+                      <span class="d2-scope-desc">Same release pattern every operating day.</span>
+                    </div>
+                  </label>
+                  <label class="d2-scope-opt" id="d2ScopePerDayLbl">
+                    <input type="radio" name="d2scope" value="per_day" onchange="dCScopeChanged('per_day')">
+                    <div class="d2-scope-label">
+                      <span class="d2-scope-title">One template per day</span>
+                      <span class="d2-scope-desc">Different release pattern per day of the week.</span>
+                    </div>
+                  </label>
+                </div>
+                <div id="d2ChartContainer"></div>
+              </div>
+
+            </div><!-- /d2OptionsPanel -->
+
+          </div>
+        </div>
+          <div id="cWaveView" style="display:none"><div class="wave-view"><div class="wave-nav"><button class="wave-nav-btn" id="wavePrev" onclick="prevWave()" disabled>← Prev wave</button><div><div class="wave-title" id="waveTitle">Wave —</div><div class="wave-subtitle" id="waveSubtitle"></div></div><button class="wave-nav-btn" id="waveNext" onclick="nextWave()">Next wave →</button></div><div class="wave-card"><div class="wave-card-time" id="waveCardTime">—</div><div class="wave-card-cap" id="waveCardCap"></div><div class="wave-card-status"><span class="entry-status-pill es-calling" id="waveCardStatus">Auto-calling</span></div></div><div class="wave-entries-list" id="waveEntriesList"></div></div></div>
+          <div class="ops-layer" id="layerNow"><div class="layer-hd" onclick="toggleLayer('now')"><div class="layer-hd-left"><div class="layer-dot dot-now"></div><span class="layer-title">Now — Immediate attention</span><span class="layer-count red" id="countNow">0</span></div><span class="layer-chevron open" id="chevNow">▼</span></div><div class="layer-body open" id="bodyNow"><div class="layer-empty" id="emptyNow">No entries requiring immediate attention</div></div></div>
+          <div class="ops-layer" id="layerNext" style="border-top:1px solid var(--bord)"><div class="layer-hd" onclick="toggleLayer('next')"><div class="layer-hd-left"><div class="layer-dot dot-next"></div><span class="layer-title">Next — Coming up</span><span class="layer-count amber" id="countNext">0</span></div><span class="layer-chevron open" id="chevNext">▼</span></div><div class="layer-body open" id="bodyNext"><div class="layer-empty" id="emptyNext">Nothing scheduled in the next window</div></div></div>
+          <div class="ops-layer" id="layerLater" style="border-top:1px solid var(--bord)"><div class="layer-hd" onclick="toggleLayer('later')"><div class="layer-hd-left"><div class="layer-dot dot-later"></div><span class="layer-title">Later</span><span class="layer-count" id="countLater">0</span></div><span class="layer-chevron" id="chevLater">▼</span></div><div class="layer-body" id="bodyLater"><div class="layer-empty" id="emptyLater">No further entries</div></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /panels-section -->
+
+  <!-- ③ Scan & redeem -->
+  <div class="scan-panel">
+    <div class="scan-panel-hd collapsed" id="scanPanelHd" onclick="toggleScanPanel()">
+      <span class="scan-panel-title">📷 Scan &amp; Redeem</span>
+      <span class="scan-panel-toggle" id="scanToggleIco">▼</span>
+    </div>
+    <div class="scan-body" id="scanBody">
+      <div class="scan-frame-wrap"><video id="preview" playsinline autoplay muted></video><canvas id="qrCanvas" width="640" height="480" style="display:none"></canvas><div id="finder-overlay"><div class="finder"><div class="scan-line"></div></div></div><div id="cam-status">Initialising…</div></div>
+      <div id="no-camera"><div class="nc-icon">📷</div><div>Camera not available. Use the code below.</div></div>
+      <div class="code-row"><input class="code-input" id="bookingCodeInput" type="text" inputmode="text" autocomplete="off" placeholder="XXX-XXX-XXX" maxlength="11"><button class="code-search" id="bookingCodeLookupBtn">Search</button></div>
+      <div id="hostInfo" class="booking-result"><div class="bk-row"><div class="bk-ico">🎯</div><div><div class="bk-val">Waiting for QR or code</div><div class="bk-muted">Scan or enter a booking code above</div></div></div></div>
+      <div class="scan-actions"><button class="scan-btn sbtn-reject" id="btnReject">⟲ Reject</button><button class="scan-btn sbtn-one" id="btnRedeemOne" disabled>① Redeem 1</button><button class="scan-btn sbtn-all" id="btnRedeemAll" disabled>✓ Redeem all</button></div>
+    </div>
+  </div>
+
+</div><!-- /shell -->
+
+<div class="settings-panel" id="settingsPanel" onclick="maybeCloseSettings(event)"><div class="settings-box"><div class="settings-panel-title">Settings<button class="settings-close" onclick="closeSettings()">✕</button></div><div class="settings-section"><div class="settings-section-title">Time horizon</div><div class="settings-row"><span class="settings-lbl">Show ahead (min)</span><input class="settings-inp" type="number" id="setHorizon" min="5" max="240" value="60" onchange="saveSettings()"></div></div><div class="settings-section"><div class="settings-section-title">Call lead time</div><div class="settings-row"><span class="settings-lbl">Lead time (min)</span><input class="settings-inp" type="number" id="setLeadTime" min="0" max="60" value="5" onchange="saveSettings()"></div><div style="font-size:11.5px;color:var(--amber);margin-top:-4px">⚠ Runtime override — temporary</div></div><div class="settings-section"><div class="settings-section-title">Interface</div><div class="settings-row"><span class="settings-lbl">Scan panel open by default</span><label class="settings-sw"><input type="checkbox" id="setScanOpen" onchange="saveSettings()"><span class="sw-tr"></span></label></div><div class="settings-row"><span class="settings-lbl">Auto-refresh (sec)</span><input class="settings-inp" type="number" id="setRefresh" min="10" max="300" value="30" onchange="saveSettings()"></div></div><div class="settings-section" id="settingsAutoSection" style="display:none"><div class="settings-section-title">Live-flow auto-behavior (A/B)</div><div class="settings-row"><span class="settings-lbl">Assisted auto-call</span><label class="settings-sw"><input type="checkbox" id="setAutoCall" onchange="saveSettings()"><span class="sw-tr"></span></label></div></div></div></div>
+
+<div class="modal-overlay" id="hardStopModal"><div class="modal-box"><div class="modal-title">🛑 Confirm Hard Stop</div><div class="modal-desc">This will suspend all upcoming bookings. All visitors booked today will receive a message. They will need to reconfirm to resume their slot.</div><textarea class="modal-textarea" id="hardStopMsg" placeholder="Message to visitors (required)…"></textarea><div class="modal-actions"><button class="mbtn mbtn-cancel" onclick="closeHardStopModal()">Cancel</button><button class="mbtn mbtn-stop" onclick="confirmHardStop()">Confirm Hard Stop</button></div></div></div>
+<div class="modal-overlay" id="resumeModal"><div class="modal-box"><div class="modal-title">▶ Resume after Hard Stop</div><div class="modal-desc">Confirmation requests will be sent to all in-advance bookings for today. Only visitors who confirm within 30 minutes will resume auto-call. Unconfirmed slots will be released to live-flow.</div><div class="modal-actions"><button class="mbtn mbtn-cancel" onclick="closeResumeModal()">Cancel</button><button class="mbtn mbtn-resume" onclick="confirmResume()">Send &amp; Resume</button></div></div></div>
+
+<div id="toast"></div>
+<script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+<script>
+'use strict';
+const S={queues:[],currentQueue:null,queueFilter:'all',entries:[],selected:new Set(),globalState:'normal',activeTab:'all',currentWaveIdx:0,dBatch:5,dPacing:30,refreshTimer:null};
+const SETTINGS_KEY='intime_ops_settings_v1',DOCKS_KEY='intime_ops_docks_v1';
+const SETTINGS={horizon:60,leadTime:5,scanOpen:false,refresh:30,autoCall:false};
+const DOCKS={opsCollapsed:false,ctrlCollapsed:false};
+loadSettings();loadDockState();
+let _tt;function toast(msg,ms){ms=ms||2500;const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),ms)}
+function esc(s){const d=document.createElement('div');d.textContent=String(s!=null?s:'');return d.innerHTML}
+function todayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function toHHMM(min){return String(Math.floor(min/60)).padStart(2,'0')+':'+String(min%60).padStart(2,'0')}
+function nowMin(){return new Date().getHours()*60+new Date().getMinutes()}
+function normalizeHumanRef(v){return String(v||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'')}
+function loadSettings(){try{const r=localStorage.getItem(SETTINGS_KEY);if(r)Object.assign(SETTINGS,JSON.parse(r))}catch(e){}}
+function syncSettingsUI(){document.getElementById('setHorizon').value=SETTINGS.horizon;document.getElementById('setLeadTime').value=SETTINGS.leadTime;document.getElementById('setRefresh').value=SETTINGS.refresh;document.getElementById('setScanOpen').checked=SETTINGS.scanOpen;document.getElementById('setAutoCall').checked=SETTINGS.autoCall}
+function saveSettings(){SETTINGS.horizon=parseInt(document.getElementById('setHorizon').value)||60;SETTINGS.leadTime=parseInt(document.getElementById('setLeadTime').value)||5;SETTINGS.refresh=parseInt(document.getElementById('setRefresh').value)||30;SETTINGS.scanOpen=document.getElementById('setScanOpen').checked;SETTINGS.autoCall=document.getElementById('setAutoCall').checked;try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(SETTINGS))}catch(e){}restartRefresh();renderEntries()}
+function loadDockState(){try{const raw=localStorage.getItem(DOCKS_KEY);if(raw)Object.assign(DOCKS,JSON.parse(raw))}catch(e){}}
+function saveDockState(){try{localStorage.setItem(DOCKS_KEY,JSON.stringify(DOCKS))}catch(e){}}
+function syncShellDockState(){}
+function applyDockState(){document.getElementById('opsItem').classList.toggle('collapsed',!!DOCKS.opsCollapsed);document.getElementById('ctrlItem').classList.toggle('collapsed',!!DOCKS.ctrlCollapsed)}
+function toggleDock(which){if(which==='ops')DOCKS.opsCollapsed=!DOCKS.opsCollapsed;if(which==='ctrl')DOCKS.ctrlCollapsed=!DOCKS.ctrlCollapsed;applyDockState();saveDockState()}
+const ARCH_LABELS={A:'Type A',B:'Type B',C:'Type C — Waves',D:'Type D — Flow'},ARCH_CLASSES={A:'arch-A',B:'arch-B',C:'arch-C',D:'arch-D'};
+async function loadQueues(){try{const r=await fetch('/api/intime/queues',{credentials:'same-origin',headers:{Accept:'application/json'}});const data=await r.json();if(!r.ok)throw new Error(data.error||'Failed');const all=Array.isArray(data?.queues)?data.queues:(Array.isArray(data)?data:[]);S.queues=all.filter(q=>q.is_active!==false&&q.status!=='draft'&&q.status!=='inactive');renderQueueSelect()}catch(e){console.error(e);document.getElementById('queueSelect').innerHTML='<option>Error loading queues</option>'}}
+function renderQueueSelect(){const sel=document.getElementById('queueSelect');if(!S.queues.length){sel.innerHTML='<option value="">No active queues</option>';return}const opts=S.queues.length>1?['<option value="all">All queues</option>']:[];S.queues.forEach(q=>opts.push(`<option value="${q.id}">${esc(q.name||'Queue')}</option>`));sel.innerHTML=opts.join('');const urlQ=new URLSearchParams(location.search).get('queue');if(urlQ){const found=S.queues.find(q=>String(q.id)===String(urlQ));if(found)sel.value=String(found.id)}onQueueChange()}
+function onQueueChange(){const v=document.getElementById('queueSelect').value;if(!v||v==='all'){S.queueFilter='all';S.currentQueue=null}else{S.queueFilter=v;S.currentQueue=S.queues.find(q=>String(q.id)===String(v))||null}updateArchBadge();updateTypeViews();S.selected.clear();loadEntries()}
+function updateArchBadge(){const badge=document.getElementById('archBadge');const q=S.currentQueue;if(!q){badge.style.display='none';return}const arch=(q.archetype||'D').toUpperCase();badge.className='arch-badge '+(ARCH_CLASSES[arch]||'arch-D');badge.textContent=ARCH_LABELS[arch]||('Type '+arch);badge.style.display='none';document.getElementById('settingsAutoSection').style.display=(arch==='A'||arch==='B')?'':'none'}
+function updateTypeViews(){const arch=S.currentQueue?(S.currentQueue.archetype||'D').toUpperCase():'D';document.getElementById('dEngineView').style.display=arch==='D'?'':'none';document.getElementById('cWaveView').style.display=arch==='C'?'':'none';document.querySelectorAll('.ops-layer').forEach(l=>{l.style.display=arch==='C'||arch==='D'?'none':''});document.getElementById('opsTabs').style.display=(arch==='C'||arch==='D')?'none':''}
+async function loadEntries(){if(!S.currentQueue)return;try{const today=todayISO();const r=await fetch(`/api/intime/queues/${S.currentQueue.id}/bookings?day=${today}`,{credentials:'same-origin',headers:{Accept:'application/json'}});const data=await r.json();if(!r.ok)throw new Error(data.error||'Failed to load bookings');S.entries=Array.isArray(data.bookings)?data.bookings:[];renderEntries()}catch(e){console.error(e);toast('Could not load entries: '+e.message)}}
+function classifyEntry(b){const arch=(S.currentQueue?.archetype||'D').toUpperCase(),nm=nowMin(),lead=SETTINGS.leadTime,horizon=SETTINGS.horizon,st=String(b.status||'').toUpperCase();if(st==='REDEEMED'||st==='CANCELLED')return'later';if(b.source==='advance'||b.source==='wave'){if(b.start_min!=null){const callAt=b.start_min-lead;if(nm>=callAt&&nm<b.start_min+60)return'now';if(nm<callAt&&callAt-nm<=horizon)return'next'}else if(b.valid_use_day===todayISO())return'next';return'later'}if(arch==='D')return st==='BOOKED'?'now':'later';return st==='BOOKED'?'now':'later'}
+function computeDisplayStatus(b){const isAdvance=b.source==='advance'||b.source==='wave',st=String(b.status||'').toUpperCase();if(st==='REDEEMED')return{label:'Redeemed',cls:'es-redeemed'};if(st==='CANCELLED')return{label:'Cancelled',cls:'es-redeemed'};if(st==='CALLING')return{label:'Calling',cls:'es-calling'};if(isAdvance){const nm=nowMin(),lead=SETTINGS.leadTime;if(b.start_min!=null){const callAt=b.start_min-lead;if(nm>=callAt)return{label:'Calling',cls:'es-calling'};return{label:`Auto-call in ${callAt-nm}min`,cls:'es-auto-call'}}return{label:'In-Advance',cls:'es-auto-call'}}if(st==='BOOKED')return{label:'Eligible now',cls:'es-eligible'};return{label:'Waiting',cls:'es-waiting'}}
+function entryHTML(b){const arch=(S.currentQueue?.archetype||'D').toUpperCase(),st=String(b.status||'').toUpperCase(),isAdvance=b.source==='advance'||b.source==='wave',selectable=(arch==='A'||arch==='B')&&!isAdvance&&st==='BOOKED',isSel=S.selected.has(b.booking_id),ds=computeDisplayStatus(b),ppl=(Number(b.party_size)||1)>1?`${b.party_size} people`:'1 person',code=b.human_ref||b.short_code||('#'+b.booking_id),typeTag=isAdvance?'<span class="entry-type-tag tag-advance">In-Advance</span>':'<span class="entry-type-tag tag-live">Live Flow</span>';let rightHTML='';if(selectable){rightHTML=`<div class="entry-check">${isSel?'✓':''}</div>`}else if(isAdvance&&ds.cls==='es-auto-call'&&b.start_min!=null){const min=(b.start_min-SETTINGS.leadTime)-nowMin();if(min>0)rightHTML=`<div class="countdown">⏱ ${min}min</div>`}else if(!isAdvance&&(arch==='A'||arch==='B')&&st==='BOOKED'){rightHTML=`<button class="call-btn" onclick="callEntry(${b.booking_id},event)">Call</button>`}const posLabel=isAdvance?(b.start_min!=null?toHHMM(b.start_min):'ADV'):'#'+b.booking_id;return `<div class="entry-card${selectable?' selectable':''}${isSel?' selected':''}" data-id="${b.booking_id}" data-selectable="${selectable}" onclick="onEntryClick(${b.booking_id},${selectable})"><div class="entry-left"><div class="entry-pos${isAdvance?'':' live'}">${esc(posLabel)}</div><div class="entry-time">${esc(ppl)}</div></div><div class="entry-body"><div class="entry-top"><span class="entry-name">${esc(b.visitor_name||code)}</span>${typeTag}<span class="entry-ppl">· ${esc(ppl)}</span></div><div class="entry-status"><span class="entry-status-pill ${ds.cls}">${esc(ds.label)}</span></div></div><div class="entry-right">${rightHTML}</div></div>`}
+function filterByTab(entries){if(S.activeTab==='advance')return entries.filter(b=>b.source==='advance'||b.source==='wave');if(S.activeTab==='live')return entries.filter(b=>b.source!=='advance'&&b.source!=='wave');return entries}
+function renderEntries(){const arch=(S.currentQueue?.archetype||'D').toUpperCase();if(arch==='D'){renderDEngine();return}if(arch==='C'){renderWaveView();return}const filtered=filterByTab(S.entries),now=[],next=[],later=[];filtered.forEach(b=>{const layer=classifyEntry(b);if(layer==='now')now.push(b);else if(layer==='next')next.push(b);else later.push(b)});function fill(bodyId,emptyId,countId,entries){const body=document.getElementById(bodyId),empty=document.getElementById(emptyId);document.getElementById(countId).textContent=entries.length;if(!entries.length){body.innerHTML='';empty.style.display='';return}empty.style.display='none';body.innerHTML=entries.map(b=>entryHTML(b)).join('')}fill('bodyNow','emptyNow','countNow',now);fill('bodyNext','emptyNext','countNext',next);fill('bodyLater','emptyLater','countLater',later);updateSelToolbar()}
+function renderDEngine(){
+  // State counts — order: queue / calling / redeemed
+  var inQueue  = S.entries.filter(function(b){return String(b.status||'').toUpperCase()==='BOOKED'}).length;
+  var calling  = S.entries.filter(function(b){return String(b.status||'').toUpperCase()==='CALLING'}).length;
+  var redeemed = S.entries.filter(function(b){return String(b.status||'').toUpperCase()==='REDEEMED'}).length;
+  document.getElementById('d2StatQueue').textContent   = inQueue;
+  document.getElementById('d2StatCalling').textContent = calling;
+  document.getElementById('d2StatRedeemed').textContent= redeemed;
+  // Sync D-engine config from loaded queue (cross-page consistency)
+  if(S.currentQueue) dSyncFromQueue(S.currentQueue);
+}
+
+/* ── Cross-page sync: read config from queue object ─────── */
+function dSyncFromQueue(q){
+  if(!q) return;
+  // Mode B = incremental
+  var modeB = q.release_mode==='incremental';
+  // Mode C = fixed/planned
+  var modeC = q.release_mode==='fixed';
+  // Update toggle UI without triggering handlers
+  _dSetToggle('B', modeB, false);
+  _dSetToggle('C', modeC, false);
+  if(modeC){
+    // Params
+    var maxPR = q.release_count||10;
+    var dur   = q.release_time_span||60;
+    var inp = document.getElementById('d2CMaxPerRelease');
+    if(inp) inp.value = maxPR;
+    var inp2 = document.getElementById('d2CDuration');
+    if(inp2) inp2.value = dur;
+    // Scope
+    var scope = q.fixed_release_scope||'all';
+    D2.cScope = scope;
+    var rAll    = document.querySelector('input[name="d2scope"][value="all"]');
+    var rPerDay = document.querySelector('input[name="d2scope"][value="per_day"]');
+    if(rAll) rAll.checked    = scope==='all';
+    if(rPerDay) rPerDay.checked = scope==='per_day';
+    document.getElementById('d2ScopeAllLbl')?.classList.toggle('active', scope==='all');
+    document.getElementById('d2ScopePerDayLbl')?.classList.toggle('active', scope==='per_day');
+    // Release schedule
+    var rs = q.release_schedule;
+    if(typeof rs==='string'){try{rs=JSON.parse(rs);}catch(e){rs=[];}}
+    D2.releaseSchedule = Array.isArray(rs)?rs:[];
+    D2.releaseCount  = maxPR;
+    D2.timeSeries    = S.currentQueue?.schedule_json;
+    if(document.getElementById('d2ModeCBody')?.classList.contains('hidden')===false){
+      dRenderCharts();
+    }
+  }
+  if(modeB){
+    // Scheduled releases
+    var sched = q.release_schedule;
+    if(typeof sched==='string'){try{sched=JSON.parse(sched);}catch(e){sched=[];}}
+    // For mode B, schedule is stored as [{time:'HH:MM', count:N}]
+    if(Array.isArray(sched) && sched.length && typeof sched[0].time==='string'){
+      D2.bSchedule = sched;
+    }
+    dRenderBList();
+  }
+  // Restore add-options UI
+  if(D2.addOptionsOpen){
+    var chk=document.getElementById('d2AddOptionsToggle');
+    if(chk) chk.checked=true;
+    document.getElementById('d2OptionsPanel')?.classList.remove('hidden');
+    var lbl=document.getElementById('d2AddOptionsLbl');
+    if(lbl) lbl.textContent='On';
+    dSelectOptionMode(D2.optionMode||'B');
+  }
+  // Update frequency displays
+  dUpdateFrequency();
+  dUpdateBFrequency();
+  // Intake state from queue
+  var intakePaused = !!q.is_paused;
+  D2.intakeOpen = !intakePaused;
+  dRenderIntake();
+}
+
+/* ── D-engine state object ───────────────────────────────── */
+var D2 = {
+  intakeOpen:    true,
+  addOptionsOpen:false,
+  optionMode:    'B',  // 'B' | 'C'
+  modeBActive:   false,
+  modeCActive:   false,
+  cScope:        'all',       // 'all' | 'per_day'
+  releaseCount:  10,
+  timeSeries:    60,
+  releaseSchedule: [],        // Mode C planned [{day,segments:[{time,count}]}]
+  bSchedule:     [],          // Mode B scheduled [{time:'HH:MM',count:N}]
+};
+var D2_KEY = 'intime_d2_config_v1';
+
+function dLoadLocal(){
+  try{
+    var raw=localStorage.getItem(D2_KEY);
+    if(raw) Object.assign(D2, JSON.parse(raw));
+  }catch(e){}
+}
+function dSaveLocal(){
+  try{localStorage.setItem(D2_KEY, JSON.stringify(D2));}catch(e){}
+}
+
+/* ── Queue intake: Start / Pause ────────────────────────── */
+function dRenderIntake(){
+  var open = D2.intakeOpen;
+  var statusEl = document.getElementById('d2IntakeStatus');
+  var btnEl    = document.getElementById('d2IntakeBtn');
+  if(statusEl){statusEl.textContent = open?'Open':'Paused';statusEl.className='d2-intake-status '+(open?'intake-open':'intake-paused');}
+  if(btnEl){btnEl.textContent = open?'⏸ Pause intake':'▶ Start intake';btnEl.className='d2-intake-btn '+(open?'open':'paused');}
+}
+async function toggleQueueIntake(){
+  D2.intakeOpen = !D2.intakeOpen;
+  dRenderIntake();
+  dSaveLocal();
+  if(S.currentQueue){
+    try{
+      await fetch('/api/intime/queues/'+S.currentQueue.id, {
+        method:'PATCH', credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({is_paused: !D2.intakeOpen})
+      });
+      toast(D2.intakeOpen ? 'Queue intake opened' : 'Queue intake paused');
+    }catch(e){ toast('Could not update queue intake'); }
+  }
+}
+
+/* ── Helper: set toggle state without firing handler ─────── */
+function _dSetToggle(mode, active, triggerRender){
+  var chk = document.getElementById('d2Mode'+mode+'Toggle');
+  var body= document.getElementById('d2Mode'+mode+'Body');
+  var lbl = document.getElementById('d2Mode'+mode+'Lbl');
+  var badge=document.getElementById('d2Mode'+mode+'Badge');
+  if(chk) chk.checked = active;
+  if(body) body.classList.toggle('hidden', !active);
+  if(lbl)  lbl.textContent = active?'On':'Off';
+  if(badge){
+    badge.textContent = active?'Active':'Inactive';
+    badge.className = 'd2-section-badge '+(active?'badge-active':'badge-optional');
+  }
+  if(mode==='B') D2.modeBActive = active;
+  if(mode==='C') D2.modeCActive = active;
+  if(triggerRender && mode==='C' && active) dRenderCharts();
+}
+
+/* ── Mode B toggle ──────────────────────────────────────── */
+/* ── Add options + mode selector ────────────────────────── */
+function onAddOptionsToggle(chk){
+  var panel=document.getElementById('d2OptionsPanel');
+  var lbl=document.getElementById('d2AddOptionsLbl');
+  var open=chk.checked;
+  panel.classList.toggle('hidden',!open);
+  if(lbl) lbl.textContent=open?'On':'Off';
+  D2.addOptionsOpen=open;
+  if(open && !D2.optionMode) dSelectOptionMode('B');
+  dSaveAndPersist();
+}
+function dSelectOptionMode(mode){
+  D2.optionMode=mode;
+  document.getElementById('d2SegBtnB').classList.toggle('active',mode==='B');
+  document.getElementById('d2SegBtnC').classList.toggle('active',mode==='C');
+  document.getElementById('d2ModeBBody').classList.toggle('hidden',mode!=='B');
+  document.getElementById('d2ModeCBody').classList.toggle('hidden',mode!=='C');
+  D2.modeBActive=(mode==='B');
+  D2.modeCActive=(mode==='C');
+  if(mode==='C') dRenderCharts();
+  dSaveAndPersist();
+}
+/* Frequency calculators */
+function dUpdateFrequency(){
+  var count=parseFloat(document.getElementById('d2ManualCount')?.value)||5;
+  var win=parseFloat(document.getElementById('d2ManualWindow')?.value)||60;
+  var perHour=win>0?Math.round(count/win*60):count;
+  var el=document.getElementById('d2FrequencyDisplay');
+  if(el) el.textContent=perHour+' / hr';
+}
+function dUpdateBFrequency(){
+  var count=parseFloat(document.getElementById('d2BCount')?.value)||10;
+  var win=parseFloat(document.getElementById('d2BWindow')?.value)||60;
+  var perHour=win>0?Math.round(count/win*60):count;
+  var el=document.getElementById('d2BFrequencyDisplay');
+  if(el) el.textContent=perHour+' / hr';
+  dSaveAndPersist();
+}
+function onModeBToggle(chk){
+  /* kept for compat — no longer used directly */
+}
+function dRenderBList(){
+  var list = document.getElementById('d2SchedList');
+  if(!list) return;
+  if(!D2.bSchedule.length){
+    list.innerHTML='<div style="font-size:13px;color:var(--hint);font-style:italic">No scheduled releases yet.</div>';
+    return;
+  }
+  list.innerHTML = D2.bSchedule.slice().sort(function(a,b){return a.time>b.time?1:-1}).map(function(item,i){
+    return '<div class="d2-sched-item">'
+      +'<span class="d2-sched-time">'+esc(item.time)+'</span>'
+      +'<span class="d2-sched-count">'+item.count+' people</span>'
+      +'<button class="d2-sched-del" onclick="dDeleteScheduled('+i+')" title="Remove">✕</button>'
+      +'</div>';
+  }).join('');
+}
+function dAddScheduledRelease(){
+  var t = document.getElementById('d2SchedTime')?.value||'10:00';
+  var n = parseInt(document.getElementById('d2SchedCount')?.value)||10;
+  D2.bSchedule.push({time:t, count:n});
+  dRenderBList();
+  dSaveAndPersist();
+}
+function dDeleteScheduled(i){
+  D2.bSchedule.splice(i,1);
+  dRenderBList();
+  dSaveAndPersist();
+}
+
+/* ── Mode C toggle ──────────────────────────────────────── */
+function onModeCToggle(chk){
+  /* kept for compat — no longer used directly */
+}
+function dCParamsChanged(){
+  D2.releaseCount = parseInt(document.getElementById('d2CMaxPerRelease')?.value)||10;
+  D2.timeSeries   = parseInt(document.getElementById('d2CDuration')?.value)||60;
+  // Regenerate segments at new duration
+  D2.releaseSchedule = [];
+  dRenderCharts();
+  dSaveAndPersist();
+}
+function dCScopeChanged(val){
+  D2.cScope = val;
+  document.getElementById('d2ScopeAllLbl')?.classList.toggle('active', val==='all');
+  document.getElementById('d2ScopePerDayLbl')?.classList.toggle('active', val==='per_day');
+  // Reset schedule on scope change
+  D2.releaseSchedule = [];
+  dRenderCharts();
+  dSaveAndPersist();
+}
+
+/* ── Chart helpers (adapted from page_1) ─────────────────── */
+function timeStrToMin(str){var p=(str||'0:0').split(':');return parseInt(p[0]||0)*60+parseInt(p[1]||0);}
+function minToTimeStr(min){var h=Math.floor((min||0)/60),m=(min||0)%60;return h+':'+(m<10?'0':'')+m;}
+
+function dGetOperatingHours(){
+  // Try to get from queue schedule_json
+  var q=S.currentQueue;
+  if(q){
+    var sj=q.schedule_json||q.schedule;
+    if(typeof sj==='string'){try{sj=JSON.parse(sj);}catch(e){sj=null;}}
+    if(sj&&sj.days){
+      var enabled=(sj.days||[]).filter(function(d){return d.on||d.enabled});
+      if(enabled.length){
+        var d0=enabled[0];
+        return {start:timeStrToMin(d0.open||'09:00'), end:timeStrToMin(d0.close||'18:00')};
+      }
+    }
+  }
+  return {start:9*60, end:18*60};
+}
+
+function dEnsureSchedule(){
+  var hours=dGetOperatingHours();
+  var span=Math.max(5, D2.timeSeries||60);
+  var count=D2.releaseCount||10;
+  function makeSegs(){
+    var s=[];
+    for(var t=hours.start;t<=hours.end;t+=span) s.push({time:t,count:count});
+    return s;
+  }
+  var q=S.currentQueue;
+  var enabledDays=[];
+  if(q){
+    var sj=q.schedule_json||q.schedule;
+    if(typeof sj==='string'){try{sj=JSON.parse(sj);}catch(e){sj=null;}}
+    if(sj&&sj.days) enabledDays=(sj.days||[]).filter(function(d){return d.on||d.enabled}).map(function(d){return d.n||d.name||d.label||'Day'});
+  }
+  if(!enabledDays.length) enabledDays=['Mon','Tue','Wed','Thu','Fri'];
+
+  if(D2.cScope==='all'){
+    var ex=D2.releaseSchedule.find(function(rs){return rs.day==='All days'});
+    if(!ex){D2.releaseSchedule=[{day:'All days',segments:makeSegs()}];}
+    else{
+      if(ex.segments.length>1){var sp=ex.segments[1].time-ex.segments[0].time;if(sp!==span)ex.segments=makeSegs();}
+    }
+    D2.releaseSchedule=D2.releaseSchedule.filter(function(rs){return rs.day==='All days'});
+  } else {
+    enabledDays.forEach(function(dn){
+      var ex=D2.releaseSchedule.find(function(rs){return rs.day===dn});
+      if(!ex){D2.releaseSchedule.push({day:dn,segments:makeSegs()});}
+      else{if(ex.segments.length>1){var sp=ex.segments[1].time-ex.segments[0].time;if(sp!==span)ex.segments=makeSegs();}}
+    });
+    D2.releaseSchedule=D2.releaseSchedule.filter(function(rs){return rs.day!=='All days'&&enabledDays.includes(rs.day)});
+  }
+}
+
+function dRenderCharts(){
+  dEnsureSchedule();
+  var container=document.getElementById('d2ChartContainer');
+  if(!container) return;
+  container.innerHTML='';
+  D2.releaseSchedule.forEach(function(rs){
+    var day=rs.day;
+    var dayId=day.replace(/\s+/g,'_');
+    var div=document.createElement('div');
+    div.style.cssText='margin-bottom:12px';
+    // Label row
+    var lbl=document.createElement('div');
+    lbl.className='d2-chart-day-label';
+    var lblTxt=document.createElement('span');
+    lblTxt.textContent=day;
+    var resetBtn=document.createElement('button');
+    resetBtn.className='d2-chart-reset';
+    resetBtn.textContent='\u21ba Reset';
+    resetBtn.setAttribute('data-day', day);
+    resetBtn.addEventListener('click', function(){dResetChart(this.getAttribute('data-day'));});
+    lbl.appendChild(lblTxt);
+    lbl.appendChild(resetBtn);
+    // Chart wrap
+    var wrap=document.createElement('div');
+    wrap.className='d2-chart-wrap';
+    var canvas=document.createElement('canvas');
+    canvas.id='d2rc-'+dayId;
+    canvas.width=560; canvas.height=140;
+    var tip=document.createElement('div');
+    tip.className='d2-chart-tooltip';
+    tip.id='d2tip-'+dayId;
+    wrap.appendChild(canvas);
+    wrap.appendChild(tip);
+    div.appendChild(lbl);
+    div.appendChild(wrap);
+    container.appendChild(div);
+    dDrawChart(day);
+    dBindChart(day);
+  });
+}
+
+function dDrawChart(day){
+  var dayId=day.replace(/\s+/g,'_');
+  var rs=D2.releaseSchedule.find(function(r){return r.day===day});
+  if(!rs) return;
+  var canvas=document.getElementById('d2rc-'+dayId);
+  if(!canvas) return;
+  var ctx2=canvas.getContext('2d');
+  var W=canvas.width, H=canvas.height;
+  var PAD={l:36,r:10,t:12,b:26};
+  var cw=W-PAD.l-PAD.r, ch=H-PAD.t-PAD.b;
+  var segs=rs.segments;
+  if(!segs||!segs.length) return;
+  var maxC=Math.max(D2.releaseCount||10,...segs.map(function(s){return s.count}),1);
+  var minT=segs[0].time, maxT=segs[segs.length-1].time, span=maxT-minT||1;
+  var xOf=function(t){return PAD.l+((t-minT)/span)*cw;};
+  var yOf=function(v){return PAD.t+ch-(v/maxC)*ch;};
+  var ptR=Math.max(2.5,Math.min(5,cw/(segs.length*3)));
+  ctx2.clearRect(0,0,W,H);
+  // Grid
+  ctx2.strokeStyle='rgba(99,91,167,0.18)'; ctx2.lineWidth=1;
+  [0,.25,.5,.75,1].forEach(function(t){
+    var y=PAD.t+ch*t;
+    ctx2.beginPath();ctx2.moveTo(PAD.l,y);ctx2.lineTo(PAD.l+cw,y);ctx2.stroke();
+    ctx2.fillStyle='rgba(160,155,210,0.65)';ctx2.font='10px Arial';ctx2.textAlign='right';
+    ctx2.fillText(Math.round(maxC*(1-t)),PAD.l-4,y+3.5);
+  });
+  // Fill
+  var grad=ctx2.createLinearGradient(0,PAD.t,0,PAD.t+ch);
+  grad.addColorStop(0,'rgba(99,91,255,0.28)');grad.addColorStop(1,'rgba(99,91,255,0.03)');
+  ctx2.beginPath();ctx2.moveTo(xOf(segs[0].time),yOf(segs[0].count));
+  for(var i=1;i<segs.length;i++) ctx2.lineTo(xOf(segs[i].time),yOf(segs[i].count));
+  ctx2.lineTo(xOf(segs[segs.length-1].time),PAD.t+ch);ctx2.lineTo(xOf(segs[0].time),PAD.t+ch);
+  ctx2.closePath();ctx2.fillStyle=grad;ctx2.fill();
+  // Line
+  ctx2.beginPath();ctx2.moveTo(xOf(segs[0].time),yOf(segs[0].count));
+  for(var j=1;j<segs.length;j++) ctx2.lineTo(xOf(segs[j].time),yOf(segs[j].count));
+  ctx2.strokeStyle='rgba(139,92,246,0.9)';ctx2.lineWidth=2.5;ctx2.stroke();
+  // Dots
+  segs.forEach(function(seg){
+    var x=xOf(seg.time),y=yOf(seg.count);
+    ctx2.beginPath();ctx2.arc(x,y,ptR,0,Math.PI*2);
+    ctx2.fillStyle='#a78bfa';ctx2.fill();
+    ctx2.strokeStyle='#fff';ctx2.lineWidth=1.5;ctx2.stroke();
+  });
+  // X labels
+  var labelStep=span>600?60:30;
+  var firstLabel=Math.ceil(minT/labelStep)*labelStep;
+  ctx2.font='10px Arial';ctx2.textAlign='center';
+  for(var t=firstLabel;t<=maxT;t+=labelStep){
+    var x=xOf(t);
+    ctx2.strokeStyle='rgba(160,155,210,0.3)';ctx2.lineWidth=1;
+    ctx2.beginPath();ctx2.moveTo(x,PAD.t+ch);ctx2.lineTo(x,PAD.t+ch+4);ctx2.stroke();
+    ctx2.fillStyle='rgba(160,155,210,0.75)';
+    ctx2.fillText(minToTimeStr(t),x,H-5);
+  }
+}
+
+function dBindChart(day){
+  var dayId=day.replace(/\s+/g,'_');
+  var canvas=document.getElementById('d2rc-'+dayId);
+  var tooltip=document.getElementById('d2tip-'+dayId);
+  if(!canvas) return;
+  var rs=D2.releaseSchedule.find(function(r){return r.day===day});
+  var dragging=null;
+  function getPos(e){
+    var rect=canvas.getBoundingClientRect();
+    var sx=canvas.width/rect.width, sy=canvas.height/rect.height;
+    return {x:((e.touches?e.touches[0].clientX:e.clientX)-rect.left)*sx,
+            y:((e.touches?e.touches[0].clientY:e.clientY)-rect.top)*sy};
+  }
+  function hitTest(pos){
+    var segs=rs.segments, W=canvas.width, H=canvas.height;
+    var PAD={l:36,r:10,t:12,b:26}, cw=W-PAD.l-PAD.r, ch=H-PAD.t-PAD.b;
+    var maxC=Math.max(D2.releaseCount||10,...segs.map(function(s){return s.count}),1);
+    var minT=segs[0].time, maxT=segs[segs.length-1].time, span=maxT-minT||1;
+    for(var i=0;i<segs.length;i++){
+      var dx=pos.x-(PAD.l+((segs[i].time-minT)/span)*cw);
+      var dy=pos.y-(PAD.t+ch-(segs[i].count/maxC)*ch);
+      if(Math.sqrt(dx*dx+dy*dy)<12) return i;
+    }
+    return null;
+  }
+  function updateFromPos(idx,pos){
+    var segs=rs.segments, H=canvas.height;
+    var PAD={l:36,r:10,t:12,b:26}, ch=H-PAD.t-PAD.b;
+    var maxC=Math.max(D2.releaseCount||10,...segs.map(function(s){return s.count}),1);
+    var raw=Math.round(maxC*(1-(pos.y-PAD.t)/ch));
+    segs[idx].count=Math.max(0,Math.min(raw,maxC));
+    dDrawChart(day);
+    if(tooltip){
+      tooltip.style.display='block';
+      tooltip.style.left=(pos.x/canvas.width*100)+'%';
+      tooltip.style.top=Math.max(12,pos.y-28)+'px';
+      tooltip.textContent=minToTimeStr(segs[idx].time)+' → '+segs[idx].count+' calls';
+    }
+  }
+  canvas.addEventListener('mousedown',function(e){var p=getPos(e);var i=hitTest(p);if(i!==null){dragging=i;e.preventDefault();}});
+  canvas.addEventListener('mousemove',function(e){var p=getPos(e);if(dragging!==null){updateFromPos(dragging,p);return;}canvas.style.cursor=hitTest(p)!==null?'grab':'crosshair';if(tooltip)tooltip.style.display='none';});
+  canvas.addEventListener('mouseup',function(){dragging=null;if(tooltip)tooltip.style.display='none';dSaveAndPersist();});
+  canvas.addEventListener('mouseleave',function(){dragging=null;if(tooltip)tooltip.style.display='none';});
+  canvas.addEventListener('touchstart',function(e){var p=getPos(e);var i=hitTest(p);if(i!==null){dragging=i;e.preventDefault();}},{passive:false});
+  canvas.addEventListener('touchmove',function(e){if(dragging!==null){updateFromPos(dragging,getPos(e));e.preventDefault();}},{passive:false});
+  canvas.addEventListener('touchend',function(){dragging=null;dSaveAndPersist();});
+}
+
+function dResetChart(day){
+  var rs=D2.releaseSchedule.find(function(r){return r.day===day});
+  if(rs) rs.segments.forEach(function(s){s.count=D2.releaseCount||10;});
+  dDrawChart(day);
+  dSaveAndPersist();
+}
+
+/* ── Manual call release (Mode A) ───────────────────────── */
+async function dManualRelease(){
+  var count = parseInt(document.getElementById('d2ManualCount')?.value)||5;
+  var win=parseInt(document.getElementById('d2ManualWindow')?.value)||60;
+  var pacing=win>0?Math.round(win*60/Math.max(1,(parseInt(document.getElementById('d2ManualCount')?.value)||5))):0;
+  if(!S.currentQueue){toast('No queue selected');return;}
+  var btn=document.getElementById('d2ReleaseBtn');
+  if(btn) btn.disabled=true;
+  var fb=document.getElementById('d2Feedback');
+  if(fb) fb.textContent='Releasing '+count+' calls…';
+  try{
+    var r=await fetch('/api/intime/queues/'+S.currentQueue.id+'/call-release',{
+      method:'POST', credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({count:count, pacing_seconds:pacing, mode:'manual', fifo:true})
+    });
+    var data=await r.json().catch(function(){return{};});
+    if(!r.ok||!data.ok) throw new Error(data.error||'Release failed');
+    var released=data.released||count;
+    if(fb) fb.textContent='✓ Called '+released+' visitor'+(released!==1?'s':'')+' (FIFO)';
+    toast('✓ '+released+' callings released');
+    if(S.currentQueue) loadEntries();
+  }catch(e){
+    if(fb) fb.textContent='⚠ '+e.message;
+    toast('Release error: '+e.message);
+  }finally{
+    if(btn) btn.disabled=false;
+    setTimeout(function(){if(fb)fb.textContent='';},4000);
+  }
+}
+
+/* ── Persist D config to server + localStorage ──────────── */
+async function dSaveAndPersist(){
+  dSaveLocal();
+  if(!S.currentQueue) return;
+  // Build the relevant release_mode from active modes
+  var mode = 'manual'; // Mode A always active
+  if(D2.modeBActive) mode='incremental';
+  if(D2.modeCActive) mode='fixed';
+  var payload={
+    release_mode:    mode,
+    release_count:   D2.releaseCount||10,
+    release_count:   parseInt(document.getElementById('d2BCount')?.value)||10,
+    release_interval:parseInt(document.getElementById('d2BWindow')?.value)||60,
+    release_time_span: D2.timeSeries||60,
+    fixed_release_scope: D2.cScope||'all',
+    release_schedule: D2.modeCActive ? D2.releaseSchedule : (D2.modeBActive ? D2.bSchedule : []),
+  };
+  try{
+    await fetch('/api/intime/queues/'+S.currentQueue.id,{
+      method:'PATCH', credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+  }catch(e){ console.warn('D config persist failed',e); }
+}
+
+/* Keep old names for compatibility */
+function saveDSettings(){dSaveAndPersist();}
+function injectNow(){dManualRelease();}
+function injectScheduled(){
+  _dSetToggle('B',true,false);
+  dRenderBList();
+  toast('Scheduled releases panel opened');
+}
+
+function renderWaveView(){const q=S.currentQueue;if(!q)return;let waves=[];try{const sj=typeof q.slots_json==='string'?JSON.parse(q.slots_json):q.slots_json;if(Array.isArray(sj))waves=sj}catch(e){}if(!waves.length){document.getElementById('waveTitle').textContent='No waves configured';document.getElementById('waveEntriesList').innerHTML='<div class="layer-empty">No wave configuration found</div>';return}S.currentWaveIdx=Math.min(S.currentWaveIdx,waves.length-1);const wave=waves[S.currentWaveIdx],t=wave.start_min!=null?toHHMM(wave.start_min)+(wave.stop_min!=null?' – '+toHHMM(wave.stop_min):''):'—';document.getElementById('waveTitle').textContent=`Wave ${S.currentWaveIdx+1} of ${waves.length}`;document.getElementById('waveSubtitle').textContent=t;document.getElementById('waveCardTime').textContent=t;document.getElementById('waveCardCap').textContent=`Capacity: ${wave.capacity||wave.wave_capacity||'—'} spots`;document.getElementById('wavePrev').disabled=S.currentWaveIdx===0;document.getElementById('waveNext').disabled=S.currentWaveIdx===waves.length-1;const waveEntries=S.entries.filter(b=>wave.start_min!=null&&b.start_min!=null&&Math.abs(Number(b.start_min)-Number(wave.start_min))<5);document.getElementById('waveEntriesList').innerHTML=waveEntries.length?waveEntries.map(b=>entryHTML(b)).join(''):'<div class="layer-empty">No bookings in this wave</div>'}
+function prevWave(){S.currentWaveIdx=Math.max(0,S.currentWaveIdx-1);renderEntries()}function nextWave(){const q=S.currentQueue;if(!q)return;let waves=[];try{const sj=typeof q.slots_json==='string'?JSON.parse(q.slots_json):q.slots_json;if(Array.isArray(sj))waves=sj}catch(e){}S.currentWaveIdx=Math.min(waves.length-1,S.currentWaveIdx+1);renderEntries()}
+function onEntryClick(id,selectable){if(!selectable)return;if(S.selected.has(id))S.selected.delete(id);else S.selected.add(id);renderEntries()}function updateSelToolbar(){const tb=document.getElementById('selToolbar'),arch=(S.currentQueue?.archetype||'D').toUpperCase(),show=S.selected.size>0&&(arch==='A'||arch==='B');tb.classList.toggle('show',show);document.getElementById('selCount').textContent=S.selected.size+' selected'}function clearSelection(){S.selected.clear();renderEntries()}async function callSelected(){if(!S.selected.size){toast('No entries selected');return}toast(`Calling ${S.selected.size} entr${S.selected.size>1?'ies':'y'}…`);for(const id of S.selected){const b=S.entries.find(e=>e.booking_id===id);if(b)b.status='CALLING'}S.selected.clear();renderEntries()}function callEntry(id,e){e?.stopPropagation();const b=S.entries.find(x=>x.booking_id===id);if(b){b.status='CALLING';renderEntries();toast('Entry called')}}
+function saveDSettings(){S.dBatch=parseInt(document.getElementById('dBatchSize').value)||5;S.dPacing=parseInt(document.getElementById('dPacing').value)||30;toast('D-engine settings saved')}function injectNow(){const n=parseInt(document.getElementById('dBatchSize').value)||5;toast(`+${n} people injected into live flow`)}function injectScheduled(){toast('Scheduled injection — feature coming soon')}
+function updateStateBadge(){const badge=document.getElementById('stateBadge'),map={normal:{cls:'state-normal',label:'● Normal'},paused:{cls:'state-paused',label:'⏸ Paused'},hardstop:{cls:'state-hardstop',label:'🛑 Hard Stop'},resuming:{cls:'state-resuming',label:'▶ Resuming'}},m=map[S.globalState]||map.normal;badge.className='state-badge '+m.cls;badge.textContent=m.label;const ctrlRow=document.getElementById('ctrlRow');if(S.globalState==='hardstop'){ctrlRow.innerHTML=`<button class="ctrl-btn ctrl-resume" onclick="openResumeModal()">▶ Resume</button><button class="ctrl-btn ctrl-pause" onclick="togglePause()" disabled style="opacity:.35">⏸ Paused</button>`}else if(S.globalState==='paused'){ctrlRow.innerHTML=`<button class="ctrl-btn ctrl-pause active" onclick="togglePause()">▶ Resume flow</button><button class="ctrl-btn ctrl-stop" onclick="triggerHardStop()">🛑 Hard stop</button>`}else{ctrlRow.innerHTML=`<button class="ctrl-btn ctrl-pause" id="btnPause" onclick="togglePause()">⏸ Pause</button><button class="ctrl-btn ctrl-stop" id="btnStop" onclick="triggerHardStop()">🛑 Hard stop</button>`}}
+async function togglePause(){if(S.globalState==='paused'){S.globalState='normal';toast('Queue resumed')}else if(S.globalState==='normal'){S.globalState='paused';toast('Queue paused — in-advance bookings continue auto-calling')}updateStateBadge();if(S.currentQueue){fetch(`/api/intime/queues/${S.currentQueue.id}`,{method:'PATCH',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_paused:S.globalState==='paused'})}).catch(()=>{})}}
+function triggerHardStop(){document.getElementById('hardStopMsg').value='';document.getElementById('hardStopModal').classList.add('open')}function closeHardStopModal(){document.getElementById('hardStopModal').classList.remove('open')}async function confirmHardStop(){const msg=document.getElementById('hardStopMsg').value.trim();if(!msg){toast('Please enter a message for visitors');return}S.globalState='hardstop';updateStateBadge();closeHardStopModal();toast('Hard stop confirmed — message sent to visitors');if(S.currentQueue){fetch(`/api/intime/queues/${S.currentQueue.id}`,{method:'PATCH',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_active:false,host_message:msg})}).catch(()=>{})}}
+function openResumeModal(){document.getElementById('resumeModal').classList.add('open')}function closeResumeModal(){document.getElementById('resumeModal').classList.remove('open')}async function confirmResume(){S.globalState='resuming';updateStateBadge();closeResumeModal();toast('Confirmation requests sent — resuming confirmed bookings in 30 min');if(S.currentQueue){fetch(`/api/intime/queues/${S.currentQueue.id}`,{method:'PATCH',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_active:true})}).catch(()=>{})}setTimeout(()=>{S.globalState='normal';updateStateBadge()},30*60*1000)}
+function toggleLayer(name){const body=document.getElementById('body'+name.charAt(0).toUpperCase()+name.slice(1)),chev=document.getElementById('chev'+name.charAt(0).toUpperCase()+name.slice(1)),open=body.classList.toggle('open');chev.classList.toggle('open',open)}
+document.getElementById('opsTabs').addEventListener('click',e=>{const tab=e.target.closest('.ops-tab');if(!tab)return;document.querySelectorAll('.ops-tab').forEach(t=>t.classList.remove('active'));tab.classList.add('active');S.activeTab=tab.dataset.tab;renderEntries()});
+function openSettings(){document.getElementById('settingsPanel').classList.add('open')}function closeSettings(){document.getElementById('settingsPanel').classList.remove('open')}function maybeCloseSettings(e){if(e.target===document.getElementById('settingsPanel'))closeSettings()}
+let scanOpen=false,scanStarted=false;function toggleScanPanel(forceState){if(typeof forceState==='boolean')scanOpen=forceState;else scanOpen=!scanOpen;const body=document.getElementById('scanBody'),ico=document.getElementById('scanToggleIco'),hd=document.getElementById('scanPanelHd');body.classList.toggle('open',scanOpen);ico.classList.toggle('open',scanOpen);hd.classList.toggle('collapsed',!scanOpen);if(scanOpen&&!scanStarted)initScan()}
+function initScan(){scanStarted=true;(async()=>{try{await startCamera();scanning=true;setCamStatus('Scanning…');updateHostInfo('ready');updateButtonsForQueueAndBooking();rafId=requestAnimationFrame(scanLoop)}catch(err){video.style.display='none';if(noCameraEl)noCameraEl.style.display='flex';setCamStatus('Camera unavailable','err');updateHostInfo('error',err.message||'Camera not available.')}})()}
+function startRefresh(){stopRefresh();S.refreshTimer=setInterval(()=>{if(S.currentQueue)loadEntries()},SETTINGS.refresh*1000)}function stopRefresh(){if(S.refreshTimer){clearInterval(S.refreshTimer);S.refreshTimer=null}}function restartRefresh(){stopRefresh();startRefresh()}
+const video=document.getElementById('preview'),canvas=document.getElementById('qrCanvas'),ctx=canvas.getContext('2d'),hostInfo=document.getElementById('hostInfo'),bookingCodeInput=document.getElementById('bookingCodeInput'),bookingCodeLookup=document.getElementById('bookingCodeLookupBtn'),btnReject=document.getElementById('btnReject'),btnRedeemOne=document.getElementById('btnRedeemOne'),btnRedeemAll=document.getElementById('btnRedeemAll'),camStatusEl=document.getElementById('cam-status'),noCameraEl=document.getElementById('no-camera');
+let stream=null,scanning=false,rafId=null,currentBooking=null;const detector=('BarcodeDetector' in window)?new BarcodeDetector({formats:['qr_code']}):null;
+function setCamStatus(msg,cls=''){if(!camStatusEl)return;camStatusEl.textContent=msg;camStatusEl.className=cls}
+function updateHostInfo(state,data){if(state==='ready'){hostInfo.innerHTML=`<div class="bk-row"><div class="bk-ico">🎯</div><div><div class="bk-val">Ready to scan</div><div class="bk-muted">Point camera at visitor's QR or enter booking code</div></div></div>`;return}if(state==='booking'&&data){const b=data,slotStr=b.slot_time?new Date(b.slot_time).toLocaleString():(b.valid_use_day||'N/A'),persons=b.party_size??b.persons_count??b.people??'N/A';hostInfo.innerHTML=`<div class="bk-row"><div class="bk-ico">🏛️</div><div><div class="bk-val">${esc(b.queue_name||'Queue')}</div><div class="bk-muted">${esc(b.venue_name||b.queue_location||'')}</div></div></div><div class="bk-row"><div class="bk-ico">🔢</div><div><div class="bk-label">Booking code</div><div class="bk-val">${esc(b.short_code||b.human_ref||'N/A')}</div></div></div><div class="bk-row"><div class="bk-ico">⏱️</div><div><div class="bk-label">Entry time</div><div class="bk-val">${esc(slotStr)}</div></div></div><div class="bk-row"><div class="bk-ico">👥</div><div><div class="bk-label">Persons</div><div class="bk-val">${esc(persons)}</div></div></div><div class="bk-row"><div class="bk-ico">📌</div><div><div class="bk-label">Status</div><div class="bk-val">${esc(b.status)}</div></div></div>`;return}if(state==='error'){hostInfo.innerHTML=`<div class="bk-row"><div class="bk-ico">⚠️</div><div><div class="bk-val">Not found</div><div class="bk-muted">${esc(data||'No booking found for this code.')}</div></div></div>`}}
+function updateButtonsForQueueAndBooking(){const hasData=!!currentBooking;btnReject.disabled=false;btnRedeemOne.disabled=!hasData;const multi=S.currentQueue&&((Number(S.currentQueue.wave_capacity)||0)>1||(Number(S.currentQueue.max_persons_per_booking)||0)>1);btnRedeemAll.style.display=multi?'':'none';btnRedeemAll.disabled=!hasData||!multi}
+async function startCamera(){stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});video.srcObject=stream;await video.play().catch(()=>{})}function stopCamera(){try{stream?.getTracks()?.forEach(t=>t.stop())}catch{}stream=null}
+function parseTokenFromRaw(raw){const text=String(raw||'').trim();if(!text)return null;if(/^https?:\/\//i.test(text)){try{const u=new URL(text);return u.searchParams.get('token')||u.searchParams.get('booking_token')||text}catch{}}return text}
+function findBookingInLoadedEntries(raw){const norm=normalizeHumanRef(raw);if(!norm)return null;return S.entries.find(b=>[b.human_ref,b.short_code,b.booking_ref,b.token_id,b.booking_token].map(normalizeHumanRef).filter(Boolean).includes(norm))||null}
+async function lookupBookingByRef(rawRef){
+  const norm=normalizeHumanRef(rawRef);
+  if(!norm)throw new Error('Empty ref');
+  const r=await fetch(`/api/intime/bookings/by-ref/${encodeURIComponent(norm)}`,{credentials:'same-origin',headers:{Accept:'application/json'}});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok||!data.ok||!data.booking)throw new Error(data.error||'Not found');
+  return data.booking;
+}
+async function lookupBookingByToken(token){const r=await fetch(`/api/intime/bookings/by-token/${encodeURIComponent(token)}`,{credentials:'same-origin'});if(!r.ok)throw new Error('Booking not found or invalid');const data=await r.json();if(!data.ok||!data.booking)throw new Error('Malformed booking response');return data.booking}
+function bookingMatchesQueueFilter(booking){if(!booking)return false;if(!S.queueFilter||S.queueFilter==='all')return true;const bid=booking.queue_id??booking.queueId??null;if(!bid)return true;return String(bid)===String(S.queueFilter)}
+async function onRecognized(rawText){scanning=false;currentBooking=null;updateButtonsForQueueAndBooking();setCamStatus('Processing…');const token=parseTokenFromRaw(rawText);if(!token){updateHostInfo('error','QR code does not contain a valid booking token.');setCamStatus('Invalid QR','err');scanning=true;if(!rafId)rafId=requestAnimationFrame(scanLoop);return}const localBooking=findBookingInLoadedEntries(token);if(localBooking){currentBooking=Object.assign({},localBooking);updateHostInfo('booking',currentBooking);setCamStatus(String(currentBooking.status||'').toUpperCase()==='REDEEMED'?'Already redeemed':'Booking found ✓','ok');toast(String(currentBooking.status||'').toUpperCase()==='REDEEMED'?'Already redeemed':'Booking found — use buttons to redeem');updateButtonsForQueueAndBooking();return}try{const b=await lookupBookingByToken(token);if(!bookingMatchesQueueFilter(b)){updateHostInfo('error','This booking belongs to a different queue.');setCamStatus('Wrong queue','err');scanning=true;if(!rafId)rafId=requestAnimationFrame(scanLoop);return}currentBooking=b;currentBooking.booking_token=currentBooking.booking_token||currentBooking.token_id||token;updateHostInfo('booking',b);setCamStatus(String(b.status||'').toUpperCase()==='REDEEMED'?'Already redeemed':'Booking found ✓','ok');toast(String(b.status||'').toUpperCase()==='REDEEMED'?'Already redeemed':'Booking found — use buttons to redeem');updateButtonsForQueueAndBooking()}catch(e){
+  /* by-token failed — try by-ref (human_ref code like ABC-DEF-GH1) */
+  try{
+    const b2=await lookupBookingByRef(token);
+    if(!bookingMatchesQueueFilter(b2)){updateHostInfo('error','This booking belongs to a different queue.');setCamStatus('Wrong queue','err');scanning=true;if(!rafId)rafId=requestAnimationFrame(scanLoop);return}
+    currentBooking=b2;
+    currentBooking.booking_token=b2.token_id||b2.booking_token||token;
+    updateHostInfo('booking',b2);
+    setCamStatus(String(b2.status||'').toUpperCase()==='REDEEMED'?'Already redeemed':'Booking found ✓','ok');
+    toast(String(b2.status||'').toUpperCase()==='REDEEMED'?'Already redeemed':'Booking found — use buttons to redeem');
+    updateButtonsForQueueAndBooking();
+  }catch(e2){
+    updateHostInfo('error',e2.message||'Could not fetch booking.');
+    setCamStatus('Not found','err');scanning=true;if(!rafId)rafId=requestAnimationFrame(scanLoop);
+  }
+}}
+async function redeemCurrent(options={mode:'all'}){if(!currentBooking){toast('No booking to redeem');return}const _tok=currentBooking.token_id||currentBooking.booking_token;if(!_tok){toast('No token — cannot redeem');return}try{const body={booking_token:_tok};if(options.mode==='one')body.count=1;const r=await fetch('/api/intime/bookings/redeem',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await r.json();if(!r.ok||!data.ok)throw new Error(data.error||'Redeem failed');currentBooking.status='REDEEMED';updateHostInfo('booking',currentBooking);toast(data.already?'Already redeemed':'✓ Booking redeemed');currentBooking=null;updateButtonsForQueueAndBooking();if(S.currentQueue)loadEntries()}catch(e){toast(e.message||'Redeem failed')}}
+function resumeScanning(){currentBooking=null;updateHostInfo('ready');setCamStatus('Scanning…');updateButtonsForQueueAndBooking();scanning=true;if(!rafId)rafId=requestAnimationFrame(scanLoop)}
+async function scanLoop(){if(!scanning||!video.videoWidth){rafId=requestAnimationFrame(scanLoop);return}try{if(detector){const codes=await detector.detect(video);if(codes?.length){await onRecognized(codes[0].rawValue||codes[0].rawData||'');return}}else{canvas.width=video.videoWidth;canvas.height=video.videoHeight;ctx.drawImage(video,0,0,canvas.width,canvas.height);const img=ctx.getImageData(0,0,canvas.width,canvas.height);const code=window.jsQR&&jsQR(img.data,img.width,img.height);if(code?.data){await onRecognized(code.data);return}}}catch(e){console.error(e)}rafId=requestAnimationFrame(scanLoop)}
+function normalizeBookingCode(raw){const s=String(raw||'').trim().toUpperCase();if(!s)return'';const plain=s.replace(/-/g,'');if(plain.length===9)return plain.slice(0,3)+'-'+plain.slice(3,6)+'-'+plain.slice(6);return s}
+bookingCodeLookup.addEventListener('click',async()=>{const code=normalizeBookingCode(bookingCodeInput.value);if(!code){toast('Enter a booking code first');return}bookingCodeInput.value=code;await onRecognized(code)});bookingCodeInput.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();bookingCodeLookup.click()}});btnReject.addEventListener('click',()=>resumeScanning());btnRedeemOne.addEventListener('click',()=>{if(!btnRedeemOne.disabled)redeemCurrent({mode:'one'})});btnRedeemAll.addEventListener('click',()=>{if(!btnRedeemAll.disabled)redeemCurrent({mode:'all'})});window.addEventListener('beforeunload',()=>{if(rafId)cancelAnimationFrame(rafId);stopCamera()});
+document.getElementById('queueSelect').addEventListener('change',onQueueChange);
+(async()=>{syncSettingsUI();applyDockState();await loadQueues();startRefresh();updateStateBadge();if(SETTINGS.scanOpen)setTimeout(()=>toggleScanPanel(true),400)})();
+if(window.Drawer&&typeof window.Drawer.mount==='function'){window.Drawer.mount({mode:'host'})}
+if(window.FAB&&typeof window.FAB.mount==='function'){window.FAB.mount({useTopBand:true,useBottomBand:true,home:{title:'Home',label:'🏠',onClick:()=>window.Drawer&&window.Drawer.open&&window.Drawer.open()},config:{title:'Settings',label:'⚙️',onClick:()=>openSettings()},onBack:()=>{if(history.length>1)history.back();else location.href='/pages/host/dashboard.html'},br:{title:'New Queue',label:'＋',href:'/modules/In-Time/manage/page 1.html'}})}
+</script>
+<script src="/js/intime-theme.js"></script>
+</body>
+</html>

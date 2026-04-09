@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>In-Time — My Queues</title>
+<link rel="stylesheet" href="/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --v:#7c3aed;--v-s:#ede9fc;--v-d:#6d28d9;
+  --green:#16a34a;--green-s:#f0fdf4;
+  --amber:#d97706;--amber-s:#fffbeb;
+  --red:#dc2626;--red-s:#fef2f2;
+  --blue:#2563eb;--blue-s:#eff6ff;
+  --txt:#1a1825;--muted:#6b6880;--hint:#9b98aa;
+  --surf:#fff;--bg:#f4f3f8;--bord:#e2e0ea;
+  --gray:#f0eff5;--gray-m:#d4d2de;
+  --r:14px;--ri:9px;
+  --sh:0 2px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --font:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:var(--font);background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55}
+.shell{max-width:600px;margin:0 auto;padding:84px 18px 120px}
+
+/* ── Hero ───────────────────────────────────────────────── */
+.hero{
+  background:linear-gradient(135deg,var(--v) 0%,#4f46e5 100%);
+  border-radius:var(--r);padding:26px 22px 22px;margin-bottom:22px;
+  color:#fff;position:relative;overflow:hidden;
+  box-shadow:0 8px 28px rgba(124,58,237,.32);
+}
+.hero::before{
+  content:'';position:absolute;top:-50px;right:-50px;
+  width:200px;height:200px;border-radius:50%;
+  background:rgba(255,255,255,.06);pointer-events:none;
+}
+.hero::after{
+  content:'';position:absolute;bottom:-30px;left:-30px;
+  width:140px;height:140px;border-radius:50%;
+  background:rgba(255,255,255,.04);pointer-events:none;
+}
+.hero-tag{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  background:rgba(255,255,255,.15);border-radius:999px;
+  padding:3px 11px;margin-bottom:12px;
+}
+.hero h1{font-size:22px;font-weight:700;margin-bottom:5px;position:relative;z-index:1}
+.hero-sub{font-size:13.5px;opacity:.82;line-height:1.55;position:relative;z-index:1}
+
+/* upcoming badge */
+.upcoming-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);
+  border-radius:var(--ri);padding:8px 14px;margin-top:14px;
+  font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;
+  position:relative;z-index:1;
+}
+.upcoming-badge:hover{background:rgba(255,255,255,.26)}
+.upcoming-dot{width:8px;height:8px;border-radius:50%;background:#4ade80;flex-shrink:0;
+  box-shadow:0 0 0 3px rgba(74,222,128,.3);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(74,222,128,.3)}50%{box-shadow:0 0 0 6px rgba(74,222,128,.1)}}
+
+/* ── Section label ──────────────────────────────────────── */
+.sec-lbl{
+  font-size:11.5px;font-weight:700;color:var(--hint);
+  text-transform:uppercase;letter-spacing:.07em;
+  margin-bottom:10px;padding:0 2px;
+}
+
+/* ── Action cards grid ──────────────────────────────────── */
+.cards-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+  gap:12px;
+  margin-bottom:24px;
+}
+.action-card{
+  background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);
+  box-shadow:var(--sh);padding:18px 16px 16px;
+  cursor:pointer;transition:all .18s;
+  display:flex;flex-direction:column;gap:10px;
+  text-decoration:none;color:inherit;
+}
+.action-card:hover{
+  border-color:var(--v);box-shadow:0 4px 20px rgba(124,58,237,.12);
+  transform:translateY(-2px);
+}
+.action-card:active{transform:translateY(0)}
+.ac-icon{font-size:28px;line-height:1}
+.ac-title{font-size:14px;font-weight:700;color:var(--txt)}
+.ac-desc{font-size:12px;color:var(--muted);line-height:1.5}
+.ac-arrow{font-size:12px;color:var(--hint);margin-top:auto;align-self:flex-end}
+
+.action-card.primary{
+  background:linear-gradient(135deg,var(--v-s),#f5f3ff);
+  border-color:rgba(124,58,237,.25);
+}
+.action-card.primary .ac-title{color:var(--v)}
+.action-card.primary:hover{background:linear-gradient(135deg,#e0d9fa,#ede9fc)}
+
+/* ── Upcoming bookings strip ────────────────────────────── */
+.upcoming-strip{
+  background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);
+  box-shadow:var(--sh);overflow:hidden;margin-bottom:22px;
+}
+.strip-hd{
+  padding:13px 16px 11px;border-bottom:1px solid var(--bord);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.strip-hd-title{font-size:13.5px;font-weight:700;color:var(--txt);display:flex;align-items:center;gap:7px}
+.strip-hd-link{font-size:12.5px;color:var(--v);font-weight:600;cursor:pointer;text-decoration:none}
+.strip-hd-link:hover{text-decoration:underline}
+
+.booking-mini{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;border-bottom:1px solid var(--bord);
+  cursor:pointer;transition:background .14s;
+}
+.booking-mini:last-child{border-bottom:none}
+.booking-mini:hover{background:var(--gray)}
+
+.bm-date{
+  flex-shrink:0;width:42px;text-align:center;
+  background:var(--v-s);border-radius:var(--ri);padding:5px 4px;
+}
+.bm-day{font-size:16px;font-weight:700;color:var(--v);line-height:1}
+.bm-mon{font-size:10px;font-weight:700;color:var(--v);text-transform:uppercase;letter-spacing:.05em}
+
+.bm-body{flex:1;min-width:0}
+.bm-name{font-size:13.5px;font-weight:600;color:var(--txt);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bm-meta{font-size:12px;color:var(--muted);margin-top:1px}
+
+.bm-code{
+  flex-shrink:0;font-size:11px;font-weight:700;letter-spacing:.06em;
+  color:var(--v);background:var(--v-s);
+  border-radius:6px;padding:3px 8px;
+}
+
+.strip-empty{
+  padding:20px 16px;text-align:center;
+  font-size:13px;color:var(--hint);
+}
+
+/* ── Loading skeleton ───────────────────────────────────── */
+.skel{
+  background:linear-gradient(90deg,var(--gray) 25%,var(--bord) 50%,var(--gray) 75%);
+  background-size:200% 100%;animation:shimmer 1.4s infinite;
+  border-radius:6px;
+}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* Toast */
+#toast{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);
+  background:rgba(26,24,37,.9);color:#fff;padding:8px 18px;border-radius:999px;
+  font-size:13px;font-weight:600;opacity:0;pointer-events:none;
+  transition:opacity .2s,transform .2s;z-index:200;white-space:nowrap;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body class="has-top-band has-bottom-band">
+<header class="site"><div class="title">In-Time — My Queues</div></header>
+
+
+<div class="shell">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-tag">🕐 In-Time</div>
+    <h1>Virtual Queues</h1>
+    <p class="hero-sub">Skip the line. Book your spot, scan to enter,<br>manage everything from here.</p>
+    <div class="upcoming-badge" id="upcomingBadge" onclick="goBookings()" style="display:none">
+      <span class="upcoming-dot"></span>
+      <span id="upcomingText">You have upcoming bookings</span>
+    </div>
+  </div>
+
+  <!-- Quick actions -->
+  <div class="sec-lbl">What would you like to do?</div>
+  <div class="cards-grid">
+
+    <a class="action-card primary" href="/modules/In-Time/use/page 2.html">
+      <div class="ac-icon">📷</div>
+      <div class="ac-title">Scan a queue</div>
+      <div class="ac-desc">Point your camera at a venue QR code to join or book.</div>
+      <div class="ac-arrow">→</div>
+    </a>
+
+    <a class="action-card" href="/modules/In-Time/use/page 1.html">
+      <div class="ac-icon">🎟</div>
+      <div class="ac-title">My bookings</div>
+      <div class="ac-desc">View, cancel or modify your active reservations.</div>
+      <div class="ac-arrow">→</div>
+    </a>
+
+    <a class="action-card" href="/modules/In-Time/use/page 1.html?filter=past">
+      <div class="ac-icon">📋</div>
+      <div class="ac-title">History</div>
+      <div class="ac-desc">Past entries and redeemed bookings.</div>
+      <div class="ac-arrow">→</div>
+    </a>
+
+  </div>
+
+  <!-- Upcoming bookings preview -->
+  <div class="sec-lbl">Coming up</div>
+  <div class="upcoming-strip" id="upcomingStrip">
+    <div class="strip-hd">
+      <span class="strip-hd-title">📅 Upcoming bookings</span>
+      <a class="strip-hd-link" href="/modules/In-Time/use/page 1.html">See all →</a>
+    </div>
+    <div id="upcomingList">
+      <!-- skeleton -->
+      <div class="booking-mini">
+        <div class="bm-date"><div class="skel" style="width:32px;height:32px;border-radius:6px"></div></div>
+        <div class="bm-body">
+          <div class="skel" style="width:140px;height:13px;margin-bottom:5px"></div>
+          <div class="skel" style="width:90px;height:11px"></div>
+        </div>
+      </div>
+      <div class="booking-mini">
+        <div class="bm-date"><div class="skel" style="width:32px;height:32px;border-radius:6px"></div></div>
+        <div class="bm-body">
+          <div class="skel" style="width:110px;height:13px;margin-bottom:5px"></div>
+          <div class="skel" style="width:70px;height:11px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /shell -->
+
+<div id="toast"></div>
+
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+<script>
+'use strict';
+
+/* ── Helpers ────────────────────────────────────────────── */
+let _tt;
+function toast(msg,ms=2500){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),ms);
+}
+function esc(s){const d=document.createElement('div');d.textContent=String(s??'');return d.innerHTML;}
+function getDeviceId(){
+  let id=localStorage.getItem('intime_device_id');
+  if(!id){id=crypto.randomUUID();localStorage.setItem('intime_device_id',id);}
+  return id;
+}
+function todayISO(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function goBookings(){ location.href='/modules/In-Time/use/page 1.html'; }
+function fmtDate(iso){
+  if(!iso) return {day:'?',mon:'???'};
+  const d=new Date(iso+'T12:00:00');
+  return {
+    day:String(d.getDate()).padStart(2,'0'),
+    mon:d.toLocaleDateString('en',{month:'short'}),
+    full:d.toLocaleDateString('en',{weekday:'short',day:'numeric',month:'short'}),
+  };
+}
+
+/* ── Load upcoming bookings ─────────────────────────────── */
+async function loadUpcoming(){
+  const deviceId=getDeviceId();
+  try{
+    const r=await fetch(`/api/intime/bookings/mine?device_id=${encodeURIComponent(deviceId)}&status=BOOKED`,{
+      credentials:'same-origin',headers:{Accept:'application/json'}
+    });
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok) throw new Error(d.error||'Failed');
+
+    const today=todayISO();
+    const upcoming=d.bookings.filter(b=>b.valid_use_day>=today).slice(0,5);
+    renderUpcoming(upcoming);
+
+    if(upcoming.length){
+      const badge=document.getElementById('upcomingBadge');
+      document.getElementById('upcomingText').textContent=
+        upcoming.length===1
+          ? '1 upcoming booking'
+          : `${upcoming.length} upcoming bookings`;
+      badge.style.display='';
+    }
+  }catch(err){
+    console.warn('[home] load upcoming:', err);
+    document.getElementById('upcomingList').innerHTML=
+      '<div class="strip-empty">Could not load bookings. <a href="/modules/In-Time/use/page 1.html" style="color:var(--v)">View all →</a></div>';
+  }
+}
+
+function renderUpcoming(bookings){
+  const el=document.getElementById('upcomingList');
+  if(!bookings.length){
+    el.innerHTML='<div class="strip-empty">No upcoming bookings. <a href="/modules/In-Time/use/page 2.html" style="color:var(--v)">Scan a queue to book →</a></div>';
+    return;
+  }
+  el.innerHTML=bookings.map(b=>{
+    const dt=fmtDate(b.valid_use_day);
+    const code=b.short_code||b.human_ref||'—';
+    return `
+    <div class="booking-mini" onclick="location.href='/modules/In-Time/use/page 1.html?highlight=${b.booking_id}'">
+      <div class="bm-date">
+        <div class="bm-day">${esc(dt.day)}</div>
+        <div class="bm-mon">${esc(dt.mon)}</div>
+      </div>
+      <div class="bm-body">
+        <div class="bm-name">${esc(b.queue_name||'Queue')}</div>
+        <div class="bm-meta">${esc(b.venue_name||'')}${b.party_size>1?` · ${b.party_size} people`:''}</div>
+      </div>
+      <div class="bm-code">${esc(code)}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ── Boot ───────────────────────────────────────────────── */
+loadUpcoming();
+
+if(window.Drawer?.mount) Drawer.mount({mode:'visitor'});
+if(window.FAB?.mount) FAB.mount({
+  useTopBand:true,useBottomBand:true,
+  home:  {label:'🏠',title:'Home',onClick:()=>Drawer?.open?.()},
+  config:null,
+  onBack:()=>{ history.length>1?history.back():(location.href='/'); },
+});
+</script>
+</body>
+</html>

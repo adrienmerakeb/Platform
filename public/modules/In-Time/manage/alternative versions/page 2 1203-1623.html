@@ -1,0 +1,1841 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>In-Time — My Virtual Queues</title>
+
+  <link rel="stylesheet" href="/css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ═══════════════════════════════════════════════════════════
+       DUSK GLASS TOKENS
+    ═══════════════════════════════════════════════════════════ */
+    :root {
+      --v:       #7c3aed;
+      --v-light: #a78bfa;
+      --v-s:     #ede9fe;
+      --v-d:     #5b21b6;
+      --indigo:  #4338ca;
+      --ink:     #0f0c1a;
+      --ink-2:   #1e1a2e;
+      --ink-3:   #2d2843;
+      --muted:   #6b6880;
+      --hint:    #9b98aa;
+      --surf:    rgba(255,255,255,0.72);
+      --surf-s:  rgba(255,255,255,0.88);
+      --glass:   rgba(255,255,255,0.12);
+      --glass-b: rgba(255,255,255,0.22);
+      --bord:    rgba(124,58,237,0.15);
+      --bord-s:  rgba(124,58,237,0.30);
+      --bg-from: #1a0533;
+      --bg-to:   #0d1b4b;
+
+      /* Status colours */
+      --green:   #16a34a;
+      --green-s: #dcfce7;
+      --amber:   #d97706;
+      --amber-s: #fef3c7;
+      --red:     #dc2626;
+      --red-s:   #fee2e2;
+      --blue:    #2563eb;
+      --blue-s:  #dbeafe;
+
+      /* Arch colours */
+      --arch-a:  #0891b2;  /* cyan  — resource */
+      --arch-b:  #7c3aed;  /* violet — individual */
+      --arch-c:  #d97706;  /* amber  — wave */
+      --arch-d:  #16a34a;  /* green  — continuous */
+
+      --font-display: 'Syne', sans-serif;
+      --font-body:    'Outfit', sans-serif;
+      --r: 18px;
+      --r-s: 12px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       BASE
+    ═══════════════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: var(--font-body);
+      font-size: 15px;
+      line-height: 1.55;
+      color: var(--ink);
+      background: var(--bg-from);
+      overflow: hidden;
+    }
+
+    /* Gradient background mesh */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(124,58,237,0.35) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 50% at 80% 80%, rgba(67,56,202,0.30) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 40% at 60% 30%, rgba(139,92,246,0.18) 0%, transparent 60%),
+        linear-gradient(155deg, var(--bg-from) 0%, var(--bg-to) 100%);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    body.has-top-band.has-bottom-band main.container {
+      padding-top: 8vh;
+      padding-bottom: 0;
+      height: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       TOP BAND HEADER
+    ═══════════════════════════════════════════════════════════ */
+    .top-band header.site {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    header.site .title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      display: block;
+    }
+    header.site .subtitle {
+      margin-top: 2px;
+      font-size: .82rem;
+      opacity: .8;
+      font-family: var(--font-body);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       TOOLBAR
+    ═══════════════════════════════════════════════════════════ */
+    .queue-toolbar {
+      position: sticky;
+      top: 8px;
+      z-index: 50;
+      max-width: 1100px;
+      margin: 10px auto 14px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.14);
+      backdrop-filter: blur(18px) saturate(1.6);
+      -webkit-backdrop-filter: blur(18px) saturate(1.6);
+      border: 1px solid rgba(255,255,255,0.22);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.18);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      font-size: .85rem;
+    }
+    body.has-top-band .queue-toolbar {
+      top: calc(var(--topband-h, 68px) + 10px);
+    }
+
+    .toolbar-section {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .toolbar-section-right { margin-left: auto; }
+
+    .toolbar-section label {
+      font-size: .78rem;
+      color: rgba(255,255,255,0.65);
+      font-weight: 500;
+    }
+
+    .toolbar-search-input {
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.20);
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      min-width: min(220px, 55vw);
+      font-size: .84rem;
+      font-family: var(--font-body);
+      backdrop-filter: blur(8px);
+      transition: border-color .2s, background .2s;
+    }
+    .toolbar-search-input::placeholder { color: rgba(255,255,255,0.40); }
+    .toolbar-search-input:focus {
+      outline: none;
+      border-color: var(--v-light);
+      background: rgba(255,255,255,0.18);
+    }
+
+    .toolbar-select {
+      appearance: none;
+      -webkit-appearance: none;
+      padding: 7px 32px 7px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.20);
+      background: rgba(255,255,255,0.12);
+      background-image: url("data:image/svg+xml;utf8,<svg fill='rgba(255,255,255,0.6)' height='14' width='14' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'><polygon points='0,0 20,0 10,10'/></svg>");
+      background-repeat: no-repeat;
+      background-position: calc(100% - 11px) center;
+      background-size: 9px;
+      color: rgba(255,255,255,0.88);
+      font-size: .84rem;
+      font-family: var(--font-body);
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: border-color .2s;
+    }
+    .toolbar-select option { background: #1e1a2e; color: #fff; }
+    .toolbar-select:focus { outline: none; border-color: var(--v-light); }
+
+    .toolbar-refresh-btn {
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.20);
+      background: rgba(255,255,255,0.10);
+      color: rgba(255,255,255,0.80);
+      font-size: .85rem;
+      cursor: pointer;
+      transition: background .2s, color .2s;
+    }
+    .toolbar-refresh-btn:hover {
+      background: rgba(255,255,255,0.22);
+      color: #fff;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       LIST META
+    ═══════════════════════════════════════════════════════════ */
+    .queue-list-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 0 4px 8px;
+      font-size: .78rem;
+      color: rgba(255,255,255,0.55);
+      font-family: var(--font-body);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       SCROLL FRAME
+    ═══════════════════════════════════════════════════════════ */
+    .queue-list-wrapper {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding-bottom: 7vh;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .queue-list-frame {
+      overflow-y: auto;
+      padding: 4px 4px 12px;
+      flex: 1 1 auto;
+      min-height: 0;
+      -ms-overflow-style: none;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(124,58,237,0.35) transparent;
+    }
+    .queue-list-frame::-webkit-scrollbar { width: 4px; }
+    .queue-list-frame::-webkit-scrollbar-track { background: transparent; }
+    .queue-list-frame::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.35); border-radius: 999px; }
+
+    .queue-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       QUEUE CAPSULE
+    ═══════════════════════════════════════════════════════════ */
+    .queue-card {
+      border-radius: var(--r);
+      background: rgba(255,255,255,0.80);
+      backdrop-filter: blur(20px) saturate(1.8);
+      -webkit-backdrop-filter: blur(20px) saturate(1.8);
+      border: 1px solid rgba(255,255,255,0.50);
+      box-shadow:
+        0 8px 32px rgba(0,0,0,0.18),
+        0 2px 8px rgba(0,0,0,0.10),
+        inset 0 1px 0 rgba(255,255,255,0.70);
+      overflow: hidden;
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .queue-card:hover {
+      transform: translateY(-2px);
+      box-shadow:
+        0 16px 48px rgba(0,0,0,0.22),
+        0 4px 12px rgba(0,0,0,0.12),
+        inset 0 1px 0 rgba(255,255,255,0.70);
+    }
+
+    /* Arch colour accent bar on left */
+    .queue-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 4px;
+      border-radius: var(--r) 0 0 var(--r);
+      background: var(--arch-color, var(--v));
+    }
+    .queue-card { position: relative; }
+
+    /* HEADER ROW */
+    .qc-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 16px 10px 20px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .qc-head:hover { background: rgba(124,58,237,0.04); }
+
+    .qc-name-block { flex: 1 1 auto; min-width: 0; }
+
+    .qc-name {
+      font-family: var(--font-display);
+      font-size: 1.02rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .qc-venue {
+      font-size: .80rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .qc-venue em { color: var(--hint); font-style: normal; }
+
+    .qc-head-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    /* Arch badge */
+    .arch-badge {
+      font-family: var(--font-display);
+      font-size: .70rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 999px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      border: 1.5px solid currentColor;
+    }
+    .arch-badge.A { color: var(--arch-a); background: rgba(8,145,178,0.10); }
+    .arch-badge.B { color: var(--arch-b); background: rgba(124,58,237,0.10); }
+    .arch-badge.C { color: var(--arch-c); background: rgba(217,119,6,0.10); }
+    .arch-badge.D { color: var(--arch-d); background: rgba(22,163,74,0.10); }
+
+    /* Status pill */
+    .status-pill {
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: .72rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .status-pill.active  { background: var(--green-s); color: var(--green); border: 1px solid rgba(22,163,74,0.25); }
+    .status-pill.inactive{ background: var(--red-s);   color: var(--red);   border: 1px solid rgba(220,38,38,0.20); }
+
+    /* STATUS DOT */
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-dot.active  { background: var(--green); box-shadow: 0 0 0 2px rgba(22,163,74,0.25); }
+    .status-dot.inactive{ background: var(--red);   }
+
+    /* TAGS ROW */
+    .qc-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 0 16px 10px 20px;
+    }
+    .qtag {
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: .72rem;
+      font-weight: 500;
+      background: rgba(124,58,237,0.08);
+      color: var(--v-d);
+      border: 1px solid rgba(124,58,237,0.15);
+    }
+    .qtag.live    { background: rgba(37,99,235,0.08);  color: var(--blue);  border-color: rgba(37,99,235,0.18); }
+    .qtag.advance { background: rgba(124,58,237,0.08); color: var(--v-d);   border-color: rgba(124,58,237,0.18); }
+    .qtag.mixed   { background: rgba(217,119,6,0.08);  color: var(--amber); border-color: rgba(217,119,6,0.18); }
+    .qtag.loc     { background: rgba(15,12,26,0.05);   color: var(--muted); border-color: rgba(0,0,0,0.10); }
+    .qtag.tz      { background: rgba(15,12,26,0.05);   color: var(--muted); border-color: rgba(0,0,0,0.10); }
+
+    /* DIVIDER */
+    .qc-divider {
+      height: 1px;
+      background: linear-gradient(90deg, rgba(124,58,237,0.15) 0%, transparent 100%);
+      margin: 0 16px 0 20px;
+    }
+
+    /* ACTION ROW */
+    .qc-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px 12px 20px;
+      flex-wrap: wrap;
+    }
+    .qc-actions-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Action buttons */
+    .qa-btn {
+      padding: 5px 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(124,58,237,0.20);
+      background: rgba(124,58,237,0.06);
+      color: var(--v-d);
+      font-size: .76rem;
+      font-weight: 500;
+      font-family: var(--font-body);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: background .15s, border-color .15s, color .15s, transform .12s;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .qa-btn:hover {
+      background: rgba(124,58,237,0.14);
+      border-color: rgba(124,58,237,0.35);
+      transform: translateY(-1px);
+    }
+    .qa-btn.danger {
+      border-color: rgba(220,38,38,0.22);
+      background: rgba(220,38,38,0.06);
+      color: var(--red);
+    }
+    .qa-btn.danger:hover {
+      background: rgba(220,38,38,0.14);
+      border-color: rgba(220,38,38,0.35);
+    }
+    .qa-btn.primary {
+      background: var(--v);
+      border-color: var(--v-d);
+      color: #fff;
+      font-weight: 600;
+    }
+    .qa-btn.primary:hover {
+      background: var(--v-d);
+      border-color: var(--v-d);
+    }
+
+    /* Toggle switch */
+    .toggle-switch { position: relative; width: 42px; height: 22px; flex-shrink: 0; }
+    .toggle-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: rgba(0,0,0,0.20);
+      border-radius: 999px;
+      transition: .2s;
+      border: 1px solid rgba(0,0,0,0.10);
+    }
+    .toggle-slider::before {
+      content: "";
+      position: absolute;
+      height: 16px; width: 16px;
+      left: 2px; top: 2px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+      transition: .2s;
+    }
+    .toggle-switch input:checked + .toggle-slider { background: var(--green); border-color: var(--green); }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+    .toggle-label { font-size: .75rem; color: var(--muted); }
+
+    /* ═══════════════════════════════════════════════════════════
+       EMPTY STATE
+    ═══════════════════════════════════════════════════════════ */
+    .empty-state {
+      margin-top: 20px;
+      padding: 32px 24px;
+      border-radius: var(--r);
+      border: 1.5px dashed rgba(255,255,255,0.20);
+      background: rgba(255,255,255,0.06);
+      text-align: center;
+      color: rgba(255,255,255,0.55);
+      backdrop-filter: blur(10px);
+    }
+    .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 10px; display: block; }
+    .empty-state strong { display: block; font-family: var(--font-display); font-size: 1rem; color: rgba(255,255,255,0.80); margin-bottom: 6px; }
+    .empty-state p { font-size: .85rem; }
+
+    /* ═══════════════════════════════════════════════════════════
+       NEW QUEUE FAB (bottom centre)
+    ═══════════════════════════════════════════════════════════ */
+    .queue-new-wrapper {
+      position: fixed;
+      left: 50%;
+      bottom: calc(var(--band-h, 68px) + 14px);
+      transform: translateX(-50%);
+      z-index: 9999;
+      pointer-events: none;
+    }
+    .queue-new-btn {
+      pointer-events: auto;
+      width: 60px; height: 60px;
+      border-radius: 999px;
+      background: var(--v);
+      border: 2px solid rgba(255,255,255,0.35);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 28px rgba(124,58,237,0.50), 0 2px 8px rgba(0,0,0,0.30);
+      transition: background .18s, transform .15s, box-shadow .18s;
+      color: #fff;
+      font-size: 1.8rem;
+      line-height: 1;
+    }
+    .queue-new-btn:hover {
+      background: var(--v-d);
+      transform: scale(1.08);
+      box-shadow: 0 12px 36px rgba(124,58,237,0.65), 0 4px 12px rgba(0,0,0,0.35);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       MODALS — shared shell
+    ═══════════════════════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10,6,20,0.72);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 3000;
+    }
+    .modal-dialog {
+      max-width: 430px;
+      width: 92vw;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.60);
+      color: var(--ink);
+      border-radius: var(--r);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.35);
+      padding: 20px 22px 18px;
+      font-size: .9rem;
+    }
+    .modal-dialog h3 {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin: 0 0 8px;
+      color: var(--ink);
+    }
+    .modal-dialog p { margin: 0 0 10px; font-size: .85rem; color: var(--muted); }
+    .modal-footer {
+      margin-top: 14px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .modal-footer button {
+      padding: 7px 16px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-size: .84rem;
+      font-family: var(--font-body);
+      font-weight: 500;
+      transition: background .15s, color .15s;
+    }
+    .modal-btn-secondary { background: rgba(0,0,0,0.08); color: var(--ink); }
+    .modal-btn-secondary:hover { background: rgba(0,0,0,0.15); }
+    .modal-btn-danger { background: var(--red); color: #fff; }
+    .modal-btn-danger:hover { background: #b91c1c; }
+    .modal-btn-primary { background: var(--v); color: #fff; }
+    .modal-btn-primary:hover { background: var(--v-d); }
+    .modal-error { margin-top: 6px; color: var(--red); font-size: .80rem; }
+
+    /* QR modal */
+    .qr-modal-dialog { max-width: 360px; text-align: center; }
+    .qr-modal-dialog img { max-width: 220px; width: 100%; height: auto; margin: 10px auto; display: block; border-radius: 10px; }
+    .qr-hint { font-size: .78rem; color: var(--muted); margin-top: 4px; }
+
+    /* Allowlist modal */
+    .allowlist-dialog { max-width: 520px; }
+    .allowlist-top-row { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+    .allowlist-top-row input {
+      flex: 1 1 240px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(124,58,237,0.20);
+      font-size: .85rem;
+      font-family: var(--font-body);
+      background: rgba(124,58,237,0.04);
+    }
+    .allowlist-top-row input:focus { outline: none; border-color: var(--v); }
+    .allowlist-top-row button {
+      padding: 6px 13px;
+      border-radius: 999px;
+      border: 1px solid rgba(124,58,237,0.20);
+      background: rgba(124,58,237,0.06);
+      color: var(--v-d);
+      font-size: .78rem;
+      cursor: pointer;
+      white-space: nowrap;
+      font-family: var(--font-body);
+      transition: background .15s;
+    }
+    .allowlist-top-row button:hover { background: rgba(124,58,237,0.14); }
+    .allowlist-bulk { font-size: .82rem; margin: 6px 0 4px; color: var(--muted); }
+    .allowlist-bulk textarea {
+      width: 100%;
+      min-height: 80px;
+      resize: vertical;
+      border-radius: var(--r-s);
+      border: 1px solid rgba(124,58,237,0.20);
+      padding: 8px 10px;
+      font-size: .84rem;
+      font-family: var(--font-body);
+    }
+    .allowlist-list {
+      margin-top: 8px;
+      max-height: 150px;
+      overflow-y: auto;
+      border-radius: var(--r-s);
+      border: 1px solid rgba(124,58,237,0.12);
+      padding: 6px 10px;
+      font-size: .82rem;
+      background: rgba(124,58,237,0.03);
+    }
+    .allowlist-list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 3px 0;
+      border-bottom: 1px dashed rgba(124,58,237,0.10);
+    }
+    .allowlist-list-item:last-child { border-bottom: none; }
+    .allowlist-email { word-break: break-all; }
+    .allowlist-remove-one { border: none; background: transparent; color: var(--red); font-size: .78rem; cursor: pointer; }
+    .allowlist-meta { margin-top: 4px; font-size: .78rem; color: var(--muted); }
+
+    /* Calendar sync chips */
+    .calendar-chip {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(124,58,237,0.20);
+      background: rgba(124,58,237,0.06);
+      font-size: .84rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--v-d);
+      margin: 3px 6px 6px 0;
+      transition: background .15s, border-color .15s;
+      font-family: var(--font-body);
+    }
+    .calendar-chip.connected { border-color: rgba(22,163,74,0.35); background: var(--green-s); }
+    .calendar-chip.enabled { border-color: rgba(37,99,235,0.35); background: var(--blue-s); }
+    .calendar-chip:hover { background: rgba(124,58,237,0.14); border-color: var(--v); }
+
+    .inline-badge {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: .70rem;
+      font-weight: 700;
+      background: rgba(255,255,255,0.85);
+      border: 1px solid rgba(0,0,0,0.10);
+      color: var(--ink-2);
+    }
+
+    /* Wide shell modals (calendar sync/view) */
+    .wide-dialog {
+      max-width: 1080px;
+      width: 96%;
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 20px 16px;
+      border-radius: var(--r);
+      background: rgba(255,255,255,0.96);
+      border: 1px solid rgba(255,255,255,0.60);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.40);
+      font-family: var(--font-body);
+    }
+    .wide-header { margin-bottom: 12px; }
+    .wide-header h2 { font-family: var(--font-display); font-size: 1.08rem; font-weight: 700; margin: 0 0 6px; color: var(--ink); }
+    .wide-header .sub { font-size: .88rem; color: var(--muted); margin: 0; }
+    .wide-body {
+      flex: 1;
+      min-height: 260px;
+      max-height: 66vh;
+      border-radius: 12px;
+      background: rgba(124,58,237,0.02);
+      overflow: hidden;
+      border: 1px solid rgba(124,58,237,0.10);
+    }
+    .wide-body-inner {
+      height: 100%;
+      max-height: 100%;
+      padding: 12px 12px 14px;
+      font-size: .9rem;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 0;
+    }
+    .wide-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+      gap: 10px;
+      flex-wrap: wrap;
+      position: sticky;
+      bottom: 0;
+      background: rgba(255,255,255,0.96);
+      padding-top: 12px;
+      z-index: 200;
+    }
+    .wide-footer .left, .wide-footer .right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+    /* ═══════════════════════════════════════════════════════════
+       CALENDAR VIEW GRID (unchanged logic, restyled tokens)
+    ═══════════════════════════════════════════════════════════ */
+    :root {
+      --queue-event: #2563eb;
+      --calendar-event: #16a34a;
+      --lock-event: #616161;
+      --grid-line: #e8e6f0;
+      --cv-time-col: 92px;
+      --cv-day-col:  170px;
+      --cv-slot-h:   54px;
+      --cv-month-h:  44px;
+      --cv-day-h:    112px;
+      --shade-off:   #f4f3f8;
+      --shade-lunch: rgba(124,58,237,0.06);
+      --sep-week:    2px;
+      --sep-month:   4px;
+      --sep-year:    6px;
+    }
+    .cv-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(124,58,237,0.10);
+      background: rgba(124,58,237,0.03);
+      font-size: .80rem;
+      color: var(--ink);
+      flex: 0 0 auto;
+    }
+    .cv-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: #fff;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+    .cv-swatch { width: 16px; height: 10px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.12); flex: 0 0 auto; }
+    .cv-swatch.queue    { background: rgba(37,99,235,0.16);   border-color: rgba(37,99,235,0.35); }
+    .cv-swatch.calendar { background: rgba(22,163,74,0.16);   border-color: rgba(22,163,74,0.35); }
+    .cv-swatch.lock     { background: rgba(97,97,97,0.16);    border-color: rgba(97,97,97,0.35); }
+
+    .cv-grid-scroll {
+      width: 100%;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-x: auto;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid rgba(124,58,237,0.10);
+      position: relative;
+    }
+    .cv-grid-stack { position: relative; width: max-content; height: max-content; background: #fff; }
+    .cv-grid-cells { display: grid; width: max-content; background: #fff; position: relative; z-index: 50; }
+    .cv-grid-blocks { display: grid; width: max-content; background: transparent; position: absolute; inset: 0; z-index: 90; pointer-events: none; }
+    .cv-cell { border-right: 1px solid var(--grid-line); border-bottom: 1px solid var(--grid-line); box-sizing: border-box; background: #fff; }
+    .cv-cell.header.month { height: var(--cv-month-h); position: sticky; top: 0; z-index: 70; background: #faf9fe; font-weight: 700; color: var(--ink); padding: 10px 12px; font-size: .86rem; display: flex; align-items: center; white-space: nowrap; font-family: var(--font-display); }
+    .cv-cell.header.day { height: var(--cv-day-h); position: sticky; top: var(--cv-month-h); z-index: 65; background: #fff; display: flex; align-items: center; justify-content: center; }
+    .cv-cell.header.day.weekend { background: var(--shade-off); }
+    .cv-cell.corner, .cv-cell.time { position: sticky; left: 0; }
+    .cv-cell.corner.month { top: 0; z-index: 120; background: #faf9fe; height: var(--cv-month-h); display: flex; align-items: center; padding: 10px 12px; font-weight: 700; font-family: var(--font-display); }
+    .cv-cell.corner.day { top: var(--cv-month-h); z-index: 115; background: #faf9fe; height: var(--cv-day-h); display: flex; align-items: center; padding: 10px 12px; font-weight: 700; }
+    .cv-cell.time { z-index: 60; background: #fff; color: var(--muted); font-size: .76rem; padding: 6px 10px 0 10px; display: flex; align-items: flex-start; white-space: nowrap; font-weight: 600; }
+    .cv-current-month { position: sticky; top: 0; left: var(--cv-time-col); z-index: 130; height: var(--cv-month-h); display: flex; align-items: center; justify-content: flex-start; padding: 10px 12px; background: var(--ink); color: #fff; font-weight: 800; pointer-events: none; min-width: var(--cv-day-col); box-sizing: border-box; font-family: var(--font-display); }
+    .cv-day-circle { width: 64px; height: 64px; border-radius: 999px; background: rgba(124,58,237,0.06); border: 1.5px solid rgba(124,58,237,0.12); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+    .cv-day-circle .wd { font-weight: 700; font-size: .72rem; letter-spacing: .1px; color: var(--muted); text-transform: uppercase; font-family: var(--font-display); }
+    .cv-day-circle .dn { font-weight: 800; font-size: 1.15rem; color: var(--ink); line-height: 1; font-family: var(--font-display); }
+    .cv-cell.slot { height: var(--cv-slot-h); cursor: crosshair; }
+    .cv-cell.slot:hover { background: rgba(124,58,237,0.04); }
+    .cv-cell.slot.offhour, .cv-cell.slot.weekend { background: var(--shade-off); }
+    .cv-cell.slot.lunch { background: var(--shade-lunch); }
+    .cv-sep-week  { border-left: var(--sep-week)  solid rgba(124,58,237,0.12) !important; }
+    .cv-sep-month { border-left: var(--sep-month) solid rgba(124,58,237,0.25) !important; }
+    .cv-sep-year  { border-left: var(--sep-year)  double rgba(124,58,237,0.40) !important; }
+    .cv-block { pointer-events: auto; z-index: 120; margin: 2px 6px; border-radius: 10px; padding: 5px 8px; font-size: .76rem; line-height: 1.15; overflow: hidden; display: flex; flex-direction: column; gap: 5px; border: 1px solid rgba(0,0,0,0.10); box-shadow: 0 4px 12px rgba(0,0,0,0.06); cursor: default; align-self: stretch; justify-self: stretch; }
+    .cv-block.queue    { background: rgba(37,99,235,0.12);  border-color: rgba(37,99,235,0.30);  color: #1e3a7a; }
+    .cv-block.calendar { background: rgba(22,163,74,0.12);  border-color: rgba(22,163,74,0.30);  color: #14532d; }
+    .cv-block.lock     { background: rgba(97,97,97,0.12);   border-color: rgba(97,97,97,0.30);   color: #222; cursor: pointer; }
+    .cv-block .time-label { font-weight: 700; font-size: .76rem; padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(0,0,0,0.10); background: rgba(255,255,255,0.85); color: var(--ink); align-self: flex-start; white-space: nowrap; }
+    .cv-block .meta { display: flex; align-items: center; gap: 7px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cv-block .tag { font-weight: 700; font-size: .68rem; padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(0,0,0,0.10); background: rgba(255,255,255,0.75); color: var(--ink); flex: 0 0 auto; }
+    .cv-helper { font-size: .80rem; color: var(--muted); line-height: 1.35; flex: 0 0 auto; }
+    .cv-helper code { padding: 1px 6px; border-radius: 999px; background: rgba(124,58,237,0.06); border: 1px solid rgba(124,58,237,0.12); font-size: .76rem; }
+
+    @media (max-width: 640px) {
+      :root { --cv-time-col: 80px; --cv-day-col: 144px; --cv-slot-h: 48px; --cv-day-h: 100px; }
+      .cv-day-circle { width: 58px; height: 58px; }
+      .qc-name { font-size: .95rem; }
+      .qa-btn span.qa-label { display: none; }
+    }
+  </style>
+</head>
+
+<body class="has-top-band has-bottom-band">
+
+<header class="site">
+  <div class="title">In-Time — My Queues</div>
+  <div class="subtitle">Manage, configure and monitor your virtual queues.</div>
+</header>
+
+<main class="container">
+
+  <!-- TOOLBAR -->
+  <section class="queue-toolbar">
+    <div class="toolbar-section">
+      <label for="searchInput">Search</label>
+      <input id="searchInput" type="search" class="toolbar-search-input" placeholder="Name or location…">
+    </div>
+    <div class="toolbar-section">
+      <label for="statusFilterSelect">Status</label>
+      <select id="statusFilterSelect" class="toolbar-select">
+        <option value="all">All</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+    </div>
+    <div class="toolbar-section">
+      <label for="formulaFilterSelect">Mode</label>
+      <select id="formulaFilterSelect" class="toolbar-select">
+        <option value="all">All modes</option>
+        <option value="LIVE_ONLY">Live-flow</option>
+        <option value="ADVANCE_ONLY">In advance</option>
+        <option value="MIXED">Mixed</option>
+      </select>
+    </div>
+    <div class="toolbar-section">
+      <label for="archFilterSelect">Type</label>
+      <select id="archFilterSelect" class="toolbar-select">
+        <option value="all">All types</option>
+        <option value="A">A — Resource</option>
+        <option value="B">B — Individual</option>
+        <option value="C">C — Wave</option>
+        <option value="D">D — Continuous</option>
+      </select>
+    </div>
+    <div class="toolbar-section toolbar-section-right">
+      <button class="toolbar-refresh-btn" type="button" id="refreshBtn" title="Refresh">↻</button>
+    </div>
+  </section>
+
+  <!-- LIST -->
+  <section class="queue-list-wrapper">
+    <div class="queue-list-meta">
+      <span id="queueCountLabel">Loading…</span>
+      <span id="queueLastRefresh"></span>
+    </div>
+    <div class="queue-list-frame" id="queueListFrame">
+      <div id="queueList" class="queue-cards"></div>
+      <div id="queueEmptyState" class="empty-state" style="display:none;">
+        <span class="empty-icon">📭</span>
+        <strong>No virtual queues found.</strong>
+        <p>Create your first queue or adjust the filters above.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- NEW QUEUE FAB -->
+  <div class="queue-new-wrapper">
+    <button class="queue-new-btn" type="button" id="newQueueBtn" title="Create new queue">＋</button>
+  </div>
+
+</main>
+
+<footer class="site">
+  © <span id="y"></span> The Platform · In-Time
+</footer>
+
+<!-- Hidden inputs for calendar-sync.js -->
+<input type="hidden" id="calGoogleConnected" value="0">
+<input type="hidden" id="calMsConnected" value="0">
+<input type="hidden" id="calOtherConnected" value="0">
+
+<!-- ─── DELETE MODAL ─────────────────────────────────────── -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal-dialog">
+    <h3>Delete this queue?</h3>
+    <p id="deleteModalText">Are you sure you want to permanently delete this queue? This cannot be undone.</p>
+    <div id="deleteModalError" class="modal-error" style="display:none;"></div>
+    <div class="modal-footer">
+      <button type="button" class="modal-btn-secondary" id="deleteCancelBtn">Cancel</button>
+      <button type="button" class="modal-btn-danger"    id="deleteConfirmBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── QR MODAL ─────────────────────────────────────────── -->
+<div class="modal-overlay" id="qrModal">
+  <div class="modal-dialog qr-modal-dialog">
+    <h3>Queue QR code</h3>
+    <img id="qrImage" src="" alt="Virtual queue QR code">
+    <div class="qr-hint">Scan with a phone to open the visitor page for this queue.</div>
+    <div class="modal-footer">
+      <button type="button" class="modal-btn-secondary" id="qrCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── ALLOWED-LIST MODAL ───────────────────────────────── -->
+<div class="modal-overlay" id="allowlistModal">
+  <div class="modal-dialog allowlist-dialog">
+    <h3>Allowed visitors list</h3>
+    <p>Manage who can book this queue when set to <strong>"Only from my list"</strong>.</p>
+    <div class="allowlist-top-row">
+      <input type="text" id="allowlistInput" placeholder="Email(s) — comma / space / ; separated…">
+      <button type="button" id="allowlistSearchBtn">Search</button>
+      <button type="button" id="allowlistAddBtn">Add</button>
+      <button type="button" id="allowlistRemoveBtn">Remove</button>
+    </div>
+    <div class="allowlist-bulk">
+      Paste a full list (comma / space / ; separated) and click Add.
+      <textarea id="allowlistBulkTextarea" placeholder="email1@… ; email2@… , email3@…"></textarea>
+    </div>
+    <div class="allowlist-list" id="allowlistList"></div>
+    <div class="allowlist-meta" id="allowlistMeta"></div>
+    <div id="allowlistError" class="modal-error" style="display:none;"></div>
+    <div class="modal-footer">
+      <button type="button" class="modal-btn-secondary" id="allowlistCancelBtn">Cancel</button>
+      <button type="button" class="modal-btn-primary"   id="allowlistSaveBtn">Save list</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── CALENDAR SYNC MODAL ──────────────────────────────── -->
+<div class="modal-overlay" id="calendarSyncModal">
+  <div class="wide-dialog">
+    <div class="wide-header">
+      <h2>Synchronize with my calendar</h2>
+      <p class="sub">Choose a provider. Review the D+90 busy-block preview, then approve to enable it for this queue.</p>
+      <div id="calendarSyncError" class="modal-error" style="display:none;"></div>
+    </div>
+    <div class="wide-body">
+      <div class="wide-body-inner">
+        <div id="calendarSyncRoot">
+          <button type="button" class="calendar-chip" data-provider="google">
+            <span>📅 Google Calendar</span><span class="inline-badge">Connect</span>
+          </button>
+          <button type="button" class="calendar-chip" data-provider="microsoft">
+            <span>📅 Outlook / Microsoft 365</span><span class="inline-badge">Connect</span>
+          </button>
+          <button type="button" class="calendar-chip" data-provider="other">
+            <span>📅 Other (CalDAV / iCal)</span><span class="inline-badge">Connect</span>
+          </button>
+        </div>
+        <div style="margin-top:10px;font-size:.82rem;color:var(--muted);">
+          "Connect" starts OAuth. "Review" opens the availability preview. "Enabled" means it's active for this queue.
+        </div>
+      </div>
+    </div>
+    <div class="wide-footer">
+      <div class="left"><button type="button" class="modal-btn-secondary" id="calendarSyncCancelBtn">Close</button></div>
+      <div class="right"><button type="button" class="modal-btn-primary" id="calendarSyncSaveBtn">Save</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── CALENDAR VIEW MODAL ──────────────────────────────── -->
+<div class="modal-overlay" id="calendarViewModal">
+  <div class="wide-dialog">
+    <div class="wide-header">
+      <h2 id="cvTitle">Queue calendar</h2>
+      <p class="sub" id="cvSub"></p>
+      <div id="calendarViewError" class="modal-error" style="display:none;"></div>
+    </div>
+    <div class="wide-body">
+      <div class="wide-body-inner">
+        <div class="cv-legend" aria-label="Calendar legend">
+          <span class="cv-legend-item"><span class="cv-swatch calendar"></span> Calendar sync busy</span>
+          <span class="cv-legend-item"><span class="cv-swatch queue"></span> Virtual Queue booking</span>
+          <span class="cv-legend-item"><span class="cv-swatch lock"></span> Locked slot</span>
+        </div>
+        <div class="cv-grid-scroll" id="cvGridScroll">
+          <div class="cv-grid-stack" id="cvGridStack">
+            <div class="cv-grid-cells" id="cvGridCells"></div>
+            <div class="cv-grid-blocks" id="cvGridBlocks"></div>
+          </div>
+        </div>
+        <div class="cv-helper">
+          <strong>Locking slots:</strong> click-and-drag vertically inside a day column to create a lock (gray).
+          Click an existing lock block to remove it. Then press <code>Approve</code>.
+        </div>
+      </div>
+    </div>
+    <div class="wide-footer">
+      <div class="left"><button type="button" class="modal-btn-secondary" id="calendarViewCancelBtn">Cancel</button></div>
+      <div class="right"><button type="button" class="modal-btn-primary" id="cvApproveBtn">Approve</button></div>
+    </div>
+  </div>
+</div>
+
+<script>document.getElementById('y').textContent = new Date().getFullYear();</script>
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+
+<script type="module">
+
+/* ─── CONSTANTS ─────────────────────────────────────────── */
+const EDIT_PAGE = '/modules/In-Time/manage/page 1.html';
+
+const ARCH_LABEL = { A:'Resource booking', B:'Individual / Appointment', C:'Wave / Batch', D:'Continuous open flow' };
+const ARCH_COLOR = { A:'#0891b2', B:'#7c3aed', C:'#d97706', D:'#16a34a' };
+
+const FORMULA_LABEL = { LIVE_ONLY:'Live-flow', ADVANCE_ONLY:'In advance', MIXED:'Mixed' };
+const FORMULA_CLASS = { LIVE_ONLY:'live', ADVANCE_ONLY:'advance', MIXED:'mixed' };
+
+const IDENTITY_LABEL = {
+  ANONYMOUS:'Open (anonymous)',
+  REGISTERED:'Registered users only',
+  LISTED:'Whitelist only'
+};
+
+/* ─── STATE ─────────────────────────────────────────────── */
+let allQueues = [];
+const filters = { search:'', status:'all', formula:'all', arch:'all' };
+
+let deleteTargetId   = null;
+let deleteTargetName = null;
+
+let currentAllowlistQueueId = null;
+let currentAllowlistEmails  = [];
+
+let currentCalendarSyncQueueId = null;
+let currentCalendarViewQueueId = null;
+let currentCalendarViewQueue   = null;
+
+let cvEvents       = [];
+let cvLocks        = [];
+let cvPendingLocks = [];
+let cvPendingDeletes = [];
+let cvDrag = { active:false, dayIndex:null, startRow:null, endRow:null };
+
+const cvUI = { startDate:null, days:91, slotMinutes:60, hoursFrom:0, hoursTo:24 };
+
+/* ─── SAFETY ────────────────────────────────────────────── */
+window.addEventListener('error', e => {
+  console.error('[page2] runtime error:', e.error || e.message);
+  const el = document.getElementById('queueCountLabel');
+  if (el) el.textContent = 'JavaScript error — see console.';
+});
+window.addEventListener('unhandledrejection', e => {
+  console.error('[page2] unhandled rejection:', e.reason);
+  const el = document.getElementById('queueCountLabel');
+  if (el) el.textContent = 'Promise error — see console.';
+});
+
+/* ─── CALENDAR SYNC MODULE ──────────────────────────────── */
+let CalendarSync = null;
+async function ensureCalendarSyncModule() {
+  if (CalendarSync) return CalendarSync;
+  CalendarSync = await import('/modules/In-Time/manage/calendar-sync.js');
+  return CalendarSync;
+}
+
+/* ─── FETCH UTIL ────────────────────────────────────────── */
+async function fetchJson(url, options = {}, label = 'Request') {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 15000);
+  let res;
+  try {
+    res = await fetch(url, { credentials:'same-origin', ...options, signal: ctrl.signal });
+  } catch (e) {
+    clearTimeout(t);
+    throw new Error(`${label} failed: ${e.name === 'AbortError' ? 'timeout' : e.message}`);
+  }
+  clearTimeout(t);
+
+  const ct = res.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) {
+    const txt = await res.text().catch(()=>'');
+    throw new Error(`${label} expected JSON, got "${ct}" (HTTP ${res.status}). Preview: ${txt.slice(0,120)}`);
+  }
+
+  let data = null;
+  try { data = await res.json(); } catch(_) { data = null; }
+
+  if (!res.ok) throw new Error((data && data.error) || `${label} failed (HTTP ${res.status})`);
+  if (data && data.ok === false) throw new Error(data.error || `${label} failed`);
+  return data ?? { ok:true };
+}
+
+/* ─── HELPERS ───────────────────────────────────────────── */
+function formatDateTime(s) {
+  if (!s) return '';
+  const d = new Date(s);
+  return isNaN(d) ? s : d.toLocaleString();
+}
+function addDays(d, n) {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+function clamp(n,a,b) { return Math.max(a,Math.min(b,n)); }
+function pad2(n) { return String(n).padStart(2,'0'); }
+function fmtHM(d) { return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+
+function editUrl(queueId, step) {
+  return `${EDIT_PAGE}?edit=${encodeURIComponent(queueId)}&step=${encodeURIComponent(step || 's0')}`;
+}
+
+function updateLastRefreshLabel() {
+  const el = document.getElementById('queueLastRefresh');
+  if (el) el.textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+/* ─── RENDER QUEUES ─────────────────────────────────────── */
+function renderQueues() {
+  const listEl  = document.getElementById('queueList');
+  const emptyEl = document.getElementById('queueEmptyState');
+  const countEl = document.getElementById('queueCountLabel');
+
+  listEl.innerHTML = '';
+
+  let filtered = allQueues.slice();
+
+  if (filters.search) {
+    const term = filters.search.toLowerCase();
+    filtered = filtered.filter(q =>
+      (q.name || '').toLowerCase().includes(term) ||
+      (q.venue_name || '').toLowerCase().includes(term) ||
+      (q.location_text || '').toLowerCase().includes(term)
+    );
+  }
+  if (filters.status === 'active')   filtered = filtered.filter(q => !!q.is_active);
+  if (filters.status === 'inactive') filtered = filtered.filter(q => !q.is_active);
+  if (filters.formula !== 'all')     filtered = filtered.filter(q => q.booking_formula === filters.formula);
+  if (filters.arch    !== 'all')     filtered = filtered.filter(q => q.archetype       === filters.arch);
+
+  countEl.textContent = allQueues.length
+    ? `${filtered.length} of ${allQueues.length} queue(s)`
+    : 'No queues yet.';
+
+  if (!filtered.length) { emptyEl.style.display = 'block'; return; }
+  emptyEl.style.display = 'none';
+
+  filtered.forEach(q => {
+    const card = document.createElement('article');
+    card.className = 'queue-card';
+    card.dataset.queueId = q.id;
+
+    const arch    = q.archetype || 'C';
+    const formula = q.booking_formula || 'LIVE_ONLY';
+    const isActive = !!q.is_active;
+    const archColor = ARCH_COLOR[arch] || '#7c3aed';
+
+    // Geo display
+    let locationDisplay = '';
+    if (q.location_text) locationDisplay = q.location_text;
+    else if (q.location_geo && (q.location_geo.lat || q.location_geo.lng)) {
+      locationDisplay = `${(q.location_geo.lat||0).toFixed(4)}, ${(q.location_geo.lng||0).toFixed(4)}`;
+    }
+
+    // Admission / identity tags
+    const identityTag = IDENTITY_LABEL[q.identity_policy] || '';
+    const admTag = q.admission_mode
+      ? (q.admission_mode.charAt(0).toUpperCase() + q.admission_mode.slice(1))
+      : '';
+
+    card.style.setProperty('--arch-color', archColor);
+
+    card.innerHTML = `
+      <!-- HEAD — click → edit s0 (basic info) -->
+      <div class="qc-head" data-edit-step="s0" title="Edit basic info">
+        <div class="qc-name-block">
+          <div class="qc-name">${q.name || 'Unnamed queue'}</div>
+          <div class="qc-venue">
+            ${q.venue_name ? `<strong>${q.venue_name}</strong>` : ''}
+            ${q.venue_name && locationDisplay ? ' · ' : ''}
+            ${locationDisplay || '<em>No location set</em>'}
+            ${q.internal_label ? ` <span style="opacity:.6">[${q.internal_label}]</span>` : ''}
+          </div>
+        </div>
+        <div class="qc-head-right">
+          <span class="arch-badge ${arch}">${arch} — ${ARCH_LABEL[arch] || arch}</span>
+          <span class="status-pill ${isActive ? 'active' : 'inactive'}">
+            <span class="status-dot ${isActive ? 'active' : 'inactive'}"></span>
+            ${isActive ? 'Active' : 'Inactive'}
+          </span>
+        </div>
+      </div>
+
+      <!-- TAGS ROW -->
+      <div class="qc-tags">
+        <!-- Booking mode — click → edit s2a -->
+        <span class="qtag ${FORMULA_CLASS[formula] || ''}" data-edit-step="s2a" title="Edit booking mode" style="cursor:pointer">
+          📋 ${FORMULA_LABEL[formula] || formula}
+        </span>
+        <!-- Access / identity — click → edit s3 -->
+        ${identityTag ? `<span class="qtag" data-edit-step="s3" title="Edit access" style="cursor:pointer">👥 ${identityTag}</span>` : ''}
+        <!-- Admission — click → edit s4 -->
+        ${admTag ? `<span class="qtag" data-edit-step="s4" title="Edit admission" style="cursor:pointer">🎫 ${admTag}</span>` : ''}
+        <!-- Location tag — click → edit s0 -->
+        ${locationDisplay ? `<span class="qtag loc" data-edit-step="s0" title="Edit location" style="cursor:pointer">📍 ${locationDisplay}</span>` : ''}
+        <!-- Timezone — click → edit s0 -->
+        ${q.timezone ? `<span class="qtag tz" data-edit-step="s0" title="Edit timezone">🕐 ${q.timezone}</span>` : ''}
+        <!-- Capacity — click → edit s2b -->
+        <span class="qtag" data-edit-step="s2b" title="Edit capacity" style="cursor:pointer">⚙️ Capacity</span>
+        <!-- Look & feel — click → edit s9 -->
+        <span class="qtag" data-edit-step="s9" title="Edit look & feel" style="cursor:pointer">🎨 Look &amp; feel</span>
+      </div>
+
+      <div class="qc-divider"></div>
+
+      <!-- ACTIONS ROW -->
+      <div class="qc-actions">
+        <!-- Edit actions mapped to steps -->
+        <button type="button" class="qa-btn btn-edit-step" data-id="${q.id}" data-step="s0"  title="Edit basic info">✏️ <span class="qa-label">Edit</span></button>
+        <button type="button" class="qa-btn btn-edit-step" data-id="${q.id}" data-step="s_op" title="Manage operators">👤 <span class="qa-label">Operators</span></button>
+        <button type="button" class="qa-btn btn-edit-step" data-id="${q.id}" data-step="s6"  title="Edit notifications">🔔 <span class="qa-label">Notifs</span></button>
+        <button type="button" class="qa-btn btn-view-qr"   data-id="${q.id}" title="View QR code">📱 <span class="qa-label">QR</span></button>
+        <button type="button" class="qa-btn btn-edit-allowlist" data-id="${q.id}" title="Manage allowed visitors">👥 <span class="qa-label">Allowlist</span></button>
+        <button type="button" class="qa-btn btn-sync-calendar"  data-id="${q.id}" title="Calendar sync">🔄 <span class="qa-label">Cal sync</span></button>
+        <button type="button" class="qa-btn btn-view-calendar"  data-id="${q.id}" title="View calendar">📅 <span class="qa-label">Calendar</span></button>
+
+        <div class="qc-actions-right">
+          <!-- Active toggle -->
+          <label class="toggle-switch" title="${isActive ? 'Deactivate' : 'Activate'} queue">
+            <input type="checkbox" class="queue-toggle" data-id="${q.id}" ${isActive ? 'checked' : ''}>
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label">${isActive ? 'Active' : 'Inactive'}</span>
+          <!-- Copy link -->
+          <button type="button" class="qa-btn btn-copy-link" data-id="${q.id}" title="Copy visitor link">🔗</button>
+          <!-- Delete -->
+          <button type="button" class="qa-btn danger btn-delete-queue" data-id="${q.id}" title="Delete queue">🗑</button>
+        </div>
+      </div>
+
+      <!-- FOOTER META -->
+      <div style="padding:0 16px 10px 20px; display:flex; gap:16px; flex-wrap:wrap; font-size:.73rem; color:var(--muted);">
+        <span>ID: ${q.id}</span>
+        ${q.created_at ? `<span>Created: ${formatDateTime(q.created_at)}</span>` : ''}
+        ${q.updated_at ? `<span>Updated: ${formatDateTime(q.updated_at)}</span>` : ''}
+      </div>
+    `;
+
+    listEl.appendChild(card);
+  });
+}
+
+function updateQueueListFrameHeight() {
+  const frame = document.getElementById('queueListFrame');
+  if (!frame) return;
+  const bandH  = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--band-h')) || 68;
+  const rect   = frame.getBoundingClientRect();
+  const avail  = window.innerHeight - bandH - rect.top;
+  frame.style.height    = (avail > 0 ? avail : 0) + 'px';
+  frame.style.maxHeight = 'none';
+}
+
+/* ─── LOAD QUEUES ───────────────────────────────────────── */
+async function loadQueues() {
+  document.getElementById('queueCountLabel').textContent = 'Loading…';
+  const data = await fetchJson('/api/intime/queues', { method:'GET', headers:{ Accept:'application/json' } }, 'Load queues');
+  allQueues = Array.isArray(data?.queues) ? data.queues : (Array.isArray(data) ? data : []);
+  renderQueues();
+  updateLastRefreshLabel();
+  updateQueueListFrameHeight();
+}
+
+/* ─── FILTERS ───────────────────────────────────────────── */
+document.getElementById('searchInput').addEventListener('input', e => { filters.search  = e.target.value.trim(); renderQueues(); });
+document.getElementById('statusFilterSelect').addEventListener('change', e => { filters.status  = e.target.value; renderQueues(); });
+document.getElementById('formulaFilterSelect').addEventListener('change', e => { filters.formula = e.target.value; renderQueues(); });
+document.getElementById('archFilterSelect').addEventListener('change', e => { filters.arch    = e.target.value; renderQueues(); });
+
+document.getElementById('newQueueBtn').addEventListener('click', () => { window.location.href = EDIT_PAGE; });
+document.getElementById('refreshBtn').addEventListener('click', () => bootLoadQueues());
+
+/* ─── DELETE MODAL ──────────────────────────────────────── */
+const deleteModal = document.getElementById('deleteModal');
+const deleteText  = document.getElementById('deleteModalText');
+const deleteError = document.getElementById('deleteModalError');
+
+function openDeleteModal(id, name) {
+  deleteTargetId   = id;
+  deleteTargetName = name || '';
+  deleteError.style.display = 'none';
+  deleteText.innerHTML = `Are you sure you want to permanently delete <strong>${name || 'this queue'}</strong>? This cannot be undone.`;
+  deleteModal.style.display = 'flex';
+}
+function closeDeleteModal() {
+  deleteModal.style.display = 'none';
+  deleteTargetId = deleteTargetName = null;
+}
+document.getElementById('deleteCancelBtn').addEventListener('click', closeDeleteModal);
+deleteModal.addEventListener('click', e => { if (e.target === deleteModal) closeDeleteModal(); });
+
+document.getElementById('deleteConfirmBtn').addEventListener('click', async () => {
+  if (!deleteTargetId) return closeDeleteModal();
+  deleteError.style.display = 'none';
+  try {
+    await fetchJson(`/api/intime/queues/${encodeURIComponent(deleteTargetId)}`,
+      { method:'DELETE', headers:{ Accept:'application/json' } }, 'Delete queue');
+    allQueues = allQueues.filter(q => String(q.id) !== String(deleteTargetId));
+    renderQueues();
+    closeDeleteModal();
+  } catch (err) {
+    deleteError.textContent = err.message || 'Error deleting queue.';
+    deleteError.style.display = 'block';
+  }
+});
+
+/* ─── QR MODAL ──────────────────────────────────────────── */
+const qrModal = document.getElementById('qrModal');
+const qrImage = document.getElementById('qrImage');
+function openQrModal(id) {
+  qrImage.src = `/api/intime/queues/${encodeURIComponent(id)}/qr?ts=${Date.now()}`;
+  qrModal.style.display = 'flex';
+}
+function closeQrModal() { qrModal.style.display = 'none'; qrImage.src = ''; }
+document.getElementById('qrCloseBtn').addEventListener('click', closeQrModal);
+qrModal.addEventListener('click', e => { if (e.target === qrModal) closeQrModal(); });
+
+/* ─── COPY LINK ─────────────────────────────────────────── */
+function copyVisitorLink(id) {
+  const url = `${location.origin}/modules/In-Time/book/index.html?queue=${id}`;
+  navigator.clipboard.writeText(url).then(() => alert('Link copied!')).catch(() => prompt('Copy this link:', url));
+}
+
+/* ─── ALLOWLIST MODAL ───────────────────────────────────── */
+const allowlistModal    = document.getElementById('allowlistModal');
+const allowlistInput    = document.getElementById('allowlistInput');
+const allowlistBulk     = document.getElementById('allowlistBulkTextarea');
+const allowlistList     = document.getElementById('allowlistList');
+const allowlistMeta     = document.getElementById('allowlistMeta');
+const allowlistError    = document.getElementById('allowlistError');
+
+function openAllowlistModal(queueId) {
+  currentAllowlistQueueId = queueId;
+  allowlistError.style.display = 'none';
+  allowlistInput.value = '';
+  allowlistBulk.value  = '';
+  const q = allQueues.find(q => String(q.id) === String(queueId));
+  currentAllowlistEmails = (q && Array.isArray(q.allowed_visitors_emails)) ? [...q.allowed_visitors_emails] : [];
+  renderAllowlistList();
+  allowlistModal.style.display = 'flex';
+}
+function closeAllowlistModal() { allowlistModal.style.display = 'none'; currentAllowlistQueueId = null; currentAllowlistEmails = []; }
+
+function renderAllowlistList(hl = '') {
+  allowlistList.innerHTML = '';
+  const term = (hl || '').trim().toLowerCase();
+  currentAllowlistEmails.forEach(email => {
+    const item = document.createElement('div');
+    item.className = 'allowlist-list-item';
+    let display = email;
+    if (term && email.toLowerCase().includes(term)) {
+      const idx = email.toLowerCase().indexOf(term);
+      display = `${email.slice(0,idx)}<strong>${email.slice(idx,idx+term.length)}</strong>${email.slice(idx+term.length)}`;
+    }
+    item.innerHTML = `<span class="allowlist-email">${display}</span><button type="button" class="allowlist-remove-one" data-email="${email}">✕</button>`;
+    allowlistList.appendChild(item);
+  });
+  allowlistMeta.textContent = currentAllowlistEmails.length
+    ? `${currentAllowlistEmails.length} email(s) in the list.`
+    : 'No emails in the list yet.';
+}
+function parseEmails() {
+  const combined = [allowlistInput.value, allowlistBulk.value].join(' ').trim();
+  if (!combined) return { emails:[], invalids:[] };
+  const rx = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  const emails = [], invalids = [];
+  combined.split(/[,\s;]+/).forEach(raw => {
+    const e = raw.trim();
+    if (!e) return;
+    if (!rx.test(e)) invalids.push(e); else emails.push(e.toLowerCase());
+  });
+  return { emails, invalids };
+}
+
+document.getElementById('allowlistSearchBtn').addEventListener('click', () => renderAllowlistList(allowlistInput.value.trim()));
+document.getElementById('allowlistAddBtn').addEventListener('click', () => {
+  allowlistError.style.display = 'none';
+  const { emails, invalids } = parseEmails();
+  if (invalids.length) { allowlistError.textContent = 'Invalid: ' + invalids.slice(0,3).join(', ') + (invalids.length>3?'…':''); allowlistError.style.display='block'; }
+  emails.forEach(e => { if (!currentAllowlistEmails.includes(e)) currentAllowlistEmails.push(e); });
+  renderAllowlistList();
+});
+document.getElementById('allowlistRemoveBtn').addEventListener('click', () => {
+  const { emails } = parseEmails();
+  if (!emails.length) return;
+  currentAllowlistEmails = currentAllowlistEmails.filter(e => !emails.includes(e.toLowerCase()));
+  renderAllowlistList();
+});
+allowlistList.addEventListener('click', e => {
+  const btn = e.target.closest('.allowlist-remove-one');
+  if (!btn) return;
+  currentAllowlistEmails = currentAllowlistEmails.filter(x => x !== btn.dataset.email);
+  renderAllowlistList();
+});
+document.getElementById('allowlistCancelBtn').addEventListener('click', closeAllowlistModal);
+allowlistModal.addEventListener('click', e => { if (e.target === allowlistModal) closeAllowlistModal(); });
+
+document.getElementById('allowlistSaveBtn').addEventListener('click', async () => {
+  if (!currentAllowlistQueueId) return closeAllowlistModal();
+  allowlistError.style.display = 'none';
+  try {
+    await fetchJson(`/api/intime/queues/${encodeURIComponent(currentAllowlistQueueId)}/allowlist`, {
+      method:'PATCH',
+      headers:{ 'Content-Type':'application/json', Accept:'application/json' },
+      body: JSON.stringify({ emails: currentAllowlistEmails })
+    }, 'Update allow-list');
+    const q = allQueues.find(q => String(q.id) === String(currentAllowlistQueueId));
+    if (q) q.allowed_visitors_emails = [...currentAllowlistEmails];
+    renderQueues();
+    closeAllowlistModal();
+  } catch (err) {
+    allowlistError.textContent = err.message || 'Failed to update allow-list.';
+    allowlistError.style.display = 'block';
+  }
+});
+
+/* ─── CALENDAR SYNC MODAL ───────────────────────────────── */
+const calSyncModal  = document.getElementById('calendarSyncModal');
+const calSyncError  = document.getElementById('calendarSyncError');
+let   calSyncRoot   = document.getElementById('calendarSyncRoot');
+
+async function openCalendarSyncModal(queueId) {
+  currentCalendarSyncQueueId = queueId;
+  calSyncError.style.display = 'none';
+  const q = allQueues.find(q => String(q.id) === String(queueId));
+  document.getElementById('calGoogleConnected').value = (q && q.calendar_sync_google) ? '1' : '0';
+  document.getElementById('calMsConnected').value     = (q && q.calendar_sync_ms) ? '1' : '0';
+  document.getElementById('calOtherConnected').value  = (q && q.calendar_sync_other) ? '1' : '0';
+  calSyncModal.style.display = 'flex';
+  const fresh = calSyncRoot.cloneNode(true);
+  calSyncRoot.parentNode.replaceChild(fresh, calSyncRoot);
+  calSyncRoot = document.getElementById('calendarSyncRoot');
+  try {
+    const mod = await ensureCalendarSyncModule();
+    mod.setupCalendarSync(calSyncRoot, {
+      google: !!(q && q.calendar_sync_google),
+      microsoft: !!(q && q.calendar_sync_ms),
+      other: !!(q && q.calendar_sync_other),
+    });
+  } catch (err) {
+    calSyncError.textContent = err.message || 'Calendar sync module failed to load.';
+    calSyncError.style.display = 'block';
+  }
+}
+function closeCalendarSyncModal() { calSyncModal.style.display = 'none'; currentCalendarSyncQueueId = null; }
+document.getElementById('calendarSyncCancelBtn').addEventListener('click', closeCalendarSyncModal);
+calSyncModal.addEventListener('click', e => { if (e.target === calSyncModal) closeCalendarSyncModal(); });
+
+document.getElementById('calendarSyncSaveBtn').addEventListener('click', async () => {
+  if (!currentCalendarSyncQueueId) return closeCalendarSyncModal();
+  calSyncError.style.display = 'none';
+  let state = { google:false, microsoft:false, other:false };
+  try {
+    const mod = await ensureCalendarSyncModule();
+    state = mod.getCalendarSyncState();
+  } catch (err) {
+    calSyncError.textContent = err.message || 'Calendar sync module failed.';
+    calSyncError.style.display = 'block';
+    return;
+  }
+  try {
+    await fetchJson(`/api/intime/queues/${encodeURIComponent(currentCalendarSyncQueueId)}/calendar-sync`, {
+      method:'PATCH',
+      headers:{ 'Content-Type':'application/json', Accept:'application/json' },
+      body: JSON.stringify({ calendar_sync_google:!!state.google, calendar_sync_ms:!!state.microsoft, calendar_sync_other:!!state.other })
+    }, 'Update calendar sync');
+    const q = allQueues.find(q => String(q.id) === String(currentCalendarSyncQueueId));
+    if (q) { q.calendar_sync_google=!!state.google; q.calendar_sync_ms=!!state.microsoft; q.calendar_sync_other=!!state.other; }
+    renderQueues();
+    closeCalendarSyncModal();
+  } catch (err) {
+    calSyncError.textContent = err.message || 'Failed to save calendar sync.';
+    calSyncError.style.display = 'block';
+  }
+});
+
+/* ─── CALENDAR VIEW ─────────────────────────────────────── */
+const calViewModal  = document.getElementById('calendarViewModal');
+const calViewError  = document.getElementById('calendarViewError');
+const cvGridScroll  = document.getElementById('cvGridScroll');
+const cvGridCells   = document.getElementById('cvGridCells');
+const cvGridBlocks  = document.getElementById('cvGridBlocks');
+
+function dayIndexForDate(dt){
+  const d0=new Date(cvUI.startDate); d0.setHours(0,0,0,0);
+  const d1=new Date(dt);             d1.setHours(0,0,0,0);
+  const diff=Math.round((d1-d0)/(24*3600*1000));
+  return (diff<0||diff>=cvUI.days) ? null : diff;
+}
+function isWeekend(d){ const w=d.getDay(); return w===0||w===6; }
+function daySepKind(d){
+  if(d.getDate()===1&&d.getMonth()===0) return 'year';
+  if(d.getDate()===1) return 'month';
+  if(d.getDay()===1)  return 'week';
+  return null;
+}
+function applySep(el,kind){
+  if(kind==='week')  el.classList.add('cv-sep-week');
+  if(kind==='month') el.classList.add('cv-sep-month');
+  if(kind==='year')  el.classList.add('cv-sep-year');
+}
+function normalizeEvent(ev){
+  const s=ev.start?new Date(ev.start):null;
+  const e=ev.end  ?new Date(ev.end)  :null;
+  if(!s||!e||isNaN(s)||isNaN(e)||e<=s) return null;
+  const src=(ev.source==='calendar')?'calendar':(ev.source==='lock')?'lock':'queue';
+  return { title:ev.title||(src==='lock'?'Locked':''), start:s, end:e, source:src, id:ev.id||ev.lock_id||ev.lockId||null };
+}
+function splitByDay(ev){
+  const out=[]; let s=new Date(ev.start); const e=new Date(ev.end);
+  while(s<e){ const eod=new Date(s); eod.setHours(24,0,0,0); const se=(e<eod)?e:eod; out.push({start:new Date(s),end:new Date(se)}); s=new Date(se); }
+  return out;
+}
+function rowFor(dt){    return clamp(dt.getHours(),0,23); }
+function rowEndFor(dt){ const h=dt.getHours(),m=dt.getMinutes(); return clamp(m>0?h+1:h,1,24); }
+
+function buildGridSkeleton(){
+  cvGridCells.innerHTML=''; cvGridBlocks.innerHTML='';
+  const dayCount=cvUI.days, cols=`var(--cv-time-col) repeat(${dayCount},var(--cv-day-col))`, rows=`var(--cv-month-h) var(--cv-day-h) repeat(24,var(--cv-slot-h))`;
+  cvGridCells.style.gridTemplateColumns=cvGridBlocks.style.gridTemplateColumns=cols;
+  cvGridCells.style.gridTemplateRows  =cvGridBlocks.style.gridTemplateRows  =rows;
+
+  const cM=document.createElement('div'); cM.className='cv-cell corner month'; cvGridCells.appendChild(cM);
+  const sticky=document.createElement('div'); sticky.className='cv-current-month'; sticky.id='cvCurrentMonthLabel'; sticky.style.gridRow='1'; sticky.style.gridColumn='2'; cvGridCells.appendChild(sticky);
+
+  for(let d=0;d<dayCount;d++){
+    const day=addDays(cvUI.startDate,d); const kind=daySepKind(day);
+    const mC=document.createElement('div'); mC.className='cv-cell header month'; mC.dataset.dayIndex=String(d);
+    if(day.getDate()===1||d===0) mC.textContent=day.toLocaleDateString(undefined,{month:'short',year:'numeric'}); else mC.textContent='';
+    applySep(mC,kind); mC.style.gridRow='1'; mC.style.gridColumn=String(2+d);
+    cvGridCells.appendChild(mC);
+  }
+
+  const cD=document.createElement('div'); cD.className='cv-cell corner day'; cD.textContent='Time'; cvGridCells.appendChild(cD);
+
+  for(let d=0;d<dayCount;d++){
+    const day=addDays(cvUI.startDate,d); const kind=daySepKind(day); const wk=isWeekend(day);
+    const dC=document.createElement('div'); dC.className='cv-cell header day'+(wk?' weekend':''); dC.dataset.dayIndex=String(d);
+    dC.innerHTML=`<div class="cv-day-circle"><div class="wd">${day.toLocaleDateString(undefined,{weekday:'short'})}</div><div class="dn">${day.getDate()}</div></div>`;
+    applySep(dC,kind); dC.style.gridRow='2'; dC.style.gridColumn=String(2+d);
+    cvGridCells.appendChild(dC);
+  }
+
+  for(let h=0;h<24;h++){
+    const tC=document.createElement('div'); tC.className='cv-cell time'; tC.textContent=`${pad2(h)}:00`; tC.style.gridColumn='1'; tC.style.gridRow=String(3+h); cvGridCells.appendChild(tC);
+  }
+
+  for(let h=0;h<24;h++){
+    const offH=(h<8)||(h>=18); const lunch=(h===12);
+    for(let d=0;d<dayCount;d++){
+      const day=addDays(cvUI.startDate,d); const wk=isWeekend(day); const kind=daySepKind(day);
+      const cell=document.createElement('div'); cell.className='cv-cell slot'; cell.dataset.dayIndex=String(d); cell.dataset.rowIndex=String(h);
+      if(wk) cell.classList.add('weekend'); else { if(offH) cell.classList.add('offhour'); if(lunch) cell.classList.add('lunch'); }
+      applySep(cell,kind); cell.style.gridRow=String(3+h); cell.style.gridColumn=String(2+d);
+      cvGridCells.appendChild(cell);
+    }
+  }
+}
+
+function updateMonthLabel(){
+  const el=document.getElementById('cvCurrentMonthLabel');
+  if(!el||!cvUI.startDate) return;
+  const colW=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cv-day-col'))||170;
+  const idx=clamp(Math.floor(cvGridScroll.scrollLeft/colW),0,cvUI.days-1);
+  el.textContent=addDays(cvUI.startDate,idx).toLocaleDateString(undefined,{month:'long',year:'numeric'});
+}
+
+function mergeSegs(segs){ segs.sort((a,b)=>a.start-b.start); const m=[]; for(const s of segs){ const l=m[m.length-1]; if(!l){m.push(s);continue;} if(s.start<=l.end){if(s.end>l.end)l.end=s.end;}else m.push(s);} return m; }
+
+function renderBlocks(){
+  cvGridBlocks.innerHTML='';
+  const composed=[];
+  (cvEvents||[]).forEach(ev=>{const n=normalizeEvent(ev);if(n)composed.push(n);});
+  (cvLocks||[]).forEach(lk=>{const n=normalizeEvent({...lk,source:'lock',title:lk.title||'Locked',id:lk.id||lk.lock_id||lk.lockId});if(n)composed.push(n);});
+  (cvPendingLocks||[]).forEach(lk=>{const n=normalizeEvent({...lk,source:'lock',title:lk.title||'Locked (pending)',id:lk.id||null});if(n)composed.push(n);});
+
+  const byDay=new Map();
+  composed.forEach(ev=>{
+    splitByDay(ev).forEach(seg=>{
+      const di=dayIndexForDate(seg.start); if(di===null)return;
+      const key=`${di}|${ev.source}|${ev.id||''}`;
+      if(!byDay.has(key))byDay.set(key,[]);
+      byDay.get(key).push({...seg,source:ev.source,title:ev.title,id:ev.id});
+    });
+  });
+
+  for(const[key,segs]of byDay.entries()){
+    const parts=key.split('|'); const di=parseInt(parts[0],10); const source=parts[1]; const id=parts.slice(2).join('|')||'';
+    mergeSegs(segs).forEach(seg=>{
+      const sr=rowFor(seg.start); const er=rowEndFor(seg.end);
+      const block=document.createElement('div'); block.className=`cv-block ${source}`; block.dataset.source=source;
+      if(source==='lock'){block.dataset.lockId=id?String(id):'';block.title='Click to remove';} else block.title=seg.title||'';
+      const tag=source==='queue'?'Booking':source==='calendar'?'Calendar':'Lock';
+      block.innerHTML=`<div class="time-label">${fmtHM(seg.start)} – ${fmtHM(seg.end)}</div><div class="meta"><span class="tag">${tag}</span><span>${source==='lock'?'Locked':''}</span></div>`;
+      block.style.gridColumn=String(2+di); block.style.gridRow=`${3+sr}/${3+Math.max(er,sr+1)}`;
+      cvGridBlocks.appendChild(block);
+    });
+  }
+}
+
+function autoFocusBizHours(){
+  const h=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cv-slot-h'))||54;
+  const mid=(8*h+18*h)/2; cvGridScroll.scrollTop=Math.max(0,mid-cvGridScroll.clientHeight/2);
+}
+
+function rebuildCalView(){ buildGridSkeleton(); renderBlocks(); cvGridScroll.scrollLeft=0; requestAnimationFrame(()=>{autoFocusBizHours();updateMonthLabel();}); }
+
+async function loadCalViewData(id){
+  const data=await fetchJson(`/api/intime/queues/${encodeURIComponent(id)}/calendar-view`,{method:'GET',headers:{Accept:'application/json'}},'Load calendar');
+  const combined=[];
+  if(Array.isArray(data?.events))combined.push(...data.events);
+  if(!combined.length&&Array.isArray(data?.queue_events))combined.push(...data.queue_events.map(x=>({...x,source:'queue'})));
+  if(Array.isArray(data?.calendar_events))combined.push(...data.calendar_events.map(x=>({...x,source:'calendar'})));
+  if(Array.isArray(data?.external_events)&&!Array.isArray(data?.calendar_events))combined.push(...data.external_events.map(x=>({...x,source:'calendar'})));
+  cvEvents=combined;
+  cvLocks=Array.isArray(data?.locks)?data.locks:(Array.isArray(data?.locked_slots)?data.locked_slots:[]);
+  const lockKey=x=>`${new Date(x.start).getTime()}-${new Date(x.end).getTime()}`;
+  const sk=new Set(cvLocks.map(lockKey));
+  cvPendingLocks=cvPendingLocks.filter(p=>!sk.has(lockKey(p)));
+  rebuildCalView();
+}
+
+function openCalendarViewModal(id){
+  currentCalendarViewQueueId=id;
+  currentCalendarViewQueue=allQueues.find(q=>String(q.id)===String(id))||null;
+  calViewError.style.display='none'; calViewError.textContent='';
+  cvPendingLocks=[]; cvPendingDeletes=[];
+  const q=currentCalendarViewQueue;
+  document.getElementById('cvTitle').textContent=q?`Calendar — ${q.name}`:'Queue calendar';
+  document.getElementById('cvSub').textContent=q?`Viewing ${cvUI.days} days from today. Drag to lock time slots.`:'';
+  cvUI.startDate=new Date(); cvUI.startDate.setHours(0,0,0,0);
+  calViewModal.style.display='flex';
+  loadCalViewData(id).catch(err=>{
+    calViewError.textContent=(err.message||'Failed to load calendar.')+' (If 404 — stub route needed.)';
+    calViewError.style.display='block';
+    cvUI.startDate=new Date(); cvUI.startDate.setHours(0,0,0,0);
+    rebuildCalView();
+  });
+}
+function closeCalendarViewModal(){ calViewModal.style.display='none'; currentCalendarViewQueueId=null; }
+document.getElementById('calendarViewCancelBtn').addEventListener('click',closeCalendarViewModal);
+calViewModal.addEventListener('click',e=>{if(e.target===calViewModal)closeCalendarViewModal();});
+
+cvGridScroll.addEventListener('scroll',updateMonthLabel);
+
+/* Drag to lock */
+cvGridCells.addEventListener('mousedown',e=>{
+  const cell=e.target.closest('.cv-cell.slot'); if(!cell)return;
+  cvDrag={active:true,dayIndex:parseInt(cell.dataset.dayIndex,10),startRow:parseInt(cell.dataset.rowIndex,10),endRow:parseInt(cell.dataset.rowIndex,10)};
+  e.preventDefault();
+});
+cvGridCells.addEventListener('mousemove',e=>{
+  if(!cvDrag.active)return;
+  const cell=e.target.closest('.cv-cell.slot'); if(!cell)return;
+  if(parseInt(cell.dataset.dayIndex,10)!==cvDrag.dayIndex)return;
+  cvDrag.endRow=parseInt(cell.dataset.rowIndex,10);
+});
+window.addEventListener('mouseup',()=>{
+  if(!cvDrag.active)return;
+  const di=cvDrag.dayIndex; const a=Math.min(cvDrag.startRow,cvDrag.endRow); const b=Math.max(cvDrag.startRow,cvDrag.endRow);
+  const day=addDays(cvUI.startDate,di);
+  const start=new Date(day); start.setHours(a,0,0,0);
+  const end=new Date(day); end.setHours(b+1,0,0,0);
+  cvPendingLocks.push({id:`pending-${Date.now()}-${Math.random().toString(16).slice(2)}`,title:'Locked (pending)',start:start.toISOString(),end:end.toISOString(),source:'lock'});
+  cvDrag.active=false; renderBlocks();
+});
+cvGridBlocks.addEventListener('click',e=>{
+  const block=e.target.closest('.cv-block.lock'); if(!block)return;
+  const lid=block.dataset.lockId||'';
+  if(lid.startsWith('pending-')){cvPendingLocks=cvPendingLocks.filter(l=>String(l.id)!==lid);renderBlocks();return;}
+  if(lid){const idx=cvLocks.findIndex(l=>String(l.id||l.lock_id||l.lockId)===String(lid));if(idx>=0){const rm=cvLocks.splice(idx,1)[0];cvPendingDeletes.push({lock_id:lid,start:rm.start,end:rm.end});renderBlocks();}}
+});
+document.getElementById('cvApproveBtn').addEventListener('click',async()=>{
+  if(!currentCalendarViewQueueId)return;
+  calViewError.style.display='none';
+  try{
+    await fetchJson(`/api/intime/queues/${encodeURIComponent(currentCalendarViewQueueId)}/locks`,{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json',Accept:'application/json'},
+      body:JSON.stringify({create:cvPendingLocks.map(x=>({start:x.start,end:x.end,title:'Locked'})),delete:cvPendingDeletes.map(x=>({lock_id:x.lock_id}))})
+    },'Save locks');
+    closeCalendarViewModal();
+  }catch(err){
+    calViewError.textContent=(err.message||'Failed to save locks.')+' (If 404 — stub route needed.)';
+    calViewError.style.display='block';
+  }
+});
+
+/* ─── CARD EVENT DELEGATION ─────────────────────────────── */
+document.getElementById('queueList').addEventListener('click', e => {
+  // Clickable header/tags → edit step
+  const editZone = e.target.closest('[data-edit-step]');
+  if (editZone) {
+    const card = editZone.closest('.queue-card');
+    const id   = card?.dataset.queueId;
+    if (id) { window.location.href = editUrl(id, editZone.dataset.editStep); return; }
+  }
+
+  const btn = e.target.closest('button');
+  if (!btn) return;
+
+  const id = btn.dataset.id;
+
+  if (btn.classList.contains('btn-edit-step')) {
+    window.location.href = editUrl(id, btn.dataset.step || 's0');
+    return;
+  }
+  if (btn.classList.contains('btn-view-qr'))        { openQrModal(id); return; }
+  if (btn.classList.contains('btn-edit-allowlist')) { openAllowlistModal(id); return; }
+  if (btn.classList.contains('btn-sync-calendar'))  { openCalendarSyncModal(id); return; }
+  if (btn.classList.contains('btn-view-calendar'))  { openCalendarViewModal(id); return; }
+  if (btn.classList.contains('btn-copy-link'))      { copyVisitorLink(id); return; }
+  if (btn.classList.contains('btn-delete-queue')) {
+    const card = btn.closest('.queue-card');
+    const name = card?.querySelector('.qc-name')?.textContent?.trim() || '';
+    openDeleteModal(id, name);
+    return;
+  }
+});
+
+/* ─── ACTIVE TOGGLE ─────────────────────────────────────── */
+document.getElementById('queueList').addEventListener('change', e => {
+  const toggle = e.target.closest('.queue-toggle'); if (!toggle) return;
+  const id = toggle.dataset.id;
+  const newActive = toggle.checked;
+
+  const card  = toggle.closest('.queue-card');
+  const pill  = card?.querySelector('.status-pill');
+  const dot   = card?.querySelector('.status-dot');
+  const label = card?.querySelector('.toggle-label');
+
+  if (pill)  { pill.className  = `status-pill ${newActive?'active':'inactive'}`; pill.innerHTML = `<span class="status-dot ${newActive?'active':'inactive'}"></span>${newActive?'Active':'Inactive'}`; }
+  if (label) { label.textContent = newActive ? 'Active' : 'Inactive'; }
+
+  fetchJson(`/api/intime/queues/${encodeURIComponent(id)}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type':'application/json', Accept:'application/json' },
+    body: JSON.stringify({ is_active: !!newActive })
+  }, 'Update status')
+  .then(() => { const q = allQueues.find(q=>String(q.id)===String(id)); if(q) q.is_active=!!newActive; })
+  .catch(err => {
+    toggle.checked = !newActive;
+    if (pill)  { pill.className=`status-pill ${!newActive?'active':'inactive'}`; pill.innerHTML=`<span class="status-dot ${!newActive?'active':'inactive'}"></span>${!newActive?'Active':'Inactive'}`; }
+    if (label) label.textContent = !newActive ? 'Active' : 'Inactive';
+    alert(err.message || 'Error updating queue status.');
+  });
+});
+
+/* ─── BOOT ──────────────────────────────────────────────── */
+async function bootLoadQueues() {
+  const el = document.getElementById('queueCountLabel');
+  el.textContent = 'Loading…';
+  try {
+    await loadQueues();
+  } catch (err) {
+    console.error(err);
+    el.textContent = 'Error loading queues.';
+    const last = document.getElementById('queueLastRefresh');
+    if (last) last.textContent = err.message || 'Unknown error';
+  }
+}
+
+function boot() {
+  document.getElementById('queueCountLabel').textContent = 'Booting…';
+  bootLoadQueues();
+  setTimeout(updateQueueListFrameHeight, 0);
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
+
+window.addEventListener('resize', updateQueueListFrameHeight);
+</script>
+
+<script>
+  Drawer.mount({ mode: 'host' });
+  FAB.mount({
+    useTopBand:    true,
+    useBottomBand: true,
+    home:   { title:'Home & Services', label:'🏠', onClick:()=>Drawer.open() },
+    config: { title:'Settings', label:'⚙️', href:'/pages/visitor/settings.html#host' },
+    onBack: () => { if(history.length>1) history.back(); else location.href='/pages/host/dashboard.html'; },
+    br:     { title:'New Virtual Queue', label:'＋', href:'/modules/In-Time/manage/page 1.html' }
+  });
+
+  // Hide FAB bottom-right button (conflicts with new queue FAB)
+  function hideBottomRightFab() {
+    const bh=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--band-h'))||68;
+    const vh=window.innerHeight, vw=window.innerWidth;
+    document.querySelectorAll('.fab-band.bottom .fab-btn,.bottom-band .fab-btn').forEach(el=>{
+      const r=el.getBoundingClientRect(); if(!r.width||!r.height)return;
+      const cx=r.left+r.width/2, cy=r.top+r.height/2;
+      if(cy>vh-bh-80&&cy<vh&&cx>vw*0.6){ el.style.display='none'; el.style.visibility='hidden'; el.style.pointerEvents='none'; }
+    });
+  }
+  hideBottomRightFab();
+  new MutationObserver(hideBottomRightFab).observe(document.body,{childList:true,subtree:true});
+  window.addEventListener('resize',hideBottomRightFab);
+</script>
+
+</body>
+</html>

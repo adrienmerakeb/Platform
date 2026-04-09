@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Let’s Get Out! — Create a new Guiding (1/2)</title>
+
+  <!-- Shared app styles -->
+  <link rel="stylesheet" href="/css/style.css"/>
+  <link rel="stylesheet" href="/css/pages/main.css"/>
+
+  <style>
+    body.has-top-band.has-bottom-band main.container {
+      padding-top: 8vh;
+      padding-bottom: 8vh;
+    }
+
+    main.container {
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+
+    /* Layout when top + bottom bands are active */
+    body.has-top-band.has-bottom-band main.container {
+      padding-top: 8vh;
+      padding-bottom: 6vh;
+    }
+
+    main.container {
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+
+    /* Header layout in FAB top band */
+    .top-band header.site {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header.site .title {
+      display: block;
+    }
+
+    header.site .subtitle {
+      margin-top: 2px;
+      font-size: 0.85rem;
+      opacity: 0.85;
+    }
+
+    .wizard-hero {
+      margin: 0px auto 0px;
+      padding: 16px 20px 18px;
+      border-radius: 20px;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      backdrop-filter: blur(14px);
+    }
+
+    .wizard-hero h1 {
+      margin: 0 0 4px;
+      font-size: 1rem;
+      letter-spacing: .02em;
+    }
+
+    .wizard-hero p {
+      margin: 0;
+      font-size: 0.7rem;
+      opacity: 0.9;
+    }
+
+    .wizard-steps {
+      margin-top: 6px;
+      font-size: 0.82rem;
+      opacity: 0.8;
+    }
+
+    .wizard-body {
+      margin: 16px auto 80px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .wizard-card {
+      border-radius: 18px;
+      padding: 16px 18px 18px;
+      background: #ffffff;
+      color: #1b1b1b;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    }
+
+    .wizard-card h2 {
+      margin: 0 0 6px;
+      font-size: 1.05rem;
+    }
+
+    .wizard-card p {
+      margin: 0 0 10px;
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    .field-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .field {
+      flex: 1 1 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.9rem;
+    }
+
+    .field label {
+      font-weight: 600;
+      font-size: 0.86rem;
+    }
+
+    .field select,
+    .field input[type="text"],
+    .field input[type="number"],
+    .field textarea {
+      border-radius: 10px;
+      border: 1px solid #d0d7de;
+      padding: 7px 9px;
+      font: inherit;
+    }
+
+    .field textarea {
+      min-height: 70px;
+      resize: vertical;
+    }
+
+    .hint {
+      font-size: 0.8rem;
+      color: #777;
+    }
+
+    .type-toggle-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .type-pill {
+      flex: 1 1 120px;
+      border-radius: 999px;
+      border: 1px solid #d0d7de;
+      padding: 6px 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      background: #fafafa;
+    }
+
+    .type-pill input {
+      display: none;
+    }
+
+    .type-pill span.type-label {
+      font-weight: 600;
+    }
+
+    .type-pill.active {
+      background: #1e88e5;
+      color: #fff;
+      border-color: #1e88e5;
+    }
+
+    .type-pill.active .type-desc {
+      opacity: 0.9;
+    }
+
+    .type-desc {
+      font-size: 0.8rem;
+      opacity: 0.7;
+    }
+
+    .type-section {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #e0e0e0;
+      display: none;
+    }
+
+    .type-section.active {
+      display: block;
+    }
+
+    .inline-radio-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+      font-size: 0.86rem;
+    }
+
+    .inline-radio-row label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      border-radius: 999px;
+      padding: 4px 9px;
+      border: 1px solid #d0d7de;
+      background: #fafafa;
+    }
+
+    .inline-radio-row input[type="radio"] {
+      accent-color: #1e88e5;
+    }
+
+    .inline-checkbox-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 6px;
+      font-size: 0.86rem;
+    }
+
+    .inline-checkbox-row label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    /* Floating "Save & Continue" CTA at the bottom, above bottom band */
+    .save-continue-fab {
+      position: fixed;
+      left: 50%;
+      bottom: calc(var(--band-h, 68px) - 22px);
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      border-radius: 999px;
+      border: none;
+      background: #ffffff;
+      color: grey;
+      font-size: 1.3rem;
+      font-weight: 600;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+      z-index: 990;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease-out, transform 0.18s ease-out,
+                  box-shadow 0.18s ease-out;
+    }
+
+    .save-continue-fab:hover {
+      color: #ffffff;
+      background: grey;
+      border-color: #1e88e5;
+    }
+
+    .save-continue-fab.enabled {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .save-continue-fab:active {
+      transform: translateX(-50%) translateY(1px);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+    }
+
+    /* Hide bottom-right FAB button on this page */
+    .fab.br {
+      display: none !important;
+    }
+
+/* Mobile tweaks */
+@media (max-width: 640px) {
+  .manage-hero {
+    margin: 4px auto 0px;
+    padding-inline: 14px;
+  }
+  .manage-cards-grid {
+    margin-bottom: 72px;
+  }
+}
+  </style>
+</head>
+
+<body class="has-top-band has-bottom-band">
+  <!-- Header content is moved into the FAB top-band by fab.js -->
+  <header class="site">
+    <div class="title">Create a new Guiding 1/2</div>
+    <div class="subtitle">
+      Create your guidings & parameter your options
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Hero / intro -->
+    <section class="wizard-hero">
+      <h1>Guiding configuration</h1>
+      <p>
+        Choose the format of your guiding and how visitors will access it:
+        Online (content on the platform), Live or IRL. You can reuse settings
+        from an existing guiding later.
+      </p>
+      <div class="wizard-steps">
+        Step 1 of 2 — configuration • Step 2 — content &amp; steps
+      </div>
+    </section>
+
+    <section class="wizard-body">
+
+      <!-- 1) Guiding type selection -->
+      <article class="wizard-card">
+        <h2>Guiding type</h2>
+        <p>
+          Select how this guiding will be delivered. You will only use one
+          type per guiding: Online, Live or IRL.
+        </p>
+
+        <div class="type-toggle-row" id="typeToggleRow">
+          <label class="type-pill" data-type="online">
+            <input type="radio" name="guidingType" value="online"/>
+            <span class="type-label">Online</span>
+            <span class="type-desc">Content on the platform (audio, video, text).</span>
+          </label>
+
+          <label class="type-pill" data-type="live">
+            <input type="radio" name="guidingType" value="live"/>
+            <span class="type-label">Live</span>
+            <span class="type-desc">Real-time remote session (chat / call).</span>
+          </label>
+
+          <label class="type-pill" data-type="irl">
+            <input type="radio" name="guidingType" value="irl"/>
+            <span class="type-label">IRL</span>
+            <span class="type-desc">In-person guiding at a physical location.</span>
+          </label>
+        </div>
+
+        <div class="hint" style="margin-top:6px;">
+          Only one type can be active for a given guiding. You can duplicate
+          a guiding later to create alternative formats.
+        </div>
+
+        <!-- Online specific -->
+        <div id="onlineSection" class="type-section">
+          <h3 style="margin:8px 0 4px;font-size:0.98rem;">Online options</h3>
+          <p class="hint">
+            Content is uploaded to the platform. Visitors can follow it at their
+            own pace according to your configuration.
+          </p>
+
+          <!-- Monetization model -->
+          <div class="field">
+            <label>Access &amp; monetization</label>
+            <div class="inline-radio-row">
+              <label>
+                <input type="radio" name="onlineAccess" value="free-ads" checked/>
+                <span>Free use — monetized with ads (recommended)</span>
+              </label>
+              <label>
+                <input type="radio" name="onlineAccess" value="free-no-ads"/>
+                <span>Free use — no monetization</span>
+              </label>
+              <label>
+                <input type="radio" name="onlineAccess" value="fee"/>
+                <span>Pay-per-guiding</span>
+              </label>
+            </div>
+            <div class="field-row" id="onlineFeeRow" style="margin-top:8px;display:none;">
+              <div class="field">
+                <label for="onlinePrice">Price per visitor</label>
+                <div class="field-row" style="gap:6px;margin-top:0;">
+                  <input type="number" id="onlinePrice" min="0" step="0.5" placeholder="e.g. 9.99"/>
+                  <span style="align-self:center;font-size:0.86rem;">EUR</span>
+                </div>
+              </div>
+              <div class="field">
+                <label>Free teaser segments?</label>
+                <div class="inline-radio-row">
+                  <label>
+                    <input type="radio" name="onlineTeasers" value="no" checked/>
+                    <span>No</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="onlineTeasers" value="yes"/>
+                    <span>Yes — some steps will be free previews</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tipping + offline -->
+          <div class="field-row" style="margin-top:10px;">
+            <div class="field">
+              <label>Tipping option</label>
+              <div class="inline-radio-row">
+                <label>
+                  <input type="radio" name="onlineTips" value="no" checked/>
+                  <span>No tipping</span>
+                </label>
+                <label>
+                  <input type="radio" name="onlineTips" value="yes"/>
+                  <span>Allow tipping (requires payout setup)</span>
+                </label>
+              </div>
+              <div class="hint">
+                If enabled, you will be asked to set up payout details in your
+                guide profile.
+              </div>
+            </div>
+            <div class="field">
+              <label>Offline use policy</label>
+              <div class="inline-radio-row">
+                <label>
+                  <input type="radio" name="onlineOffline" value="no" checked/>
+                  <span>No offline use</span>
+                </label>
+                <label>
+                  <input type="radio" name="onlineOffline" value="yes"/>
+                  <span>Allow downloads / offline access</span>
+                </label>
+              </div>
+              <div class="hint">
+                When allowed, additional proceeds may come from subscriptions
+                and downloads.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live specific -->
+        <div id="liveSection" class="type-section">
+          <h3 style="margin:8px 0 4px;font-size:0.98rem;">Live options</h3>
+          <p class="hint">
+            You will perform live remote sessions with visitors (video / audio / chat).
+            The platform helps with presentation, calendar, messaging and payments.
+          </p>
+
+          <div class="inline-checkbox-row">
+            <label>
+              <input type="checkbox" id="liveExtraPresentation" checked/>
+              Additional presentation material for Live guidings
+            </label>
+            <label>
+              <input type="checkbox" id="liveMessaging" checked/>
+              Messaging space + calendar (visitor request, guide approves)
+            </label>
+            <label>
+              <input type="checkbox" id="liveSecurePayment" checked/>
+              Secure payment handled through the platform
+            </label>
+            <label>
+              <input type="checkbox" id="liveLocationSharing" checked/>
+              Live location sharing &amp; call coordination (e.g. WhatsApp)
+            </label>
+          </div>
+        </div>
+
+        <!-- IRL specific -->
+        <div id="irlSection" class="type-section">
+          <h3 style="margin:8px 0 4px;font-size:0.98rem;">IRL options</h3>
+          <p class="hint">
+            In-person guiding at a real location. The platform helps with
+            presentation, messaging, calendar and secure payment.
+          </p>
+
+          <div class="inline-checkbox-row">
+            <label>
+              <input type="checkbox" id="irlExtraPresentation" checked/>
+              Additional presentation material specific to IRL guidings
+            </label>
+            <label>
+              <input type="checkbox" id="irlMessaging" checked/>
+              Messaging space + calendar (visitor request, guide approves)
+            </label>
+            <label>
+              <input type="checkbox" id="irlSecurePayment" checked/>
+              Secure payment handled through the platform
+            </label>
+          </div>
+        </div>
+      </article>
+
+      <!-- 2) (Optional) reuse settings from previous guiding -->
+      <article class="wizard-card">
+        <h2>Reuse configuration (optional)</h2>
+        <p>
+          If you already have guidings, you can duplicate their configuration
+          as a starting point for this one.
+        </p>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="reuseGuidingSelect">Reuse from existing guiding</label>
+            <select id="reuseGuidingSelect">
+              <option value="">— Do not reuse —</option>
+              <!-- This can be populated dynamically later via API if you wish -->
+            </select>
+          </div>
+        </div>
+
+        <div class="hint" style="margin-top:6px;">
+          When you reuse a guiding, only the configuration (type, monetization,
+          options) is copied — content &amp; steps will still be created in the
+          next step.
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <footer class="site"></footer>
+
+  <!-- Floating Save & Continue button -->
+  <button type="button"
+          id="btnSaveContinue"
+          class="save-continue-fab"
+          disabled>
+    Save &amp; Continue
+  </button>
+
+  <!-- Shared chrome: drawer + FAB -->
+  <script src="/js/drawer.js"></script>
+  <script src="/js/fab.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const typeToggleRow      = document.getElementById('typeToggleRow');
+      const typePills          = typeToggleRow.querySelectorAll('.type-pill');
+      const onlineSection      = document.getElementById('onlineSection');
+      const liveSection        = document.getElementById('liveSection');
+      const irlSection         = document.getElementById('irlSection');
+
+      const onlineAccessRadios = document.querySelectorAll('input[name="onlineAccess"]');
+      const onlineFeeRow       = document.getElementById('onlineFeeRow');
+      const onlinePriceInput   = document.getElementById('onlinePrice');
+      const onlineTeasersRadios= document.querySelectorAll('input[name="onlineTeasers"]');
+      const onlineTipsRadios   = document.querySelectorAll('input[name="onlineTips"]');
+      const onlineOfflineRadios= document.querySelectorAll('input[name="onlineOffline"]');
+
+      const btnSaveContinue    = document.getElementById('btnSaveContinue');
+      const reuseSelect        = document.getElementById('reuseGuidingSelect');
+
+      let hasReachedBottomOnce = false;
+
+      // ---------- Guiding type UI ----------
+
+      function setActiveType(type) {
+        typePills.forEach(p => {
+          const t = p.dataset.type;
+          p.classList.toggle('active', t === type);
+          const input = p.querySelector('input[type="radio"]');
+          if (input) input.checked = (t === type);
+        });
+
+        onlineSection.classList.toggle('active', type === 'online');
+        liveSection.classList.toggle('active',   type === 'live');
+        irlSection.classList.toggle('active',    type === 'irl');
+      }
+
+      typePills.forEach(pill => {
+        pill.addEventListener('click', () => {
+          const type = pill.dataset.type;
+          setActiveType(type);
+        });
+      });
+
+      // Default to Online
+      setActiveType('online');
+
+      // ---------- Online monetization UI ----------
+
+      function updateOnlineMonetizationUI() {
+        let mode = 'free-ads';
+        onlineAccessRadios.forEach(r => {
+          if (r.checked) mode = r.value;
+        });
+
+        if (mode === 'fee') {
+          onlineFeeRow.style.display = 'flex';
+        } else {
+          onlineFeeRow.style.display = 'none';
+          onlinePriceInput.value = '';
+        }
+      }
+
+      onlineAccessRadios.forEach(r => {
+        r.addEventListener('change', updateOnlineMonetizationUI);
+      });
+      updateOnlineMonetizationUI();
+
+      // ---------- Collect payload for Step 1 ----------
+
+      function collectStep1Payload() {
+        // type
+        let guidingType = 'online';
+        typePills.forEach(p => {
+          const input = p.querySelector('input[type="radio"]');
+          if (input && input.checked) guidingType = input.value;
+        });
+
+        const payload = {
+          type: guidingType,            // 'online' | 'live' | 'irl'
+          reuse_from_guiding_id: null,  // to be used later if you implement duplication
+          // Online:
+          free_use: 1,
+          monetization_model: 'ads',    // 'ads' | 'fee' | 'none'
+          price_cents: 0,
+          allow_teasers: 0,
+          tipping_enabled: 0,
+          offline_allowed: 0,
+          // Live / IRL options (boolean flags, if you want to store them)
+          live_extra_presentation: 0,
+          live_messaging: 0,
+          live_secure_payment: 0,
+          live_location_sharing: 0,
+          irl_extra_presentation: 0,
+          irl_messaging: 0,
+          irl_secure_payment: 0
+        };
+
+        // Reuse
+        const reuseVal = reuseSelect.value;
+        if (reuseVal) {
+          payload.reuse_from_guiding_id = Number(reuseVal) || null;
+        }
+
+        if (guidingType === 'online') {
+          let accessMode = 'free-ads';
+          onlineAccessRadios.forEach(r => {
+            if (r.checked) accessMode = r.value;
+          });
+
+          if (accessMode === 'free-ads') {
+            payload.free_use = 1;
+            payload.monetization_model = 'ads';
+          } else if (accessMode === 'free-no-ads') {
+            payload.free_use = 1;
+            payload.monetization_model = 'none';
+          } else if (accessMode === 'fee') {
+            payload.free_use = 0;
+            payload.monetization_model = 'fee';
+            const priceVal = parseFloat((onlinePriceInput.value || '').replace(',', '.'));
+            payload.price_cents = isNaN(priceVal) ? 0 : Math.round(priceVal * 100);
+          }
+
+          let teasersVal = 'no';
+          onlineTeasersRadios.forEach(r => {
+            if (r.checked) teasersVal = r.value;
+          });
+          payload.allow_teasers = teasersVal === 'yes' ? 1 : 0;
+
+          let tipsVal = 'no';
+          onlineTipsRadios.forEach(r => {
+            if (r.checked) tipsVal = r.value;
+          });
+          payload.tipping_enabled = tipsVal === 'yes' ? 1 : 0;
+
+          let offlineVal = 'no';
+          onlineOfflineRadios.forEach(r => {
+            if (r.checked) offlineVal = r.value;
+          });
+          payload.offline_allowed = offlineVal === 'yes' ? 1 : 0;
+        }
+
+        if (guidingType === 'live') {
+          payload.live_extra_presentation = document.getElementById('liveExtraPresentation').checked ? 1 : 0;
+          payload.live_messaging          = document.getElementById('liveMessaging').checked ? 1 : 0;
+          payload.live_secure_payment     = document.getElementById('liveSecurePayment').checked ? 1 : 0;
+          payload.live_location_sharing   = document.getElementById('liveLocationSharing').checked ? 1 : 0;
+        }
+
+        if (guidingType === 'irl') {
+          payload.irl_extra_presentation = document.getElementById('irlExtraPresentation').checked ? 1 : 0;
+          payload.irl_messaging          = document.getElementById('irlMessaging').checked ? 1 : 0;
+          payload.irl_secure_payment     = document.getElementById('irlSecurePayment').checked ? 1 : 0;
+        }
+
+        return payload;
+      }
+
+      // ---------- Save step 1 + go to appropriate step 2 page ----------
+
+      async function saveStep1AndGoNext() {
+        const payload = collectStep1Payload();
+
+        try {
+          const res = await fetch('/api/letsgetout/guidings/step1', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload)
+          });
+
+          // If server rejected the request, show its message
+          if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            console.error('Step 1 save failed. Status:', res.status, 'Body:', text);
+            alert(
+              'Could not save guiding configuration (step 1).\n\n' +
+              (text || 'No additional error message from server.')
+            );
+            return;
+          }
+
+          let data = null;
+          try {
+            data = await res.json();
+          } catch (e) {
+            console.error('Step 1: response not JSON:', e);
+            alert('Step 1 saved, but server did not return JSON. Cannot continue.');
+            return;
+          }
+
+          const guidingId = data.guiding_id || data.id;
+          if (!guidingId) {
+            console.error('Step 1: Missing guiding id in response:', data);
+            alert('Server did not return a guiding id. Please contact support.');
+            return;
+          }
+
+          // Store last guiding id & type as fallback for next step
+          localStorage.setItem('lgo_last_guiding_id', String(guidingId));
+          if (payload.type) {
+            localStorage.setItem('lgo_last_guiding_type', String(payload.type));
+          }
+
+          // Decide which step-2 page to open based on guiding type
+          let nextPage = 'page 1-2.html'; // default: Online
+          if (payload.type === 'live') {
+            nextPage = 'page 1-3.html';
+          } else if (payload.type === 'irl') {
+            nextPage = 'page 1-4.html';
+          }
+
+          // Go to the appropriate step 2 page
+          window.location.href =
+            `/modules/Let's Get Out!/manage/${nextPage}?guiding_id=${encodeURIComponent(guidingId)}`;
+
+        } catch (err) {
+          console.error('Step 1 save error (network or JS):', err);
+          alert('Network or script error while saving guiding configuration (step 1).');
+        }
+      }
+
+      // ---------- Scroll detection to enable Save & Continue ----------
+
+      function checkScrollPosition() {
+        if (hasReachedBottomOnce) return;
+
+        const threshold = 60; // px from bottom
+        const reached =
+          window.innerHeight + window.scrollY >= document.body.offsetHeight - threshold;
+
+        if (reached) {
+          hasReachedBottomOnce = true;
+          btnSaveContinue.classList.add('enabled');
+          btnSaveContinue.removeAttribute('disabled');
+        }
+      }
+
+      window.addEventListener('scroll', checkScrollPosition, { passive: true });
+      checkScrollPosition();
+
+      btnSaveContinue.addEventListener('click', () => {
+        if (!hasReachedBottomOnce) return;
+        saveStep1AndGoNext();
+      });
+
+      // ---------- Drawer + FAB chrome ----------
+
+      if (window.Drawer && typeof window.Drawer.mount === 'function') {
+        window.Drawer.mount({
+          mode: 'visitor'
+        });
+      }
+
+      if (window.FAB && typeof window.FAB.mount === 'function') {
+        window.FAB.mount({
+          useTopBand: true,
+          useBottomBand: true,
+
+          // TOP-LEFT: Home → open drawer (services)
+          home: {
+            title: 'Home / Services',
+            label: '🏠',
+            onClick: () =>
+              window.Drawer &&
+              window.Drawer.open &&
+              window.Drawer.open()
+          },
+
+          // TOP-RIGHT: Let’s Get Out! settings
+          config: {
+            title: "Let’s Get Out! — Settings",
+            label: "⚙️",
+            href: "/modules/Let's Get Out!/settings.html"
+          },
+
+          // BOTTOM-LEFT: Exit → Let’s Get Out! manage main
+          onBack: () => {
+            window.location.href = "/modules/Let's Get Out!/manage/main.html";
+          }
+
+          // No bottom-right button on this page
+        });
+      }
+    });
+  </script>
+</body>
+</html>

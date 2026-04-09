@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Calendar — In-Time</title>
+<link rel="stylesheet" href="/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --v:#7c3aed;--v-s:#ede9fc;--v-d:#6d28d9;--white:#fff;
+  --blue:#2563eb;--blue-s:#eff6ff;
+  --green:#16a34a;--green-s:#f0fdf4;
+  --amber:#d97706;--amber-s:#fffbeb;
+  --red:#dc2626;--red-s:#fef2f2;
+  --txt:#1a1825;--muted:#6b6880;--hint:#9b98aa;
+  --surf:#fff;--bg:#f4f3f8;--bord:#e2e0ea;--bord-f:#7c3aed;
+  --gray:#f0eff5;--gray-m:#d4d2de;
+  --r:14px;--ri:9px;
+  --sh:0 2px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --font:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:var(--font);background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55}
+
+.topbar{background:var(--v);color:#fff;padding:10px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 12px rgba(124,58,237,.3)}
+.topbar-title{font-size:15px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topbar-sub{font-size:11.5px;opacity:.7;white-space:nowrap}
+.topbar a{color:#fff;text-decoration:none;font-weight:700;font-size:12px;padding:5px 12px;border:1.5px solid rgba(255,255,255,.4);border-radius:999px;white-space:nowrap;transition:background .15s}
+.topbar a:hover{background:rgba(255,255,255,.15)}
+
+.shell{max-width:1200px;margin:0 auto;padding:20px 16px 80px}
+
+.toolbar{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);padding:12px 16px;margin-bottom:14px;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.toolbar .lbl{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
+
+.legend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:12px;font-weight:600}
+.legend-dot{display:inline-flex;align-items:center;gap:5px}
+.legend-dot::before{content:'';width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.legend-dot.booking::before{background:rgba(124,58,237,.25);border:1px solid rgba(124,58,237,.5)}
+.legend-dot.busy::before{background:rgba(255,152,0,.2);border:1px solid rgba(255,152,0,.55)}
+.legend-dot.closed::before{background:var(--gray);border:1px solid var(--bord)}
+.legend-dot.break::before{background:#e9f7e9;border:1px solid #86efac}
+
+.card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
+
+/* ─── GRID ─── */
+.grid-wrap{overflow:auto;max-height:calc(100vh - 200px);border-radius:0 0 var(--r) var(--r);scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.25) rgba(0,0,0,.06)}
+.grid-wrap::-webkit-scrollbar{height:8px;width:8px}
+.grid-wrap::-webkit-scrollbar-track{background:rgba(0,0,0,.06);border-radius:999px}
+.grid-wrap::-webkit-scrollbar-thumb{background:rgba(0,0,0,.25);border-radius:999px}
+
+.cal-table{border-collapse:separate;border-spacing:0;table-layout:fixed}
+.cal-table th,.cal-table td{padding:0;font-size:12px}
+.cal-table th{position:sticky;top:0;z-index:20;background:var(--surf);border-bottom:1.5px solid var(--bord);font-weight:700;text-align:center}
+.cal-table .time-col{position:sticky;left:0;z-index:25;background:var(--surf);border-right:1px solid var(--bord);width:70px;text-align:right;padding-right:8px;font-weight:600;color:var(--muted);font-size:11px}
+.cal-table .corner{position:sticky;left:0;z-index:30;background:var(--surf)}
+
+.day-hd{padding:8px 4px;min-width:90px}
+.day-hd .wd{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.day-hd .dn{font-size:16px;font-weight:700;color:var(--txt)}
+.day-hd.weekend .wd,.day-hd.weekend .dn{color:var(--hint)}
+.day-hd.today{background:var(--v-s)}
+.day-hd.today .dn{color:var(--v)}
+
+.slot-cell{height:32px;border-bottom:1px solid rgba(0,0,0,.04);position:relative}
+.slot-cell.off{background:var(--gray)}
+.slot-cell.break-zone{background:#f0fdf4}
+.slot-cell.weekend{background:var(--gray)}
+
+/* Blocks overlay */
+.grid-rel{position:relative}
+.block-overlay{position:absolute;left:0;top:0;pointer-events:none}
+.cal-block{position:absolute;border-radius:6px;overflow:hidden;padding:2px 5px;font-size:10px;font-weight:700;line-height:1.3;pointer-events:auto;cursor:default}
+.cal-block.booking{background:rgba(124,58,237,.18);border:1px solid rgba(124,58,237,.45);color:var(--v-d)}
+.cal-block.busy{background:rgba(255,152,0,.15);border:1px solid rgba(255,152,0,.5);color:#e65100}
+.cal-block.holiday{background:var(--red-s);border:1px solid #fca5a5;color:var(--red)}
+
+.empty-state{padding:40px;text-align:center;color:var(--hint);font-size:14px}
+
+.btn{display:inline-flex;align-items:center;gap:5px;font-family:var(--font);font-size:12px;font-weight:600;padding:7px 14px;border-radius:var(--ri);cursor:pointer;transition:all .18s;border:1.5px solid;text-decoration:none;white-space:nowrap}
+.btn-v{background:var(--v);color:#fff;border-color:var(--v)}
+.btn-v:hover{background:var(--v-d)}
+.btn-s{background:var(--surf);color:var(--txt);border-color:var(--bord)}
+.btn-s:hover{background:var(--gray)}
+
+@media(max-width:600px){
+  .shell{padding:12px 8px 60px}
+  .toolbar{padding:10px 12px;gap:6px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="flex:1;min-width:0">
+    <div class="topbar-title" id="tb-title">📅 Queue Calendar</div>
+    <div class="topbar-sub" id="tb-sub">Loading…</div>
+  </div>
+  <a href="#" id="backLink">← Back</a>
+</div>
+
+<div class="shell">
+
+  <div class="toolbar">
+    <div class="legend">
+      <span class="legend-dot booking">Bookings</span>
+      <span class="legend-dot busy">Busy (external)</span>
+      <span class="legend-dot closed">Closed / off-hours</span>
+      <span class="legend-dot break">Break</span>
+    </div>
+    <div style="flex:1"></div>
+    <span class="lbl" id="rangeLabel"></span>
+    <button type="button" class="btn btn-s" id="btnPrev">← Prev</button>
+    <button type="button" class="btn btn-s" id="btnToday">Today</button>
+    <button type="button" class="btn btn-s" id="btnNext">Next →</button>
+    <a class="btn btn-v" id="btnSync" href="#">⚙ Sync settings</a>
+  </div>
+
+  <div class="card">
+    <div class="grid-wrap" id="gridWrap">
+      <div class="empty-state" id="loading">Loading calendar…</div>
+    </div>
+  </div>
+
+</div>
+
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+<script>
+'use strict';
+
+const _qid=new URLSearchParams(location.search).get('queue');
+const COL_W=90, ROW_H=32, TIME_W=70;
+let _queue=null, _startDate=new Date(), _viewDays=14;
+
+/* ─── Helpers ─── */
+const pad2=n=>String(n).padStart(2,'0');
+const isoDate=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
+function jp(v){if(v==null)return null;if(typeof v==='object')return v;try{return JSON.parse(v);}catch(_){return null;}}
+
+/* ─── Schedule helpers ─── */
+function getSchedule(){
+  if(!_queue)return null;
+  const raw=_queue.schedule_json;
+  return jp(raw)||{sameHours:true,globalOpen:'09:00',globalClose:'17:00',days:[],cutoff:30,breaks:[],holidays:[],specials:[]};
+}
+
+function isDayOpen(sched,date){
+  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dn=dayNames[date.getDay()];
+  if(!sched.days||!sched.days.length)return date.getDay()>=1&&date.getDay()<=5;
+  const d=sched.days.find(x=>x.n===dn);
+  return d?d.on:false;
+}
+
+function getDayHours(sched,date){
+  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dn=dayNames[date.getDay()];
+  if(sched.sameHours||!sched.days?.length){
+    const o=sched.globalOpen||'09:00',c=sched.globalClose||'17:00';
+    return{open:parseInt(o.split(':')[0]),close:parseInt(c.split(':')[0])+1};
+  }
+  const d=sched.days.find(x=>x.n===dn);
+  if(!d||!d.on)return null;
+  return{open:parseInt(d.open.split(':')[0]),close:parseInt(d.close.split(':')[0])+1};
+}
+
+function isBreakHour(sched,h){
+  const brks=sched.breaks||[];
+  for(const b of brks){
+    const from=parseInt((b.from||'12:00').split(':')[0]);
+    const to=parseInt((b.to||'13:00').split(':')[0]);
+    if(h>=from&&h<to)return true;
+  }
+  return false;
+}
+
+function isHoliday(sched,date){
+  const ds=isoDate(date);
+  return(sched.holidays||[]).some(h=>h.date===ds);
+}
+
+/* ─── Busy block processing ─── */
+function mergeBusyByDay(slots){
+  const byDay=new Map();
+  (slots||[]).forEach(slot=>{
+    const s=new Date(slot.start),e=new Date(slot.end);
+    if(isNaN(s)||isNaN(e)||e<=s)return;
+    let cur=new Date(s);
+    while(cur<e){
+      const dayEnd=new Date(cur);dayEnd.setHours(24,0,0,0);
+      const segEnd=e<dayEnd?new Date(e):dayEnd;
+      const key=isoDate(cur);
+      if(!byDay.has(key))byDay.set(key,[]);
+      byDay.get(key).push({start:new Date(cur),end:new Date(segEnd)});
+      cur=new Date(segEnd);
+    }
+  });
+  for(const[day,segs]of byDay.entries()){
+    segs.sort((a,b)=>a.start-b.start);
+    const merged=[];
+    for(const seg of segs){
+      const last=merged[merged.length-1];
+      if(last&&seg.start<=last.end){if(seg.end>last.end)last.end=seg.end;}
+      else merged.push(seg);
+    }
+    byDay.set(day,merged);
+  }
+  return byDay;
+}
+
+/* ─── Grid renderer ─── */
+function renderGrid(){
+  const wrap=document.getElementById('gridWrap');
+  const sched=getSchedule();
+  if(!sched){wrap.innerHTML='<div class="empty-state">No schedule data. Configure your queue first.</div>';return;}
+
+  const days=[];
+  for(let i=0;i<_viewDays;i++)days.push(addDays(_startDate,i));
+
+  /* Determine hour range from schedule */
+  let minH=24,maxH=0;
+  days.forEach(d=>{
+    const dh=getDayHours(sched,d);
+    if(dh){if(dh.open<minH)minH=dh.open;if(dh.close>maxH)maxH=dh.close;}
+  });
+  if(minH>=maxH){minH=8;maxH=18;}
+  /* Add 1h padding */
+  minH=Math.max(0,minH-1);
+  maxH=Math.min(24,maxH+1);
+  const hours=[];for(let h=minH;h<maxH;h++)hours.push(h);
+
+  /* Update range label */
+  document.getElementById('rangeLabel').textContent=
+    `${days[0].toLocaleDateString(undefined,{month:'short',day:'numeric'})} — ${days[days.length-1].toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}`;
+
+  /* Build table */
+  const table=document.createElement('table');
+  table.className='cal-table';
+  table.style.width=`${TIME_W+days.length*COL_W}px`;
+
+  /* Colgroup */
+  const cg=document.createElement('colgroup');
+  const c0=document.createElement('col');c0.style.width=`${TIME_W}px`;cg.appendChild(c0);
+  days.forEach(()=>{const c=document.createElement('col');c.style.width=`${COL_W}px`;cg.appendChild(c);});
+  table.appendChild(cg);
+
+  /* Header */
+  const thead=document.createElement('thead');
+  const tr=document.createElement('tr');
+  const corner=document.createElement('th');corner.className='corner';corner.style.width=`${TIME_W}px`;
+  tr.appendChild(corner);
+  const today=new Date();today.setHours(0,0,0,0);
+  days.forEach(d=>{
+    const th=document.createElement('th');
+    const isToday=isoDate(d)===isoDate(today);
+    const isWknd=d.getDay()===0||d.getDay()===6;
+    th.innerHTML=`<div class="day-hd${isWknd?' weekend':''}${isToday?' today':''}"><div class="wd">${d.toLocaleDateString(undefined,{weekday:'short'})}</div><div class="dn">${d.getDate()}</div></div>`;
+    tr.appendChild(th);
+  });
+  thead.appendChild(tr);table.appendChild(thead);
+
+  /* Body */
+  const tbody=document.createElement('tbody');
+  hours.forEach(h=>{
+    const row=document.createElement('tr');
+    const tc=document.createElement('td');tc.className='time-col';
+    tc.textContent=`${pad2(h)}:00`;row.appendChild(tc);
+    days.forEach(d=>{
+      const td=document.createElement('td');
+      td.className='slot-cell';
+      const dh=getDayHours(sched,d);
+      const isWknd=d.getDay()===0||d.getDay()===6;
+      const open=isDayOpen(sched,d);
+      const hol=isHoliday(sched,d);
+      if(!open||hol||isWknd)td.classList.add('weekend');
+      else if(!dh||h<dh.open||h>=dh.close)td.classList.add('off');
+      else if(isBreakHour(sched,h))td.classList.add('break-zone');
+      row.appendChild(td);
+    });
+    tbody.appendChild(row);
+  });
+  table.appendChild(tbody);
+
+  /* Busy blocks overlay */
+  const busySlots=[];/* TODO: fetch from /api/host/calendar/availability or queue calendar blocks */
+  const busyByDay=mergeBusyByDay(busySlots);
+
+  const rel=document.createElement('div');rel.className='grid-rel';
+  const overlay=document.createElement('div');overlay.className='block-overlay';
+
+  const headerH=50;/* approx header row height */
+  overlay.style.width=`${TIME_W+days.length*COL_W}px`;
+  overlay.style.height=`${headerH+hours.length*ROW_H}px`;
+
+  for(const[dayKey,segs]of busyByDay.entries()){
+    const di=days.findIndex(d=>isoDate(d)===dayKey);
+    if(di<0)continue;
+    segs.forEach(seg=>{
+      const sH=seg.start.getHours()+seg.start.getMinutes()/60;
+      const eH=seg.end.getHours()+seg.end.getMinutes()/60;
+      const x=TIME_W+di*COL_W+1;
+      const y=headerH+(sH-minH)*ROW_H;
+      const h=Math.max(8,(eH-sH)*ROW_H);
+      const block=document.createElement('div');
+      block.className='cal-block busy';
+      block.style.left=`${x}px`;block.style.top=`${y}px`;
+      block.style.width=`${COL_W-2}px`;block.style.height=`${h}px`;
+      block.textContent=`${pad2(seg.start.getHours())}:${pad2(seg.start.getMinutes())}–${pad2(seg.end.getHours())}:${pad2(seg.end.getMinutes())}`;
+      overlay.appendChild(block);
+    });
+  }
+
+  rel.appendChild(table);rel.appendChild(overlay);
+  wrap.innerHTML='';wrap.appendChild(rel);
+
+  /* Scroll to operating hours */
+  requestAnimationFrame(()=>{
+    const opStart=Math.max(0,(getDayHours(sched,days[0])?.open||8)-minH);
+    wrap.scrollTop=opStart*ROW_H;
+  });
+}
+
+/* ─── Load ─── */
+async function loadQueue(){
+  if(!_qid){document.getElementById('loading').textContent='No queue specified.';return;}
+  try{
+    const res=await fetch(`/api/intime/queues/${encodeURIComponent(_qid)}`,{credentials:'same-origin',headers:{Accept:'application/json'}});
+    const data=await res.json().catch(()=>null);
+    if(!res.ok||!data)throw new Error((data&&data.error)||`HTTP ${res.status}`);
+    _queue=data.queue||data;
+    document.getElementById('tb-title').textContent=`📅 ${_queue.name||'Queue'} — Calendar`;
+    document.getElementById('tb-sub').textContent=(_queue.venue_name||'')+(_queue.timezone?' · '+_queue.timezone:'');
+    document.getElementById('btnSync').href=`calendar sync.html?queue=${encodeURIComponent(_qid)}`;
+    _startDate=new Date();_startDate.setHours(0,0,0,0);
+    /* Set back link */
+    const ref=document.referrer;
+    document.getElementById('backLink').href=ref&&ref.includes('page')?ref:`../page 2.html`;
+    renderGrid();
+  }catch(err){
+    document.getElementById('loading').textContent='Failed to load: '+err.message;
+  }
+}
+
+/* ─── Navigation ─── */
+document.getElementById('btnPrev').addEventListener('click',()=>{_startDate=addDays(_startDate,-_viewDays);renderGrid();});
+document.getElementById('btnNext').addEventListener('click',()=>{_startDate=addDays(_startDate,_viewDays);renderGrid();});
+document.getElementById('btnToday').addEventListener('click',()=>{_startDate=new Date();_startDate.setHours(0,0,0,0);renderGrid();});
+
+/* ─── Boot ─── */
+document.addEventListener('DOMContentLoaded',()=>{
+  if(window.Drawer?.mount)window.Drawer.mount({mode:'host'});
+  if(window.FAB?.mount)window.FAB.mount({useTopBand:true,useBottomBand:true,
+    home:{title:'Home',label:'🏠',onClick:()=>window.Drawer?.open?.()},
+    config:{title:'Settings',label:'⚙️',href:'/pages/visitor/settings.html#host'},
+    onBack:()=>{history.back();}});
+  loadQueue();
+});
+</script>
+</body>
+</html>

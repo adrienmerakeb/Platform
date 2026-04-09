@@ -1,0 +1,64 @@
+{
+  "appTitle": "WanderPal",
+  "langLabel": "Bahasa",
+
+  "loginTitle": "Masuk",
+  "registerTitle": "Daftar",
+
+  "email": "Alamat email",
+  "password": "Kata sandi",
+  "createPassword": "Buat kata sandi",
+  "namePlaceholder": "Nama",
+  "companyName": "Nama perusahaan",
+  "website": "Situs resmi",
+
+  "remember": "Ingat saya",
+  "forgot": "Lupa kata sandi?",
+  "forgotTitle": "Atur ulang kata sandi",
+  "forgotDesc": "Masukkan email, kami akan mengirim tautan reset.",
+  "forgotCancel": "Batal",
+  "forgotSend": "Kirim",
+  "forgotSuccess": "Jika akun ada, tautan reset telah dikirim.",
+  "forgotError": "Kami tidak dapat memproses permintaan Anda.",
+
+  "loginBtn": "Masuk",
+  "registerBtn": "Daftar",
+  "or": "atau",
+  "noAccount": "Belum punya akun?",
+  "signup": "Daftar",
+  "haveAccount": "Sudah punya akun?",
+  "signin": "Masuk",
+
+  "invalidCreds": "Kredensial tidak valid",
+  "suspendedMsg": "Akun ini ditangguhkan. Hubungi dukungan.",
+
+  "networkError": "Kesalahan jaringan",
+  "registerSuccess": "Akun dibuat. Anda dapat masuk sekarang.",
+  "registerFail": "Tidak dapat membuat akun (email sudah dipakai?)",
+
+  "hostTitle": "Host",
+  "hostLogin": "Host — Masuk",
+  "hostRegister": "Host — Daftar",
+  "hostForgotTitle": "Atur ulang kata sandi Host",
+  "hostForgotDesc": "Anda akan menerima tautan jika email terdaftar sebagai Host.",
+
+  "partnerTitle": "Mitra",
+  "partnerLogin": "Mitra — Masuk",
+  "partnerRegister": "Mitra — Daftar",
+  "partnerForgotTitle": "Atur ulang kata sandi Mitra",
+  "partnerForgotDesc": "Anda akan menerima tautan jika email terdaftar sebagai Mitra.",
+
+  "chooseSector": "Pilih sektor",
+  "recommendedServices": "Layanan yang disarankan",
+
+  "museum": "Museum / Galeri / Monumen",
+  "doctor": "Dokter / Klinik / Dokter gigi",
+  "salon": "Kecantikan / Spa / Penata rambut",
+  "event": "Penyelenggara acara / Venue",
+  "restaurant": "Restoran / Kafe / Bar",
+  "hotel": "Hotel / Guesthouse / BnB",
+  "retail": "Toko / Pusat perbelanjaan",
+  "sports": "Pusat olahraga / Gym / Stadion",
+  "public": "Instansi publik / Bank / Kantor pos",
+  "other": "Lainnya"
+}

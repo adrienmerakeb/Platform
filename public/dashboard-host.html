@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Host — Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+</head>
+
+<body class="has-top-band has-bottom-band">
+<header class="site"><div class="title">Host - My Dashboard</div></header>
+
+<main class="container">
+  <section class="grid cards" id="host-services">
+    <!-- Cards will be injected here based on the host's services -->
+  </section>
+
+  <p id="host-services-info" class="muted" style="margin-top:1rem;text-align:center;"></p>
+</main>
+
+<footer class="site"></footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const container = document.getElementById('host-services');
+  const infoEl = document.getElementById('host-services-info');
+
+  // We keep the folder name exactly as returned by the server
+  function buildManageUrl(serviceKey, slug) {
+    return `/modules/${serviceKey}/manage/${slug}`;
+  }
+
+  function createServiceCard(module) {
+    const folder = String(module.service_key || '');
+    const title  = module.display_name || folder;
+
+    const managePages = Array.isArray(module.managePages) ? module.managePages : [];
+    const mainPage    = managePages[0] || { slug: 'main.html', label: title };
+
+    const iconBase   = module.icon_base || `/modules/${folder}/icons/${folder}`;
+    const logoSrcOff = iconBase + '-off.png';
+
+    const mainSlug = mainPage.slug;
+    const linkHtml = managePages
+      .filter(p => p.slug !== mainSlug)
+      .slice(0, 3)
+      .map(p => {
+        const href  = buildManageUrl(folder, p.slug);
+        const label = p.label || p.slug.replace('.html', '');
+        return `<a href="${href}" class="card-link">${label}</a>`;
+      })
+      .join('');
+
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    card.innerHTML = `
+      <div class="card-logo-area" data-main-href="${buildManageUrl(folder, mainPage.slug)}">
+        <img src="${logoSrcOff}" alt="${title} Logo" class="logo">
+        <div class="card-links">
+          ${linkHtml}
+        </div>
+      </div>
+
+      <a href="${buildManageUrl(folder, mainPage.slug)}" class="card-title-link">
+        <p class="card-title">${title}</p>
+      </a>
+    `;
+
+    return card;
+  }
+
+  function initCardIconBehaviour() {
+    const cards = document.querySelectorAll('#host-services .card');
+
+    const toHover = (src) => src.replace(/-off(\.[a-z0-9]+)$/i, '-hover$1');
+    const toOn    = (src) => src.replace(/-off(\.[a-z0-9]+)$/i, '-on$1');
+    const toOff   = (src) => src
+      .replace(/-hover(\.[a-z0-9]+)$/i, '-off$1')
+      .replace(/-on(\.[a-z0-9]+)$/i, '-off$1');
+
+    cards.forEach(card => {
+      const area = card.querySelector('.card-logo-area');
+      const img  = card.querySelector('.logo');
+      if (!area || !img) return;
+
+      const baseOff   = img.getAttribute('src');
+      const hoverSrc  = toHover(baseOff);
+      const selectSrc = toOn(baseOff);
+      const mainHref  = area.dataset.mainHref || '';
+
+      [hoverSrc, selectSrc].forEach(src => {
+        const i = new Image();
+        i.src = src;
+      });
+
+      area.style.setProperty('--hover-src', `url("${hoverSrc}")`);
+
+      area.addEventListener('mouseenter', () => {
+        card.classList.add('hovering');
+      });
+
+      area.addEventListener('mouseleave', () => {
+        card.classList.remove('hovering');
+        if (!card.classList.contains('selected')) {
+          img.src = baseOff;
+        }
+      });
+
+      area.addEventListener('click', (e) => {
+        const link = e.target.closest('a.card-link');
+        if (link) {
+          return;
+        }
+
+        e.preventDefault();
+
+        document.querySelectorAll('#host-services .card').forEach(c => {
+          c.classList.remove('selected', 'hovering');
+          const logo = c.querySelector('.logo');
+          if (logo) {
+            const current = logo.getAttribute('src') || '';
+            logo.src = toOff(current);
+          }
+        });
+
+        card.classList.add('selected');
+        img.src = selectSrc;
+
+        if (mainHref) {
+          window.location.href = mainHref;
+        }
+      });
+    });
+  }
+
+  async function loadHostServices() {
+    container.innerHTML = '';
+    infoEl.textContent = 'Loading your services…';
+
+    try {
+      const res = await fetch('/api/services', {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      if (!res.ok) {
+        // No valid host session → back to host login/register
+        location.href = '/host.html';   // 👈 host auth page
+        return;
+      }
+
+      const payload = await res.json();
+      const user    = payload.user || {};
+      const modules = payload.modules || [];
+
+      if (!user || user.role !== 'host') {
+        location.href = '/host.html';   // 👈 host auth page
+        return;
+      }
+
+      if (modules.length === 1) {
+        const m        = modules[0];
+        const folder   = String(m.service_key || '');
+        const pages    = Array.isArray(m.managePages) ? m.managePages : [];
+        const mainPage = pages[0] || { slug: 'main.html' };
+        location.href  = buildManageUrl(folder, mainPage.slug);
+        return;
+      }
+
+      container.innerHTML = '';
+
+      if (!modules.length) {
+        infoEl.textContent = 'No services are currently attached to your account.';
+        return;
+      }
+
+      modules
+        .slice()
+        .sort((a, b) => {
+          const pa = a.position ?? 0;
+          const pb = b.position ?? 0;
+          if (pa !== pb) return pa - pb;
+          const ka = String(a.service_key || '');
+          const kb = String(b.service_key || '');
+          return ka.localeCompare(kb);
+        })
+        .forEach(m => {
+          const card = createServiceCard(m);
+          container.appendChild(card);
+        });
+
+      infoEl.textContent = '';
+      initCardIconBehaviour();
+
+    } catch (err) {
+      console.error('[HOST DASH] error loading services:', err);
+      infoEl.textContent = 'Error loading services. Please refresh the page.';
+    }
+  }
+
+  async function hostLogout() {
+    try {
+      await fetch('/api/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (e) {
+      console.warn('Logout failed (will still redirect):', e);
+    } finally {
+      // ✅ Redirect specifically to the HOST auth page
+      window.location.href = '/host.html';
+    }
+  }
+
+  // Expose logout for FAB
+  window.HostDashboard = window.HostDashboard || {};
+  window.HostDashboard.logout = hostLogout;
+
+  loadHostServices();
+});
+</script>
+
+<script src="/js/fab.js"></script>
+<script src="/js/host.js"></script>
+<script>
+  // ✅ Host-specific FAB config
+  // Adjust paths if your host dashboard/settings are named differently.
+  FAB.mount({
+    useTopBand: true,
+    useBottomBand: true,
+
+    // Host "home" = host dashboard itself
+    home: {
+      href: '/pages/host/dashboard-host.html',   // 👈 adjust if needed
+      title: 'Host — Dashboard',
+      label: '🏠'
+    },
+
+    // Host settings (or account page)
+    config: {
+      href: '/pages/host/settings.html',        // 👈 adjust or point to any host config page
+      title: 'Host settings',
+      label: '⚙️'
+    },
+
+    // Bottom-left: LOGOUT (host-aware)
+    logout: {
+      title: "Logout",
+      iconPath: "/icons/ion-png-black/md-log-out.png",
+      onClick: () => window.HostDashboard && window.HostDashboard.logout()
+    }
+  });
+  // ======= HARD HIDE: bottom-right FAB button (geometry-based) =======
+  function hideBottomRightFabButton() {
+    const bandH = parseInt(
+      getComputedStyle(document.documentElement).getPropertyValue('--band-h')
+    ) || 68;
+
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+
+    const candidates = Array.from(document.querySelectorAll('button, a'))
+      .filter(el => {
+        const rect = el.getBoundingClientRect();
+        if (!rect.width || !rect.height) return false;
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+
+        const nearBottom = cy > vh - bandH - 80 && cy < vh;
+        const rightSide  = cx > vw * 0.6;
+
+        return nearBottom && rightSide;
+      });
+
+    candidates.forEach(el => {
+      el.style.display       = 'none';
+      el.style.visibility    = 'hidden';
+      el.style.pointerEvents = 'none';
+    });
+  }
+
+  hideBottomRightFabButton();
+
+  const fabObserver = new MutationObserver(() => {
+    hideBottomRightFabButton();
+  });
+  fabObserver.observe(document.body, { childList: true, subtree: true });
+
+  window.addEventListener('resize', hideBottomRightFabButton);
+</script>
+
+<script src="/js/dashboard-loader.js" defer></script>
+
+</body>
+</html>

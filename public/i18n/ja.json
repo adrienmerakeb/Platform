@@ -1,0 +1,64 @@
+{
+  "appTitle": "WanderPal",
+  "langLabel": "言語",
+
+  "loginTitle": "ログイン",
+  "registerTitle": "登録",
+
+  "email": "メールアドレス",
+  "password": "パスワード",
+  "createPassword": "パスワードを作成",
+  "namePlaceholder": "氏名",
+  "companyName": "会社名",
+  "website": "公式サイト",
+
+  "remember": "ログイン状態を保持する",
+  "forgot": "パスワードをお忘れですか？",
+  "forgotTitle": "パスワードのリセット",
+  "forgotDesc": "メールアドレスを入力すると、リセット用リンクを送信します。",
+  "forgotCancel": "キャンセル",
+  "forgotSend": "送信",
+  "forgotSuccess": "アカウントが存在する場合、リセットリンクを送信しました。",
+  "forgotError": "リクエストを処理できませんでした。",
+
+  "loginBtn": "ログイン",
+  "registerBtn": "登録",
+  "or": "または",
+  "noAccount": "アカウントをお持ちでないですか？",
+  "signup": "登録する",
+  "haveAccount": "すでにアカウントをお持ちですか？",
+  "signin": "ログイン",
+
+  "invalidCreds": "無効な認証情報です",
+  "suspendedMsg": "このアカウントは停止されています。サポートにご連絡ください。",
+
+  "networkError": "ネットワークエラー",
+  "registerSuccess": "アカウントを作成しました。ログインできます。",
+  "registerFail": "アカウントを作成できませんでした（メールが使用済み？）",
+
+  "hostTitle": "ホスト",
+  "hostLogin": "ホスト — ログイン",
+  "hostRegister": "ホスト — 登録",
+  "hostForgotTitle": "ホストのパスワードをリセット",
+  "hostForgotDesc": "このメールがホストとして登録されていればリンクが届きます。",
+
+  "partnerTitle": "パートナー",
+  "partnerLogin": "パートナー — ログイン",
+  "partnerRegister": "パートナー — 登録",
+  "partnerForgotTitle": "パートナーのパスワードをリセット",
+  "partnerForgotDesc": "このメールがパートナーとして登録されていればリンクが届きます。",
+
+  "chooseSector": "業種を選択",
+  "recommendedServices": "おすすめのサービス",
+
+  "museum": "博物館 / ギャラリー / 記念碑",
+  "doctor": "医師 / クリニック / 歯科",
+  "salon": "美容 / スパ / 美容院",
+  "event": "イベント主催者 / 会場",
+  "restaurant": "レストラン / カフェ / バー",
+  "hotel": "ホテル / ゲストハウス / BnB",
+  "retail": "店舗 / ショッピングモール",
+  "sports": "スポーツセンター / ジム / スタジアム",
+  "public": "行政 / 銀行 / 郵便局",
+  "other": "その他"
+}

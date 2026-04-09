@@ -1,0 +1,64 @@
+{
+  "appTitle": "WanderPal",
+  "langLabel": "Taal",
+
+  "loginTitle": "Inloggen",
+  "registerTitle": "Registreren",
+
+  "email": "E-mailadres",
+  "password": "Wachtwoord",
+  "createPassword": "Wachtwoord aanmaken",
+  "namePlaceholder": "Naam",
+  "companyName": "Bedrijfsnaam",
+  "website": "Officiële website",
+
+  "remember": "Ingelogd blijven",
+  "forgot": "Wachtwoord vergeten?",
+  "forgotTitle": "Wachtwoord herstellen",
+  "forgotDesc": "Vul je e-mail in en we sturen een herstel-link.",
+  "forgotCancel": "Annuleren",
+  "forgotSend": "Verzenden",
+  "forgotSuccess": "Indien er een account bestaat, is er een link verzonden.",
+  "forgotError": "Je verzoek kon niet worden verwerkt.",
+
+  "loginBtn": "Inloggen",
+  "registerBtn": "Registreren",
+  "or": "of",
+  "noAccount": "Nog geen account?",
+  "signup": "Aanmelden",
+  "haveAccount": "Al een account?",
+  "signin": "Inloggen",
+
+  "invalidCreds": "Ongeldige inloggegevens",
+  "suspendedMsg": "Dit account is geblokkeerd. Neem contact op met support.",
+
+  "networkError": "Netwerkfout",
+  "registerSuccess": "Account aangemaakt. Je kunt nu inloggen.",
+  "registerFail": "Account kon niet worden aangemaakt (e-mail al in gebruik?)",
+
+  "hostTitle": "Host",
+  "hostLogin": "Host — Inloggen",
+  "hostRegister": "Host — Registreren",
+  "hostForgotTitle": "Host-wachtwoord herstellen",
+  "hostForgotDesc": "Je ontvangt een link als dit e-mailadres als host is geregistreerd.",
+
+  "partnerTitle": "Partner",
+  "partnerLogin": "Partner — Inloggen",
+  "partnerRegister": "Partner — Registreren",
+  "partnerForgotTitle": "Partner-wachtwoord herstellen",
+  "partnerForgotDesc": "Je ontvangt een link als dit e-mailadres als partner is geregistreerd.",
+
+  "chooseSector": "Sector kiezen",
+  "recommendedServices": "Aanbevolen services",
+
+  "museum": "Museum / Galerie / Monument",
+  "doctor": "Arts / Kliniek / Tandarts",
+  "salon": "Schoonheid / Spa / Kapper",
+  "event": "Evenementenorganisator / Locatie",
+  "restaurant": "Restaurant / Café / Bar",
+  "hotel": "Hotel / Pension / BnB",
+  "retail": "Winkel / Winkelcentrum",
+  "sports": "Sportcentrum / Gym / Stadion",
+  "public": "Overheid / Bank / Post",
+  "other": "Overig"
+}

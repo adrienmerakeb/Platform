@@ -1,0 +1,322 @@
+// /modules/In-Time/manage/calendar-grid.js
+// Single source-of-truth calendar renderer used by BOTH:
+// - View calendar (combined view)
+// - Sync calendar Review (availability preview)
+
+export function createCalendarGrid(rootEl, {
+  // required
+  startDate,            // Date (00:00)
+  days = 14,            // int
+  slotMinutes = 15,     // int
+  hoursFrom = 6,        // int
+  hoursTo = 21,         // int
+
+  // optional behavior
+  show = { queue:true, calendar:true, lock:true },
+  onSelectRange = null,   // (range) => void  // for lock creation, optional
+  onClickBlock = null,    // (block) => void  // for delete lock, optional
+} = {}) {
+
+  if (!rootEl) throw new Error('createCalendarGrid: rootEl is required');
+  if (!(startDate instanceof Date)) throw new Error('createCalendarGrid: startDate must be a Date');
+
+  // Internal state
+  const state = {
+    startDate: new Date(startDate),
+    days,
+    slotMinutes,
+    hoursFrom,
+    hoursTo,
+    show: { ...show },
+    blocks: [],              // normalized blocks
+    drag: { active:false, dayIndex:null, startRow:null, endRow:null },
+  };
+
+  state.startDate.setHours(0,0,0,0);
+
+  // Ensure our expected wrapper exists
+  rootEl.innerHTML = `
+    <div class="cv-grid-wrap">
+      <div class="cv-grid-scroll">
+        <div class="cv-grid"></div>
+      </div>
+    </div>
+  `;
+
+  const scrollEl = rootEl.querySelector('.cv-grid-scroll');
+  const gridEl   = rootEl.querySelector('.cv-grid');
+
+  function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
+  function addDays(d,n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+
+  function toISODate(d){
+    const x = new Date(d); x.setHours(0,0,0,0);
+    const y = x.getFullYear();
+    const m = String(x.getMonth()+1).padStart(2,'0');
+    const day = String(x.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function minutesFromMidnight(dt){ return dt.getHours()*60 + dt.getMinutes(); }
+
+  function getSlotCount(){
+    const totalMinutes = (state.hoursTo - state.hoursFrom + 1) * 60;
+    return Math.ceil(totalMinutes / state.slotMinutes);
+  }
+
+  function dayIndexForDate(dt){
+    const d0 = new Date(state.startDate); d0.setHours(0,0,0,0);
+    const d1 = new Date(dt); d1.setHours(0,0,0,0);
+    const diff = Math.round((d1 - d0) / (24*3600*1000));
+    if (diff < 0 || diff >= state.days) return null;
+    return diff;
+  }
+
+  function rowForTime(dt){
+    const fromMin = state.hoursFrom * 60;
+    const toMin   = (state.hoursTo + 1) * 60;
+    const m = minutesFromMidnight(dt);
+    if (m < fromMin) return 0;
+    if (m >= toMin) return getSlotCount()-1;
+    return Math.floor((m - fromMin) / state.slotMinutes);
+  }
+
+  function rowEndForTime(dt){
+    const fromMin = state.hoursFrom * 60;
+    const toMin   = (state.hoursTo + 1) * 60;
+    const m = minutesFromMidnight(dt);
+    if (m <= fromMin) return 1;
+    if (m >= toMin) return getSlotCount();
+    return Math.ceil((m - fromMin) / state.slotMinutes);
+  }
+
+  function splitByDay(start, end){
+    const out = [];
+    let s = new Date(start);
+    let e = new Date(end);
+    if (e <= s) return out;
+
+    while (true) {
+      const endOfDay = new Date(s);
+      endOfDay.setHours(24,0,0,0);
+      const segEnd = (e < endOfDay) ? e : endOfDay;
+      out.push({ start: new Date(s), end: new Date(segEnd) });
+      if (e <= endOfDay) break;
+      s = new Date(endOfDay);
+    }
+    return out;
+  }
+
+  function normalizeBlock(b){
+    // Expected input (flexible):
+    // { start, end, title, source: 'queue'|'calendar'|'lock', id? }
+    const start = b.start instanceof Date ? b.start : new Date(b.start);
+    const end   = b.end   instanceof Date ? b.end   : new Date(b.end);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) return null;
+
+    const source = (b.source === 'calendar') ? 'calendar'
+                 : (b.source === 'lock') ? 'lock'
+                 : 'queue';
+
+    return {
+      id: b.id ?? b.lock_id ?? b.lockId ?? null,
+      title: b.title || (source === 'lock' ? 'Locked' : '(no title)'),
+      source,
+      start,
+      end,
+    };
+  }
+
+  function buildSkeleton(){
+    const slotCount = getSlotCount();
+    const dayCount  = state.days;
+
+    gridEl.innerHTML = '';
+
+    // IMPORTANT: same structure/classes everywhere -> identical visuals
+    gridEl.style.gridTemplateColumns = `var(--cv-time-col) repeat(${dayCount}, var(--cv-day-col))`;
+    gridEl.style.gridTemplateRows    = `auto repeat(${slotCount}, var(--cv-slot-h))`;
+
+    const corner = document.createElement('div');
+    corner.className = 'cv-cell header corner';
+    corner.textContent = 'Time';
+    gridEl.appendChild(corner);
+
+    for (let d=0; d<dayCount; d++){
+      const day = addDays(state.startDate, d);
+      const head = document.createElement('div');
+      head.className = 'cv-cell header';
+      head.dataset.dayIndex = String(d);
+      head.innerHTML = `
+        <div style="font-weight:900;">${day.toLocaleDateString(undefined,{ weekday:'short', month:'short', day:'numeric' })}</div>
+        <div style="font-size:0.72rem; color:#666; font-weight:700;">${toISODate(day)}</div>
+      `;
+      gridEl.appendChild(head);
+    }
+
+    const baseMinutes = state.hoursFrom * 60;
+
+    for (let r=0; r<slotCount; r++){
+      const t = baseMinutes + (r * state.slotMinutes);
+      const hh = String(Math.floor(t/60)).padStart(2,'0');
+      const mm = String(t%60).padStart(2,'0');
+
+      const timeCell = document.createElement('div');
+      timeCell.className = 'cv-cell time';
+      timeCell.textContent = `${hh}:${mm}`;
+      gridEl.appendChild(timeCell);
+
+      for (let d=0; d<dayCount; d++){
+        const cell = document.createElement('div');
+        cell.className = 'cv-cell slot';
+        cell.dataset.dayIndex = String(d);
+        cell.dataset.rowIndex = String(r);
+        gridEl.appendChild(cell);
+      }
+    }
+  }
+
+  function clearBlocks(){
+    gridEl.querySelectorAll('.cv-block').forEach(el => el.remove());
+  }
+
+  function renderBlocks(){
+    clearBlocks();
+
+    state.blocks.forEach(b => {
+      if (b.source === 'queue' && !state.show.queue) return;
+      if (b.source === 'calendar' && !state.show.calendar) return;
+      if (b.source === 'lock' && !state.show.lock) return;
+
+      const segments = splitByDay(b.start, b.end);
+
+      segments.forEach(seg => {
+        const di = dayIndexForDate(seg.start);
+        if (di === null) return;
+
+        const r0 = rowForTime(seg.start);
+        const r1 = rowEndForTime(seg.end);
+        const startRow = clamp(r0, 0, getSlotCount()-1);
+        const endRow   = clamp(r1, startRow+1, getSlotCount());
+
+        const gridRowStart = 2 + startRow;
+        const gridRowEnd   = 2 + endRow;
+        const gridCol      = 2 + di;
+
+        const block = document.createElement('div');
+        block.className = `cv-block ${b.source}`;
+        block.dataset.source = b.source;
+        if (b.id != null) block.dataset.id = String(b.id);
+
+        const tag = (b.source === 'queue') ? 'Booking'
+                  : (b.source === 'calendar') ? 'Calendar'
+                  : 'Lock';
+
+        block.innerHTML = `
+          <span class="tag">${tag}</span>
+          <span style="font-weight:800;">${b.title}</span>
+        `;
+
+        block.style.gridColumn = String(gridCol);
+        block.style.gridRow    = `${gridRowStart} / ${gridRowEnd}`;
+
+        gridEl.appendChild(block);
+      });
+    });
+  }
+
+  // Optional range selection (locks)
+  function attachRangeSelection(){
+    if (!onSelectRange) return;
+
+    gridEl.addEventListener('mousedown', (e) => {
+      const cell = e.target.closest('.cv-cell.slot');
+      if (!cell) return;
+      if (e.target.closest('.cv-block')) return;
+
+      state.drag.active = true;
+      state.drag.dayIndex = parseInt(cell.dataset.dayIndex, 10);
+      state.drag.startRow = parseInt(cell.dataset.rowIndex, 10);
+      state.drag.endRow = state.drag.startRow;
+      e.preventDefault();
+    });
+
+    gridEl.addEventListener('mouseover', (e) => {
+      if (!state.drag.active) return;
+      const cell = e.target.closest('.cv-cell.slot');
+      if (!cell) return;
+      const di = parseInt(cell.dataset.dayIndex, 10);
+      if (di !== state.drag.dayIndex) return;
+      state.drag.endRow = parseInt(cell.dataset.rowIndex, 10);
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (!state.drag.active) return;
+
+      const di = state.drag.dayIndex;
+      const a = Math.min(state.drag.startRow, state.drag.endRow);
+      const b = Math.max(state.drag.startRow, state.drag.endRow);
+
+      const day = addDays(state.startDate, di);
+
+      const start = new Date(day);
+      start.setHours(state.hoursFrom, 0, 0, 0);
+      start.setMinutes(start.getMinutes() + (a * state.slotMinutes));
+
+      const end = new Date(day);
+      end.setHours(state.hoursFrom, 0, 0, 0);
+      end.setMinutes(end.getMinutes() + ((b + 1) * state.slotMinutes));
+
+      state.drag.active = false;
+      onSelectRange({ start, end, dayIndex: di, startRow: a, endRow: b });
+    });
+  }
+
+  function attachBlockClicks(){
+    if (!onClickBlock) return;
+
+    gridEl.addEventListener('click', (e) => {
+      const block = e.target.closest('.cv-block');
+      if (!block) return;
+      onClickBlock({
+        el: block,
+        source: block.dataset.source,
+        id: block.dataset.id ?? null,
+      });
+    });
+  }
+
+  // Public API
+  const api = {
+    setConfig(next = {}){
+      if (next.startDate instanceof Date) { state.startDate = new Date(next.startDate); state.startDate.setHours(0,0,0,0); }
+      if (Number.isFinite(next.days)) state.days = next.days;
+      if (Number.isFinite(next.slotMinutes)) state.slotMinutes = next.slotMinutes;
+      if (Number.isFinite(next.hoursFrom)) state.hoursFrom = next.hoursFrom;
+      if (Number.isFinite(next.hoursTo)) state.hoursTo = next.hoursTo;
+      if (next.show) state.show = { ...state.show, ...next.show };
+      buildSkeleton();
+      renderBlocks();
+      scrollEl.scrollTop = 0;
+      scrollEl.scrollLeft = 0;
+    },
+
+    setBlocks(blocks = []){
+      state.blocks = blocks.map(normalizeBlock).filter(Boolean);
+      renderBlocks();
+    },
+
+    getState(){ return { ...state, startDate: new Date(state.startDate) }; },
+
+    destroy(){
+      rootEl.innerHTML = '';
+    }
+  };
+
+  // Init
+  buildSkeleton();
+  attachRangeSelection();
+  attachBlockClicks();
+
+  return api;
+}

@@ -1,0 +1,19 @@
+<!DOCTYPE html><meta charset="utf-8">
+<title>Reset password</title>
+<form id="f">
+  <input id="email" placeholder="Email" required>
+  <input id="pass" type="password" placeholder="New password" required>
+  <button>Reset</button>
+</form>
+<script>
+const p = new URLSearchParams(location.search);
+document.getElementById('email').value = p.get('email')||'';
+document.getElementById('f').onsubmit = async (e)=>{
+  e.preventDefault();
+  const r = await fetch('/api/reset', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ email: email.value.trim(), token: p.get('token'), newPassword: pass.value })
+  });
+  if(r.ok){ alert('Updated'); location.href='/'; } else alert('Failed');
+};
+</script>

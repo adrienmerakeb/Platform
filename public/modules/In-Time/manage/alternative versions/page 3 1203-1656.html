@@ -1,0 +1,1093 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Host — In-Time Scan & Redeem</title>
+
+  <link rel="stylesheet" href="/css/style.css"/>
+
+  <style>
+    :root{
+      --danger:#c62828;
+      --success:#2e7d32;
+    }
+
+    /* ===== Global layout with FAB bands ===== */
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    body.has-top-band.has-bottom-band main.container {
+      padding-top: 8vh;
+      padding-bottom: 0;
+      height: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header inside FAB top band (same style as page 2) */
+    .top-band header.site {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header.site .title {
+      display: block;
+    }
+
+    header.site .subtitle {
+      margin-top: 2px;
+      font-size: 0.85rem;
+      opacity: 0.85;
+    }
+
+    /* ===== Main column container ===== */
+
+    .scan-main {
+      max-width: 2200px;
+      margin: 0 auto;
+      padding: 10px 12px;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+      overflow-y: auto;
+      /* leave room so content doesn't hide behind buttons/bottom band */
+      padding-bottom: calc(var(--band-h, 68px) + 80px);
+    }
+
+    /* Common card frame style (queue + code + description) */
+    .frame-card {
+      background:#fff;
+      border-radius:16px;
+      border:1px solid #e0e0e0;
+      box-shadow:0 4px 12px rgba(0,0,0,0.10);
+      padding:10px 12px;
+      font-size:0.88rem;
+    }
+
+    .frame-card-label {
+      font-size:0.78rem;
+      font-weight:600;
+      text-transform:uppercase;
+      letter-spacing:0.06em;
+      color:#777;
+      margin-bottom:4px;
+    }
+
+    /* ===== Queue selection frame ===== */
+
+    .queue-frame {
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      border-radius: 999px;
+      background:rgba(0,0,0,0.45);       /* semi-transparent */
+      border-color:transparent;
+    }
+
+    .queue-select-row {
+      display:flex;
+      align-items:center;
+      justify-content:center;   /* single centered line */
+      gap:10px;
+      flex-wrap:nowrap;         /* force 1 line (until it really can't) */
+    }
+
+    .queue-select-row label {
+      font-size:0.8rem;
+      color:#fff;               /* white */
+      font-weight:700;          /* bold */
+      min-width:auto;
+      white-space:nowrap;
+    }
+
+    .toolbar-select {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+
+      padding: 6px 34px 6px 12px;
+      border-radius: 999px;
+      border: 1px solid #d0d7de;
+      font-size: 0.85rem;
+      color: #444;
+      background: #fff;
+
+      background-image: url("data:image/svg+xml;utf8,<svg fill='%23666' height='14' width='14' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'><polygon points='0,0 20,0 10,10'/></svg>");
+      background-repeat: no-repeat;
+      background-position: calc(100% - 12px) center;
+      background-size: 10px;
+      cursor: pointer;
+      transition: .18s ease;
+      max-width:280px;
+    }
+
+    .toolbar-select:hover {
+      border-color: #b6bec8;
+      background-color: #f6f8fa;
+    }
+
+    .toolbar-select:focus {
+      outline: none;
+      border-color: #1e88e5;
+      box-shadow: 0 0 0 3px rgba(30,136,229,0.25);
+    }
+
+    /* ===== Scan frame (camera) ===== */
+
+    .scan-frame-wrap {
+      position: relative;
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,.18);
+      background: #000;
+      flex: 0 0 auto;
+      height: 50vh;
+      min-height: 220px;
+    }
+
+    .scan-frame-wrap video{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+      filter:contrast(1.05) saturate(1.05);
+    }
+
+    .scan-frame-wrap::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      box-shadow:inset 0 0 0 3px rgba(255,255,255,.08),
+                  inset 0 0 120px rgba(0,0,0,.35);
+      border-radius:22px;
+    }
+
+    .qr-watermark{
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform:translate(-50%,-50%);
+      background:rgba(255,255,255,.85);
+      color:#222;
+      padding:8px 14px;
+      border-radius:9999px;
+      font-weight:700;
+      letter-spacing:.4px;
+      box-shadow:0 6px 18px rgba(0,0,0,.18);
+      user-select:none;
+      pointer-events:none;
+    }
+    .qr-watermark small{opacity:.7;font-weight:600}
+
+    /* ===== Booking code frame (under scan) ===== */
+
+    .code-frame {
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      border-radius: 999px;
+      padding-inline:24px;      /* side padding so frame adapts to content */
+      align-self:center;
+      width:auto;
+    }
+
+    .code-input-row {
+      display:flex;
+      align-items:center;
+      justify-content:center; /* center entire row */
+      gap:10px;
+      flex-wrap:nowrap;       /* single line */
+      width:100%;
+    }
+
+    .code-input-label {
+      font-size:0.85rem;
+      color:#555;
+      white-space:nowrap;
+    }
+
+    .code-input-wrap {
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      min-width:0;
+    }
+
+    .code-input-wrap input {
+      flex:0 0 auto;
+      width:auto;             /* variable width */
+      min-width:11ch;         /* at least enough for XXX-XXX-XXX */
+      max-width:18ch;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid #d0d7de;
+      font-size:0.9rem;
+      letter-spacing:0.16em;
+      text-transform:uppercase;
+      background:rgba(0,0,0,0.58);
+      color:#fff;
+      text-align:center;
+    }
+
+    .code-input-wrap input::placeholder {
+      letter-spacing:normal;
+      text-transform:none;
+      color:#b0b0b0;
+    }
+
+    .code-input-wrap button {
+      padding:6px 16px;
+      border-radius:999px;
+      border:1px solid #d0d7de;
+      background:#f6f8fa;
+      cursor:pointer;
+      font-size:0.82rem;
+      white-space:nowrap;
+      transition:background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+
+    .code-input-wrap button:hover {
+      background:#333;
+      color:#fff;
+      border-color:#fff;
+    }
+
+    /* ===== Description / booking recap frame ===== */
+
+    .host-card{
+      border-radius:14px;
+      border:1px solid #eee;
+      padding:12px 12px 16px;
+      font-size:0.88rem;
+      background:#fff;
+    }
+
+    /* Booking details title centered */
+    #hostInfo .frame-card-label{
+      text-align:center;
+      margin-bottom:6px;
+    }
+
+    .host-card .row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+
+    .host-card .ico{font-size:18px}
+    .host-card .muted{font-size:13px;color:#666}
+    .host-card .ok{color:var(--success);}
+    .host-card .err{color:var(--danger);}
+
+    .booking-detail-label{
+      font-size:0.78rem;
+      color:#777;
+    }
+
+    /* ===== Buttons row – overlapping bottom band, same width as scan frame ===== */
+
+    .scan-buttons-wrapper {
+      position: fixed;
+      left: 50%;
+      bottom: calc(var(--band-h, 68px) - 32px); /* ~half over the bottom band */
+      transform: translateX(-50%);
+      z-index: 9998;
+      background: none;
+      pointer-events: none;      /* inner handles clicks */
+      /* width is set dynamically in JS to match .scan-frame-wrap */
+    }
+
+    .scan-buttons-inner {
+      display: flex;
+      justify-content: space-between;  /* LEFT group / RIGHT group */
+      align-items: center;
+      padding: 0;
+      border-radius: 999px;
+      background: none;                /* frame transparent, buttons solid */
+      pointer-events: auto;
+      width: 100%;
+      box-sizing: border-box;
+      flex-wrap: nowrap;               /* avoid central cluster */
+    }
+
+    /* Each side gets half the width and stays left / right */
+    .scan-actions-left,
+    .scan-actions-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+      flex: 1 1 0;
+    }
+
+    .scan-actions-left {
+      justify-content: flex-start;
+    }
+
+    .scan-actions-right {
+      justify-content: flex-end;
+    }
+
+    /* === BUTTONS === */
+    .scan-btn {
+      padding: 12px 24px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      background: none;
+      gap: 0.6rem;
+      transition:
+        background-color .15s ease,
+        color .15s ease,
+        border-color .15s ease,
+        transform .06s ease;
+    }
+
+    .scan-btn:active {
+      transform: scale(0.97);
+    }
+
+    .scan-btn-secondary {
+      background:#f5f5f5;
+      border-color:#d0d7de;
+      color:#333;
+    }
+
+    .scan-btn-secondary:hover {
+      background:#333;
+      color:#fff;
+      border-color:#fff;
+    }
+
+    .scan-btn-primary {
+      background:#1e88e5;
+      border-color:#1e88e5;
+      color:#fff;
+    }
+
+    .scan-btn-primary:hover {
+      background:#fff;
+      color:#1e88e5;
+    }
+
+    .scan-btn-outline {
+      background:#ffffff;
+      color:#1e88e5;
+      border-color:#1e88e5;
+    }
+
+    .scan-btn-outline:hover {
+      background:#1e88e5;
+      color:#fff;
+      border-color:#1e88e5;
+    }
+
+    .scan-btn[disabled]{
+      opacity:1;
+      cursor:not-allowed;
+    }
+
+    /* Toast */
+    .toast{
+      position:fixed;
+      bottom:18px;
+      left:50%;
+      transform:translateX(-50%);
+      background:rgba(0,0,0,.85);
+      color:#fff;
+      padding:8px 14px;
+      border-radius:999px;
+      font-size:14px;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .18s ease-out;
+      z-index:9999;
+    }
+    .toast.show{opacity:1}
+
+    @media (max-width: 900px) {
+      .scan-buttons-inner{
+        justify-content:center;
+      }
+      .scan-actions-left,
+      .scan-actions-right{
+        justify-content:center;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .scan-buttons-inner {
+        flex-direction:column;
+        align-items:stretch;
+      }
+      .scan-actions-left,
+      .scan-actions-right {
+        width:100%;
+        justify-content:space-between;
+      }
+      .scan-frame-wrap {
+        height: 44vh;
+      }
+      .queue-select-row,
+      .code-input-row {
+        flex-wrap:wrap;
+      }
+      .scan-btn {
+        padding: 8px 16px;
+        font-size: 0.95rem;
+        gap: 0.4rem;
+      }
+    }
+  </style>
+</head>
+
+<body class="has-top-band has-bottom-band">
+
+<header class="site">
+  <div class="title">Host — Scan &amp; Redeem</div>
+  <div class="subtitle">
+    Select a queue, scan the visitor’s QR code or enter the booking code to redeem.
+  </div>
+</header>
+
+<main class="container">
+  <section class="scan-main">
+
+    <!-- Queue selection frame -->
+    <div class="frame-card queue-frame">
+      <div class="queue-select-row">
+        <label for="queueSelect">Active queue</label>
+        <select id="queueSelect" class="toolbar-select">
+          <option value="">Loading queues…</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Scan frame (camera) -->
+    <div class="scan-frame-wrap">
+      <video id="preview" playsinline autoplay muted></video>
+      <div class="qr-watermark">Booking <small>scanner</small></div>
+      <canvas id="qrCanvas" width="640" height="480" style="display:none"></canvas>
+    </div>
+
+    <!-- Booking code frame -->
+    <div class="frame-card code-frame">
+      <div class="code-input-row">
+        <div class="code-input-label">Booking code:</div>
+        <div class="code-input-wrap">
+          <input
+            id="bookingCodeInput"
+            type="text"
+            inputmode="text"
+            autocomplete="off"
+            placeholder="XXX-XXX-XXX"
+            maxlength="11">
+          <button type="button" id="bookingCodeLookupBtn">Search</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Booking description / details frame -->
+    <div id="hostInfo" class="host-card">
+      <div class="frame-card-label">Booking details</div>
+      <div class="row" style="margin-top:4px">
+        <div class="ico">🎯</div>
+        <div>
+          <strong>Waiting for QR code or booking code…</strong>
+          <div class="muted">
+            Scan the visitor’s QR code or enter the booking code above to see the details here.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Buttons (fixed, overlapping bottom band, aligned with scan frame) -->
+    <div class="scan-buttons-wrapper">
+      <div class="scan-buttons-inner">
+        <div class="scan-actions-left">
+          <button type="button" id="btnReject" class="scan-btn scan-btn-secondary">
+            ⟲ Reject / return
+          </button>
+        </div>
+        <div class="scan-actions-right">
+          <button type="button" id="btnRedeemOne" class="scan-btn scan-btn-outline" disabled>
+            ① Redeem 1
+          </button>
+          <button type="button" id="btnRedeemAll" class="scan-btn scan-btn-primary" disabled>
+            ✓ Redeem all
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<footer class="site">
+  © <span id="y"></span> Tourism App MVP • Virtual Queues — Scan &amp; Redeem
+</footer>
+
+<script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+
+<script>
+  // footer year
+  document.getElementById('y').textContent = new Date().getFullYear();
+</script>
+
+<script>
+  const video   = document.getElementById('preview');
+  const canvas  = document.getElementById('qrCanvas');
+  const ctx     = canvas.getContext('2d');
+  const hostInfo = document.getElementById('hostInfo');
+
+  const queueSelect        = document.getElementById('queueSelect');
+  const bookingCodeInput   = document.getElementById('bookingCodeInput');
+  const bookingCodeLookup  = document.getElementById('bookingCodeLookupBtn');
+
+  const btnReject    = document.getElementById('btnReject');
+  const btnRedeemOne = document.getElementById('btnRedeemOne');
+  const btnRedeemAll = document.getElementById('btnRedeemAll');
+
+  let stream    = null;
+  let scanning  = false;
+  let rafId     = null;
+  let currentBooking = null;
+  let allQueues = [];
+  let currentQueueFilter = 'all'; // 'all' or specific id
+  let currentQueue = null;
+
+  const detector = ('BarcodeDetector' in window)
+    ? new BarcodeDetector({ formats:['qr_code'] })
+    : null;
+
+  function showToast(msg){
+    let t = document.querySelector('.toast');
+    if (!t){
+      t = document.createElement('div');
+      t.className = 'toast';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(()=>t.classList.remove('show'), 2000);
+  }
+
+  function updateHostInfo(state, data){
+    if (state === 'ready') {
+      hostInfo.innerHTML = `
+        <div class="frame-card-label">Booking details</div>
+        <div class="row" style="margin-top:4px">
+          <div class="ico">🎯</div>
+          <div>
+            <strong>Ready to scan</strong>
+            <div class="muted">
+              Point your camera at the visitor’s QR code or enter the booking code above.
+            </div>
+          </div>
+        </div>`;
+      return;
+    }
+
+    if (state === 'booking' && data) {
+      const b = data;
+      const slotStr = b.slot_time ? new Date(b.slot_time).toLocaleString() : 'Not specified';
+      const persons = (b.persons_count != null) ? b.persons_count :
+                      (b.people != null ? b.people :
+                      (b.nbr_persons != null ? b.nbr_persons : 'N/A'));
+
+      hostInfo.innerHTML = `
+        <div class="frame-card-label">Booking details</div>
+        <div class="row" style="margin-top:4px">
+          <div class="ico">🏛️</div>
+          <div>
+            <strong>${b.queue_name || 'Queue'}</strong>
+            <div class="muted">${b.queue_location || 'No location provided'}</div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <div class="ico">🔢</div>
+          <div>
+            <div class="booking-detail-label">Booking code</div>
+            <div><strong>${b.short_code || 'N/A'}</strong></div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:4px">
+          <div class="ico">⏱️</div>
+          <div>
+            <div class="booking-detail-label">Entry time</div>
+            <div><strong>${slotStr}</strong></div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:4px">
+          <div class="ico">👥</div>
+          <div>
+            <div class="booking-detail-label">Number of persons</div>
+            <div><strong>${persons}</strong></div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:4px">
+          <div class="ico">📌</div>
+          <div>
+            <div class="booking-detail-label">Status</div>
+            <div><strong>${b.status}</strong></div>
+          </div>
+        </div>`;
+      return;
+    }
+
+    if (state === 'error') {
+      hostInfo.innerHTML = `
+        <div class="frame-card-label">Booking details</div>
+        <div class="row" style="margin-top:4px">
+          <div class="ico err">⚠️</div>
+          <div>
+            <strong>No information retrieved</strong>
+            <div class="muted">
+              No information is retrieved with your QR code or booking code, please check again.
+              <br>${data ? String(data) : ''}
+            </div>
+          </div>
+        </div>`;
+    }
+  }
+
+  function updateButtonsForQueueAndBooking() {
+    btnReject.disabled = false;
+
+    let supportsMultiple = false;
+    if (currentQueue) {
+      if (typeof currentQueue.wave_capacity === 'number' && currentQueue.wave_capacity > 1) {
+        supportsMultiple = true;
+      }
+      if (typeof currentQueue.max_persons_per_booking === 'number' && currentQueue.max_persons_per_booking > 1) {
+        supportsMultiple = true;
+      }
+    }
+
+    btnRedeemAll.style.display = supportsMultiple ? 'inline-flex' : 'none';
+
+    const hasData = !!currentBooking;
+
+    btnRedeemOne.disabled = !hasData;
+    btnRedeemAll.disabled = !hasData || !supportsMultiple;
+  }
+
+  async function startCamera(){
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:{ ideal:'environment' } },
+      audio:false
+    });
+    video.srcObject = stream;
+    await video.play().catch(()=>{});
+  }
+
+  function stopCamera(){
+    try { stream?.getTracks()?.forEach(t=>t.stop()); } catch {}
+    stream = null;
+  }
+
+  function parseTokenFromRaw(raw){
+    const text = String(raw || '').trim();
+    if (!text) return null;
+
+    if (/^https?:\/\//i.test(text)) {
+      try {
+        const u = new URL(text);
+        const t = u.searchParams.get('token');
+        return t || null;
+      } catch {}
+    }
+    return text;
+  }
+
+  async function lookupBookingByToken(token){
+    const r = await fetch(`/api/intime/bookings/by-token/${encodeURIComponent(token)}`);
+    if (!r.ok) throw new Error('Booking not found or invalid');
+    const data = await r.json();
+    if (!data.ok || !data.booking) throw new Error('Malformed booking response');
+    return data.booking;
+  }
+
+  function bookingMatchesQueueFilter(booking){
+    if (!booking) return false;
+    if (!currentQueueFilter || currentQueueFilter === 'all') return true;
+
+    const bid =
+      booking.queue_id ??
+      booking.queueId ??
+      (booking.queue && booking.queue.id) ??
+      null;
+
+    if (!bid) {
+      return true;
+    }
+    return String(bid) === String(currentQueueFilter);
+  }
+
+  async function onRecognized(rawText){
+    scanning = false;
+    currentBooking = null;
+    updateButtonsForQueueAndBooking();
+
+    const token = parseTokenFromRaw(rawText);
+    if (!token) {
+      updateHostInfo('error','QR code does not contain a valid booking token.');
+      showToast('Unrecognized QR code');
+      return;
+    }
+
+    try {
+      const b = await lookupBookingByToken(token);
+
+      if (!bookingMatchesQueueFilter(b)) {
+        updateHostInfo('error','This booking belongs to another queue than the one selected.');
+        showToast('Booking not in selected queue');
+        scanning = true;
+        if (!rafId) rafId = requestAnimationFrame(scanLoop);
+        return;
+      }
+
+      currentBooking = b;
+      currentBooking.booking_token = token;
+      updateHostInfo('booking', b);
+
+      if (b.status === 'redeemed') {
+        showToast('This booking is already redeemed.');
+      } else if (b.status === 'cancelled') {
+        showToast('This booking was cancelled.');
+      } else {
+        showToast('Booking found. Use the buttons to redeem.');
+      }
+
+      updateButtonsForQueueAndBooking();
+    } catch (e) {
+      console.error(e);
+      updateHostInfo('error', e.message || 'Could not fetch booking.');
+      showToast('Booking not found');
+      scanning = true;
+      if (!rafId) rafId = requestAnimationFrame(scanLoop);
+    }
+  }
+
+  async function redeemCurrent(options = { mode: 'all' }){
+    if (!currentBooking || !currentBooking.booking_token){
+      showToast('No booking to redeem');
+      return;
+    }
+
+    try {
+      const body = { booking_token: currentBooking.booking_token };
+      if (options.mode === 'one') body.count = 1;
+
+      const r = await fetch('/api/intime/bookings/redeem', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body:JSON.stringify(body)
+      });
+      const data = await r.json();
+      if (!r.ok || !data.ok) throw new Error(data.error || 'Redeem failed');
+
+      currentBooking.status = 'redeemed';
+      updateHostInfo('booking', currentBooking);
+      showToast(data.already ? 'Already redeemed' : 'Booking redeemed');
+      currentBooking = null;
+      updateButtonsForQueueAndBooking();
+    } catch (e) {
+      console.error(e);
+      showToast(e.message || 'Redeem failed');
+    }
+  }
+
+  function resumeScanning(){
+    currentBooking = null;
+    updateHostInfo('ready');
+    updateButtonsForQueueAndBooking();
+    scanning = true;
+    if (!rafId) rafId = requestAnimationFrame(scanLoop);
+  }
+
+  async function scanLoop(){
+    if (!scanning || !video.videoWidth) {
+      rafId = requestAnimationFrame(scanLoop);
+      return;
+    }
+
+    try {
+      if (detector) {
+        const codes = await detector.detect(video);
+        if (codes && codes.length) {
+          await onRecognized(codes[0].rawValue || codes[0].rawData || '');
+          return;
+        }
+      } else {
+        canvas.width  = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = window.jsQR && jsQR(img.data, img.width, img.height);
+        if (code && code.data) {
+          await onRecognized(code.data);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    rafId = requestAnimationFrame(scanLoop);
+  }
+
+  // Match scan-buttons-wrapper width to scan-frame-wrap
+  function syncScanButtonsWidth() {
+    const frame = document.querySelector('.scan-frame-wrap');
+    const wrapper = document.querySelector('.scan-buttons-wrapper');
+    if (!frame || !wrapper) return;
+    const rect = frame.getBoundingClientRect();
+    wrapper.style.width = rect.width + 'px';
+  }
+
+  window.addEventListener('load', syncScanButtonsWidth);
+  window.addEventListener('resize', syncScanButtonsWidth);
+
+  // Load queues for dropdown
+  async function loadQueues(){
+    try {
+      const res = await fetch('/api/intime/queues', {
+        method:'GET',
+        headers:{ 'Accept':'application/json' }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load queues');
+
+      allQueues = Array.isArray(data.queues) ? data.queues : (Array.isArray(data) ? data : []);
+      renderQueueSelect();
+    } catch (e) {
+      console.error(e);
+      queueSelect.innerHTML = `<option value="">Error loading queues</option>`;
+      queueSelect.disabled = true;
+    }
+  }
+
+  function renderQueueSelect(){
+    if (!allQueues.length) {
+      queueSelect.innerHTML = `<option value="">No queues</option>`;
+      queueSelect.disabled = true;
+      currentQueueFilter = 'all';
+      currentQueue = null;
+      updateButtonsForQueueAndBooking();
+      return;
+    }
+
+    const moreThanOne = allQueues.length > 1;
+    const opts = [];
+
+    if (moreThanOne) {
+      opts.push(`<option value="all">All queues</option>`);
+      currentQueueFilter = 'all';
+      currentQueue = null;
+    }
+
+    allQueues.forEach(q => {
+      const id = q.id;
+      const name = q.name || 'Unnamed queue';
+      opts.push(`<option value="${String(id)}">${name}</option>`);
+    });
+
+    queueSelect.innerHTML = opts.join('');
+    queueSelect.disabled = false;
+
+    if (!moreThanOne) {
+      currentQueueFilter = String(allQueues[0].id);
+      currentQueue = allQueues[0];
+      queueSelect.value = String(allQueues[0].id);
+    }
+    updateButtonsForQueueAndBooking();
+  }
+
+  queueSelect.addEventListener('change', (e) => {
+    const v = e.target.value;
+    if (!v || v === 'all') {
+      currentQueueFilter = 'all';
+      currentQueue = null;
+    } else {
+      currentQueueFilter = v;
+      currentQueue = allQueues.find(q => String(q.id) === String(v)) || null;
+    }
+
+    if (currentBooking && !bookingMatchesQueueFilter(currentBooking)) {
+      resumeScanning();
+    } else {
+      updateButtonsForQueueAndBooking();
+    }
+  });
+
+  function normalizeBookingCode(raw){
+    const s = String(raw || '').trim().toUpperCase();
+    if (!s) return '';
+    const plain = s.replace(/-/g,'');
+    if (plain.length === 9) {
+      return plain.slice(0,3) + '-' + plain.slice(3,6) + '-' + plain.slice(6);
+    }
+    return s;
+  }
+
+  bookingCodeLookup.addEventListener('click', async () => {
+    const raw = bookingCodeInput.value;
+    const code = normalizeBookingCode(raw);
+    if (!code) {
+      showToast('Enter a booking code first');
+      return;
+    }
+    bookingCodeInput.value = code;
+    await onRecognized(code);
+  });
+
+  bookingCodeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      bookingCodeLookup.click();
+    }
+  });
+
+  btnReject.addEventListener('click', (e) => {
+    e.preventDefault();
+    resumeScanning();
+  });
+
+  btnRedeemOne.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (btnRedeemOne.disabled) return;
+    redeemCurrent({ mode:'one' });
+  });
+
+  btnRedeemAll.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (btnRedeemAll.disabled) return;
+    redeemCurrent({ mode:'all' });
+  });
+
+  (async () => {
+    try {
+      await loadQueues();
+    } catch (e) {
+      console.error(e);
+    }
+
+    try {
+      await startCamera();
+      scanning = true;
+      updateHostInfo('ready');
+      updateButtonsForQueueAndBooking();
+      rafId = requestAnimationFrame(scanLoop);
+      syncScanButtonsWidth();
+    } catch (err) {
+      console.error(err);
+      updateHostInfo('error', err.message || 'Camera not available.');
+      showToast('Camera not available');
+    }
+  })();
+
+  window.addEventListener('beforeunload', () => {
+    if (rafId) cancelAnimationFrame(rafId);
+    stopCamera();
+  });
+</script>
+
+<script>
+  // Mount Drawer + FAB bands
+  if (window.Drawer && typeof window.Drawer.mount === 'function') {
+    window.Drawer.mount({ mode: 'host' });
+  }
+
+  if (window.FAB && typeof window.FAB.mount === 'function') {
+    window.FAB.mount({
+      useTopBand: true,
+      useBottomBand: true,
+
+      home: {
+        title: 'Home & Services',
+        label: '🏠',
+        onClick: () => window.Drawer && window.Drawer.open && window.Drawer.open()
+      },
+
+      config: {
+        title: 'Settings',
+        label: '⚙️',
+        href: '/pages/visitor/settings.html#host'
+      },
+
+      onBack: () => {
+        if (history.length > 1) {
+          history.back();
+        } else {
+          location.href = '/pages/host/dashboard.html';
+        }
+      },
+
+      br: {
+        title: 'New Virtual Queue',
+        label: '＋',
+        href: '/modules/In-Time/manage/page 1.html'
+      }
+    });
+  }
+
+  // ==== SAFE HIDE: bottom-right FAB action (New Virtual Queue) only ====
+  function hideNewQueueFab() {
+    // by href
+    const byHref = document.querySelectorAll(
+      'a[href="/modules/In-Time/manage/page 1.html"], button[href="/modules/In-Time/manage/page 1.html"]'
+    );
+
+    byHref.forEach(el => {
+      el.style.display       = 'none';
+      el.style.visibility    = 'hidden';
+      el.style.pointerEvents = 'none';
+    });
+
+    // fallback: buttons/links whose text is just "＋" and mention "New Virtual Queue"
+    const allFabLike = Array.from(document.querySelectorAll('button, a'))
+      .filter(el => {
+        const txt = (el.textContent || '').trim();
+        if (txt !== '＋') return false;
+        const title = (el.getAttribute('title') || '').toLowerCase();
+        const aria  = (el.getAttribute('aria-label') || '').toLowerCase();
+        return title.includes('new virtual queue') || aria.includes('new virtual queue');
+      });
+
+    allFabLike.forEach(el => {
+      el.style.display       = 'none';
+      el.style.visibility    = 'hidden';
+      el.style.pointerEvents = 'none';
+    });
+  }
+
+  // Initial run
+  hideNewQueueFab();
+
+  // Re-run when FAB / DOM changes
+  const fabObserver = new MutationObserver(() => {
+    hideNewQueueFab();
+  });
+  fabObserver.observe(document.body, { childList: true, subtree: true });
+</script>
+
+</body>
+</html>

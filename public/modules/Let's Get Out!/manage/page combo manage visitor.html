@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Visitor & Guide — Combined View</title>
+
+  <link rel="stylesheet" href="/css/style.css"/>
+
+  <style>
+    body.has-top-band.has-bottom-band main.container {
+      padding-top: 8vh;
+      padding-bottom: 10vh; /* a bit more for bottom tabs */
+    }
+
+    main.container {
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+
+    /* ---------- Panels ---------- */
+
+    .combo-panel {
+      display: none;
+    }
+
+    .combo-panel.active {
+      display: block;
+    }
+
+    /* ---------- Unified hero for Visitor + Guide ---------- */
+
+    .combo-heading,
+    .lgo-manage-hero {
+      margin: 1.8vh auto 16px;
+      padding: 16px 20px 18px;
+      border-radius: 20px;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      backdrop-filter: blur(14px);
+      font-size: 0.95rem;
+    }
+
+    .combo-heading h2,
+    .lgo-manage-hero h1 {
+      margin: 0 0 4px;
+      font-size: 1.6rem;
+      letter-spacing: .02em;
+    }
+
+    .combo-heading p,
+    .lgo-manage-hero p {
+      margin: 0;
+      font-size: 0.95rem;
+      opacity: 0.9;
+    }
+
+    .lgo-role-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      background: rgba(0,0,0,0.25);
+      margin-top: 6px;
+    }
+
+    /* ---------- Guide cards (visually aligned with dashboard cards) ---------- */
+
+    .lgo-cards-grid {
+      margin: 12px auto 2vh;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .lgo-card {
+      border-radius: 18px;
+      padding: 14px 16px 16px;
+      background: #ffffff;
+      color: #1b1b1b;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .lgo-card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .lgo-card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      background: #e3f2fd;
+    }
+
+    .lgo-card h3 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .lgo-card p {
+      margin: 0 0 12px;
+      font-size: 0.88rem;
+      color: #555;
+    }
+
+    .lgo-card-footer {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .lgo-btn {
+      padding: 7px 14px;
+      border-radius: 999px;
+      border: none;
+      font-size: 0.86rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .lgo-btn-primary {
+      background: #1e88e5;
+      color: #fff;
+    }
+
+    .lgo-btn-primary:hover {
+      background: #166cc0;
+    }
+
+    /* ---------- Bottom tabs for Visitor / Guide ---------- */
+
+    .combo-tabs {
+      position: fixed;
+      left: 50%;
+      bottom: calc(var(--band-h, 68px) - 65px); /* just above bottom band */
+      transform: translateX(-50%);
+      z-index: 9998;
+      background: none;
+      border-radius: 999px;
+      padding: 4px;
+      display: inline-flex;
+      gap: 10vw;
+    }
+
+    .combo-tab-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 32px;
+      font-size: 0.95rem;
+      background: rgba(0,0,0,0.45);
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+      backdrop-filter: blur(8px);
+    }
+
+    .combo-tab-btn.active {
+      background: rgba(255,255,255,0.9);
+      color: #333;
+    }
+
+    /* ---------- Role switch dropdown (same as dashboard / main) ---------- */
+
+    .role-switch {
+      position: fixed;
+      right: 16px;
+      bottom: calc(var(--band-h, 68px) + 12px); /* just above bottom band */
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      font-size: 0.9rem;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      z-index: 9999;
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+
+    .role-switch.open {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .role-switch-title {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      opacity: .75;
+      margin-bottom: 4px;
+    }
+
+    .role-switch-option {
+      border: none;
+      background: transparent;
+      color: inherit;
+      padding: 4px 10px;
+      text-align: left;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+
+    .role-switch-option:hover,
+    .role-switch-option.active {
+      background: rgba(255,255,255,0.18);
+    }
+
+    @media (max-width: 640px) {
+      .combo-heading,
+      .lgo-manage-hero {
+        margin-top: 1.8vh;
+        padding-inline: 14px;
+      }
+      .lgo-cards-grid {
+        margin-bottom: 72px;
+      }
+      .combo-tab-btn {
+        padding: 8px 22px;
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+
+<body class="has-top-band has-bottom-band">
+<header class="site">
+  <div class="title">Visitor &amp; Guide — Combined View</div>
+</header>
+
+<main class="container">
+
+  <!-- VISITOR PANEL -->
+  <section class="combo-panel active" id="panel-visitor">
+    <div class="combo-heading">
+      <h2>Visitor view</h2>
+      <p id="visitor-summary">
+        Loading your visitor services…
+      </p>
+    </div>
+
+    <section class="grid cards" id="visitor-services"></section>
+    <p id="visitor-services-info"
+       class="muted"
+       style="margin-top:1rem;text-align:center;"></p>
+  </section>
+
+  <!-- GUIDE PANEL (Let’s Get Out! — Manage) -->
+  <section class="combo-panel" id="panel-guide">
+    <section class="lgo-manage-hero">
+      <h1>Let’s Get Out! — My Guidings</h1>
+      <p id="lgo-role-text">
+        Loading your profile…
+      </p>
+      <div id="lgo-role-pill" class="lgo-role-pill" style="display:none;">
+        <span id="lgo-role-label">Role</span>
+      </div>
+    </section>
+
+    <section class="lgo-cards-grid">
+      <!-- Card: Create a new Guiding -->
+      <article class="lgo-card">
+        <div>
+          <div class="lgo-card-header">
+            <div class="lgo-card-icon">➕</div>
+            <h3>Create a new Guiding</h3>
+          </div>
+          <p>
+            Start a new online / live / IRL guiding experience. You can save it as
+            draft or publish it later.
+          </p>
+        </div>
+        <div class="lgo-card-footer">
+          <button type="button"
+                  class="lgo-btn lgo-btn-primary"
+                  id="btnCreateGuiding">
+            Start new Guiding
+          </button>
+        </div>
+      </article>
+
+      <!-- Card: Manage my Guidings -->
+      <article class="lgo-card">
+        <div>
+          <div class="lgo-card-header">
+            <div class="lgo-card-icon">📂</div>
+            <h3>Manage my Guidings</h3>
+          </div>
+          <p>
+            Review, edit or deactivate your existing guidings. Check status,
+            monetization and feedback.
+          </p>
+        </div>
+        <div class="lgo-card-footer">
+          <button type="button"
+                  class="lgo-btn lgo-btn-primary"
+                  id="btnManageGuidings">
+            Open my Guidings
+          </button>
+        </div>
+      </article>
+    </section>
+  </section>
+
+</main>
+
+<footer class="site"></footer>
+
+<!-- Bottom tabs: Visitor / Guide -->
+<div class="combo-tabs" id="combo-tabs">
+  <button type="button"
+          class="combo-tab-btn active"
+          data-panel="visitor">
+    Visitor
+  </button>
+  <button type="button"
+          class="combo-tab-btn"
+          data-panel="guide">
+    Guide
+  </button>
+</div>
+
+<!-- Role switch dropdown controlled by bottom-right FAB -->
+<div class="role-switch" id="role-switch" aria-hidden="true">
+  <div class="role-switch-title">View as</div>
+  <button class="role-switch-option" data-view="visitor">Visitor</button>
+  <button class="role-switch-option" data-view="guide">Guide</button>
+  <button class="role-switch-option" data-view="vg">Visitor &amp; Guide</button>
+</div>
+
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const $    = (id) => document.getElementById(id);
+  const qs   = (sel) => document.querySelector(sel);
+  const qsa  = (sel) => Array.from(document.querySelectorAll(sel));
+
+  const panelVisitorEl   = $('panel-visitor');
+  const panelGuideEl     = $('panel-guide');
+  const visitorSummaryEl = $('visitor-summary');
+  const visitorServicesEl = $('visitor-services');
+  const visitorInfoEl    = $('visitor-services-info');
+
+  const lgoRoleTextEl    = $('lgo-role-text');
+  const lgoRolePillEl    = $('lgo-role-pill');
+  const lgoRoleLabelEl   = $('lgo-role-label');
+
+  const roleSwitchEl     = $('role-switch');
+
+  window.VisitorDashboard = window.VisitorDashboard || {};
+
+  /* ------------------------- Helpers ------------------------- */
+
+  async function fetchMe() {
+    try {
+      const r = await fetch('/api/me', { credentials: 'include' });
+      if (!r.ok) throw new Error('not auth');
+      const { user } = await r.json();
+      return user;
+    } catch (e) {
+      console.error('[COMBO] /api/me failed:', e);
+      window.location.href = '/visitor.html';
+      return null;
+    }
+  }
+
+  async function setStatus(newStatus) {
+    const r = await fetch('/api/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (!r.ok) {
+      alert('Could not update status');
+      throw new Error('Status update failed');
+    }
+  }
+
+  async function visitorLogout() {
+    try {
+      await fetch('/api/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (e) {
+      console.warn('[COMBO] Logout failed (non-blocking):', e);
+    } finally {
+      window.location.href = '/visitor.html';
+    }
+  }
+
+  window.VisitorDashboard.logout = visitorLogout;
+
+  function buildUseUrl(serviceKey, slug) {
+    return `/modules/${serviceKey}/use/${slug}`;
+  }
+
+  function createServiceCardForUse(module) {
+    const folder = String(module.service_key || '');
+    const title  = module.display_name || folder;
+
+    const usePages    = Array.isArray(module.usePages) ? module.usePages : [];
+       const managePages = Array.isArray(module.managePages) ? module.managePages : [];
+
+    // Choose main "use" page if available, else fall back to manage/main.html
+    const mainPage =
+      usePages[0] ||
+      managePages[0] ||
+      { slug: 'main.html', label: title };
+
+    const iconBase   = module.icon_base || `/modules/${folder}/icons/${folder}`;
+    const logoSrcOff = iconBase + '-off.png';
+
+    const mainSlug = mainPage.slug;
+    const linkHtml = usePages
+      .filter(p => p.slug !== mainSlug)
+      .slice(0, 3)
+      .map(p => {
+        const href  = buildUseUrl(folder, p.slug);
+        const label = p.label || p.slug.replace('.html', '');
+        return `<a href="${href}" class="card-link">${label}</a>`;
+      })
+      .join('');
+
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    card.innerHTML = `
+      <div class="card-logo-area" data-main-href="${buildUseUrl(folder, mainPage.slug)}">
+        <img src="${logoSrcOff}" alt="${title} Logo" class="logo">
+        <div class="card-links">
+          ${linkHtml}
+        </div>
+      </div>
+
+      <a href="${buildUseUrl(folder, mainPage.slug)}" class="card-title-link">
+        <p class="card-title">${title}</p>
+      </a>
+    `;
+
+    return card;
+  }
+
+  function initCardIconBehaviour(rootSelector) {
+    const cards = qsa(rootSelector + ' .card');
+
+    const toHover = (src) => src.replace(/-off(\.[a-z0-9]+)$/i, '-hover$1');
+    const toOn    = (src) => src.replace(/-off(\.[a-z0-9]+)$/i, '-on$1');
+    const toOff   = (src) => src
+      .replace(/-hover(\.[a-z0-9]+)$/i, '-off$1')
+      .replace(/-on(\.[a-z0-9]+)$/i, '-off$1');
+
+    cards.forEach(card => {
+      const area = card.querySelector('.card-logo-area');
+      const img  = card.querySelector('.logo');
+      if (!area || !img) return;
+
+      const baseOff   = img.getAttribute('src');
+      const hoverSrc  = toHover(baseOff);
+      const selectSrc = toOn(baseOff);
+      const mainHref  = area.dataset.mainHref || '';
+
+      [hoverSrc, selectSrc].forEach(src => {
+        const i = new Image();
+        i.src = src;
+      });
+
+      area.style.setProperty('--hover-src', `url("${hoverSrc}")`);
+
+      area.addEventListener('mouseenter', () => {
+        card.classList.add('hovering');
+      });
+
+      area.addEventListener('mouseleave', () => {
+        card.classList.remove('hovering');
+        if (!card.classList.contains('selected')) {
+          img.src = baseOff;
+        }
+      });
+
+      area.addEventListener('click', (e) => {
+        const link = e.target.closest('a.card-link');
+        if (link) return; // normal navigation
+
+        e.preventDefault();
+
+        qsa(rootSelector + ' .card').forEach(c => {
+          c.classList.remove('selected', 'hovering');
+          const logo = c.querySelector('.logo');
+          if (logo) {
+            const current = logo.getAttribute('src') || '';
+            logo.src = toOff(current);
+          }
+        });
+
+        card.classList.add('selected');
+        img.src = selectSrc;
+
+        if (mainHref) {
+          window.location.href = mainHref;
+        }
+      });
+    });
+  }
+
+  async function loadVisitorServices() {
+    visitorServicesEl.innerHTML = '';
+    visitorInfoEl.textContent   = 'Loading your services…';
+
+    try {
+      const res = await fetch('/api/services', {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      if (!res.ok) {
+        window.location.href = '/visitor.html';
+        return null;
+      }
+
+      const payload = await res.json();
+      const user    = payload.user || {};
+      const modules = payload.modules || [];
+
+      if (user.role !== 'visitor') {
+        window.location.href = '/visitor.html';
+        return null;
+      }
+
+      if (!modules.length) {
+        visitorInfoEl.textContent =
+          'No services are currently attached to your account.';
+        return { user, modules };
+      }
+
+      modules
+        .slice()
+        .sort((a, b) => {
+          const pa = a.position ?? 0;
+          const pb = b.position ?? 0;
+          if (pa !== pb) return pa - pb;
+          const ka = String(a.service_key || '');
+          const kb = String(b.service_key || '');
+          return ka.localeCompare(kb);
+        })
+        .forEach(m => {
+          const card = createServiceCardForUse(m);
+          visitorServicesEl.appendChild(card);
+        });
+
+      visitorInfoEl.textContent = '';
+
+      initCardIconBehaviour('#visitor-services');
+
+      return { user, modules };
+    } catch (err) {
+      console.error('[COMBO] error loading services:', err);
+      visitorInfoEl.textContent =
+        'Error loading services. Please refresh the page.';
+      return null;
+    }
+  }
+
+  /* ---------- Update guide hero role text ---------- */
+
+  function updateGuideRoleUI(user) {
+    if (!lgoRoleTextEl || !lgoRolePillEl || !lgoRoleLabelEl) return;
+
+    let desc = '';
+    let pillText = '';
+
+    if (user.role === 'visitor') {
+      const status = user.status || 'V';
+      if (status === 'G') {
+        desc     = 'You are signed in as Visitor (Guide only).';
+        pillText = 'Visitor — Guide only (G)';
+      } else if (status === 'VG') {
+        desc     = 'You are signed in as Visitor (Visitor & Guide).';
+        pillText = 'Visitor & Guide (VG)';
+      } else {
+        desc     = 'You are signed in as Visitor (Visitor only). Guiding tools are limited.';
+        pillText = 'Visitor only (V)';
+      }
+    } else if (user.role === 'host') {
+      desc     = 'You are signed in as Host. You can create and manage guidings for your organization.';
+      pillText = 'Host';
+    } else {
+      desc     = `You are signed in as ${user.role || 'user'}.`;
+      pillText = user.role || 'User';
+    }
+
+    lgoRoleTextEl.textContent  = desc || 'You are signed in.';
+    lgoRoleLabelEl.textContent = pillText;
+    lgoRolePillEl.style.display = 'inline-flex';
+  }
+
+  /* ---------- Role switch dropdown (same behaviour as dashboard / main) ---------- */
+
+  function initRoleSwitchMenu(me) {
+    if (!roleSwitchEl) return;
+
+    const options = roleSwitchEl.querySelectorAll('.role-switch-option');
+
+    function openMenu() {
+      roleSwitchEl.classList.add('open');
+      roleSwitchEl.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeMenu() {
+      roleSwitchEl.classList.remove('open');
+      roleSwitchEl.setAttribute('aria-hidden', 'true');
+    }
+
+    function toggleMenu() {
+      if (roleSwitchEl.classList.contains('open')) {
+        closeMenu();
+      } else {
+        openMenu();
+      }
+    }
+
+    const activeView =
+      me.status === 'G'  ? 'guide' :
+      me.status === 'VG' ? 'vg'    :
+      'visitor';
+    const activeBtn = roleSwitchEl.querySelector(`[data-view="${activeView}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    options.forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const view = btn.dataset.view;
+
+        options.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        closeMenu();
+
+        let targetStatus = 'V';
+        if (view === 'guide') {
+          targetStatus = 'G';
+        } else if (view === 'vg') {
+          targetStatus = 'VG';
+        }
+
+        try {
+          if (me.status !== targetStatus) {
+            await setStatus(targetStatus);
+            me.status = targetStatus;
+          }
+        } catch (err) {
+          console.error('Status switch failed:', err);
+          return;
+        }
+
+        if (view === 'visitor') {
+          window.location.href = '/pages/visitor/dashboard.html';
+        } else if (view === 'guide') {
+          window.location.href = "/modules/Let's Get Out!/manage/main.html";
+        } else if (view === 'vg') {
+          // We are already on the combo page: refresh to reflect potential changes
+          const target = "/modules/Let's Get Out!/manage/page combo manage visitor.html";
+          if (window.location.pathname !== target) {
+            window.location.href = target;
+          } else {
+            window.location.reload();
+          }
+        }
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!roleSwitchEl.classList.contains('open')) return;
+      if (!roleSwitchEl.contains(e.target)) {
+        closeMenu();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && roleSwitchEl.classList.contains('open')) {
+        closeMenu();
+      }
+    });
+
+    window.VisitorDashboard.toggleRoleSwitch = toggleMenu;
+  }
+
+  /* ---------- Bottom tabs (Visitor / Guide) ---------- */
+
+  function initBottomTabs() {
+    const tabs = qsa('#combo-tabs .combo-tab-btn');
+
+    function activate(panelKey) {
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.panel === panelKey));
+      panelVisitorEl.classList.toggle('active', panelKey === 'visitor');
+      panelGuideEl.classList.toggle('active', panelKey === 'guide');
+    }
+
+    tabs.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        activate(btn.dataset.panel);
+      });
+    });
+
+    // Default: Visitor active
+    activate('visitor');
+  }
+
+  /* ---------- FAB + Drawer ---------- */
+
+  function mountChrome(me) {
+    if (window.Drawer && typeof window.Drawer.mount === 'function') {
+      window.Drawer.mount({
+        mode: me.role === 'visitor' ? 'visitor' : 'host',
+        onLogout: visitorLogout
+      });
+    }
+
+    if (!window.FAB || typeof window.FAB.mount !== 'function') return;
+
+    const isVisitor = me.role === 'visitor';
+
+    const options = {
+      useTopBand: true,
+      useBottomBand: true,
+
+      home: {
+        title: 'Home / Services',
+        label: '🏠',
+        onClick: () => {
+          if (window.Drawer && typeof window.Drawer.open === 'function') {
+            window.Drawer.open();
+          } else if (isVisitor) {
+            window.location.href = '/pages/visitor/dashboard.html';
+          } else {
+            window.location.href = '/pages/host/dashboard.html';
+          }
+        }
+      },
+
+      config: {
+        title: "Let's Get Out! — Settings",
+        label: '⚙️',
+        href: "/modules/Let's Get Out!/manage/settings.html"
+      },
+
+      logout: {
+        title: 'Logout',
+        iconPath: '/icons/ion-png-black/md-log-out.png',
+        onClick: () => visitorLogout()
+      }
+    };
+
+    if (isVisitor) {
+      options.br = {
+        title: 'Change view',
+        label: '👤',
+        onClick: () =>
+          window.VisitorDashboard &&
+          window.VisitorDashboard.toggleRoleSwitch &&
+          window.VisitorDashboard.toggleRoleSwitch()
+      };
+    } else {
+      options.br = {
+        title: 'Back',
+        label: '‹',
+        onClick: () => history.back()
+      };
+    }
+
+    window.FAB.mount(options);
+  }
+
+  /* ---------- Guidings cards wiring ---------- */
+
+  function wireGuidingCards() {
+    const btnCreate = $('btnCreateGuiding');
+    const btnManage = $('btnManageGuidings');
+
+    if (btnCreate) {
+      btnCreate.addEventListener('click', () => {
+        window.location.href = "/modules/Let's Get Out!/manage/page 1.html";
+      });
+    }
+
+    if (btnManage) {
+      btnManage.addEventListener('click', () => {
+        window.location.href = "/modules/Let's Get Out!/manage/page manage list.html";
+      });
+    }
+  }
+
+  /* ------------------------- INIT ------------------------- */
+
+  (async () => {
+    const me = await fetchMe();
+    if (!me) return;
+
+    // This page is especially meaningful in VG but we allow any visitor
+    if (me.role !== 'visitor') {
+      window.location.href = '/visitor.html';
+      return;
+    }
+
+    visitorSummaryEl.textContent =
+      'Access your services as a visitor: queues, promotions, tours and more.';
+
+    await loadVisitorServices();
+    updateGuideRoleUI(me);
+    wireGuidingCards();
+    initBottomTabs();
+    initRoleSwitchMenu(me);
+    mountChrome(me);
+  })();
+});
+</script>
+
+</body>
+</html>

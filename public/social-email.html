@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Complete your email</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:#0f1224;color:#fff;display:grid;place-items:center;min-height:100vh;margin:0}
+    form{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.35);padding:16px 18px;border-radius:12px;width:min(92vw,420px)}
+    input{width:100%;padding:10px;border:none;border-bottom:3px solid rgba(255,255,255,.95);background:transparent;color:#fff;outline:none}
+    button{margin-top:12px;width:100%;padding:10px;border-radius:10px;border:1px solid #fff;background:#fff;color:#111;font-weight:600}
+    p{opacity:.85}
+  </style>
+</head>
+<body>
+  <form method="POST" action="/auth/complete-email">
+    <h2>One last step</h2>
+    <p>We couldn’t get your email from the provider. Please enter it to finish signing in.</p>
+    <input type="email" name="email" placeholder="you@example.com" required />
+    <button type="submit">Continue</button>
+  </form>
+</body>
+</html>

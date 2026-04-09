@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>In-Time — Manage</title>
+
+  <!-- Shared app styles -->
+  <link rel="stylesheet" href="/css/style.css"/>
+  <link rel="stylesheet" href="/css/pages/main.css"/>
+
+  <!-- No page-specific CSS needed for hero/cards now -->
+</head>
+
+<body class="has-top-band has-bottom-band">
+<header class="site">
+  <div class="title">In-Time - my Virtual Queues</div>
+  <div class="subtitle">
+    Create, manage and scan entries for your virtual queues.
+  </div>
+</header>
+
+<main class="container">
+  <section class="manage-hero">
+    <h1>In-Time — Virtual Queue Management</h1>
+    <p>
+      Set up new queues, manage existing ones, and scan visitor entries
+      directly from this workspace.
+    </p>
+  </section>
+
+  <section class="manage-cards-grid">
+    <!-- Card 1: Create a new Virtual Queue -->
+    <article class="manage-card">
+      <div>
+        <div class="manage-card-header">
+          <div class="manage-card-icon">➕</div>
+          <h2>Create a new Virtual Queue</h2>
+        </div>
+        <p>
+          Configure a new queue with your opening hours, capacity per wave and
+          visitor rules. You can save it as draft and activate it later.
+        </p>
+      </div>
+      <div class="manage-card-footer">
+        <button
+          type="button"
+          class="manage-btn manage-btn-primary"
+          id="btnCreateQueue"
+        >
+          Start new Virtual Queue
+        </button>
+      </div>
+    </article>
+
+    <!-- Card 2: Manage my Virtual Queues -->
+    <article class="manage-card">
+      <div>
+        <div class="manage-card-header">
+          <div class="manage-card-icon">📂</div>
+          <h2>Manage my Virtual Queues</h2>
+        </div>
+        <p>
+          Review, edit or deactivate your existing queues. Adjust capacity,
+          schedules and access settings in real time.
+        </p>
+      </div>
+      <div class="manage-card-footer">
+        <button
+          type="button"
+          class="manage-btn manage-btn-primary"
+          id="btnManageQueues"
+        >
+          Open my Virtual Queues
+        </button>
+      </div>
+    </article>
+
+    <!-- Card 3: Scan entries -->
+    <article class="manage-card">
+      <div>
+        <div class="manage-card-header">
+          <div class="manage-card-icon">📷</div>
+          <h2>Scan entries</h2>
+        </div>
+        <p>
+          Use your device camera to scan visitor QR codes at the entrance,
+          validate bookings and track live attendance.
+        </p>
+      </div>
+      <div class="manage-card-footer">
+        <button
+          type="button"
+          class="manage-btn manage-btn-primary"
+          id="btnScanEntries"
+        >
+          Open Scan mode
+        </button>
+      </div>
+    </article>
+  </section>
+</main>
+
+<!-- Shared chrome: drawer + FAB -->
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+
+<!-- Card actions -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const base = '/modules/In-Time/manage/';
+
+    const btnCreate = document.getElementById('btnCreateQueue');
+    const btnManage = document.getElementById('btnManageQueues');
+    const btnScan   = document.getElementById('btnScanEntries');
+
+    if (btnCreate) {
+      btnCreate.addEventListener('click', () => {
+        window.location.href = base + 'page 1.html';
+      });
+    }
+
+    if (btnManage) {
+      btnManage.addEventListener('click', () => {
+        window.location.href = base + 'page 2.html';
+      });
+    }
+
+    if (btnScan) {
+      btnScan.addEventListener('click', () => {
+        window.location.href = base + 'page 3.html';
+      });
+    }
+  });
+</script>
+
+<!-- FAB config: host context, back → host dashboard -->
+<script>
+  FAB.mount({
+    useTopBand: true,
+    useBottomBand: true,
+
+    home: {
+      title: 'Home & Services',
+      label: '🏠',
+      onClick: () => Drawer.open()
+    },
+
+    config: {
+      title: 'Host Settings',
+      label: '⚙️',
+      href: '/pages/host/settings.html'
+    },
+
+    // Back button always returns to host dashboard
+    onBack: () => {
+      window.location.href = '/public/dashboard-host.html';
+    }
+  });
+
+  // ======= HARD HIDE: bottom-right FAB button (geometry-based) =======
+  function hideBottomRightFabButton() {
+    const bandH = parseInt(
+      getComputedStyle(document.documentElement).getPropertyValue('--band-h')
+    ) || 68;
+
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+
+    const candidates = Array.from(document.querySelectorAll('button, a'))
+      .filter(el => {
+        const rect = el.getBoundingClientRect();
+        if (!rect.width || !rect.height) return false;
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+
+        const nearBottom = cy > vh - bandH - 80 && cy < vh;
+        const rightSide  = cx > vw * 0.6;
+
+        return nearBottom && rightSide;
+      });
+
+    candidates.forEach(el => {
+      el.style.display       = 'none';
+      el.style.visibility    = 'hidden';
+      el.style.pointerEvents = 'none';
+    });
+  }
+
+  hideBottomRightFabButton();
+
+  const fabObserver = new MutationObserver(() => {
+    hideBottomRightFabButton();
+  });
+  fabObserver.observe(document.body, { childList: true, subtree: true });
+
+  window.addEventListener('resize', hideBottomRightFabButton);
+</script>
+
+</body>
+</html>

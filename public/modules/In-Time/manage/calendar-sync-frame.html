@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>In-Time — Calendar Sync</title>
+
+  <link rel="stylesheet" href="/css/style.css"/>
+
+  <style>
+    html, body { height:100%; margin:0; background:#fff; }
+    body{
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow:hidden;
+    }
+
+    .wide-dialog{
+      height:100%;
+      display:flex;
+      flex-direction:column;
+      padding:16px 16px 12px;
+      box-sizing:border-box;
+      background:#fff;
+    }
+
+    .wide-header{ margin-bottom:10px; }
+    .wide-header h2{
+      margin:0 0 6px 0;
+      font-size:1.05rem;
+      font-weight:900;
+      color:#000;
+    }
+    .wide-header .sub{ font-size:0.9rem; color:#555; margin:0; }
+    .modal-error{ margin-top:6px; color:#c62828; font-size:0.85rem; display:none; }
+
+    .wide-body{
+      flex:1;
+      min-height:260px;
+      border-radius:14px;
+      background:#fff;
+      overflow:auto;
+      border:1px solid #eee;
+    }
+    .wide-body-inner{ padding:10px 10px 12px; font-size:0.9rem; }
+
+    .wide-footer{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-top:12px;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .wide-footer .left, .wide-footer .right{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+    .modal-btn-secondary{
+      padding: 8px 14px;
+      border-radius: 999px;
+      border:none;
+      cursor:pointer;
+      background:#eeeeee;
+      color:#333;
+      font-weight:900;
+      transition: .15s ease;
+    }
+    .modal-btn-secondary:hover{ background:#333; color:#fff; }
+
+    .modal-btn-primary{
+      padding: 8px 16px;
+      border-radius: 999px;
+      border:none;
+      cursor:pointer;
+      background:#1e88e5;
+      color:#fff;
+      font-weight:900;
+      transition: .15s ease;
+    }
+    .modal-btn-primary:hover{ background:#fff; color:#1e88e5; border:1px solid #1e88e5; }
+
+    /* Calendar chips (same as page 2) */
+    .calendar-chip{
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid #ccc;
+      background: #f5f5f5;
+      font-size: 0.84rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #333;
+      margin: 2px 6px 6px 0;
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+      user-select: none;
+    }
+    .calendar-chip.connected { border-color:#43a047; background:#e8f5e9; }
+    .calendar-chip.enabled { border-color:#1e88e5; background:#e3f2fd; }
+    .calendar-chip:hover { background:#333; color:#fff; border-color:#fff; }
+
+    .inline-badge{
+      margin-left: 2px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 900;
+      border: 1px solid rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.75);
+      color: #000;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="wide-dialog">
+    <div class="wide-header">
+      <h2>Synchronize with my calendar</h2>
+      <p class="sub">
+        Choose a provider. If connected, click <strong>Review</strong> to preview the imported busy blocks (D+90 grid),
+        then approve to enable it for this queue.
+      </p>
+      <div id="calendarSyncError" class="modal-error"></div>
+    </div>
+
+    <div class="wide-body">
+      <div class="wide-body-inner">
+        <div id="calendarSyncRoot">
+          <button type="button" class="calendar-chip" data-provider="google">
+            <span>📅 Google Calendar</span>
+            <span class="inline-badge">Connect</span>
+          </button>
+
+          <button type="button" class="calendar-chip" data-provider="microsoft">
+            <span>📅 Outlook / Microsoft 365</span>
+            <span class="inline-badge">Connect</span>
+          </button>
+
+          <button type="button" class="calendar-chip" data-provider="other">
+            <span>📅 Other (CalDAV / iCal)</span>
+            <span class="inline-badge">Connect</span>
+          </button>
+        </div>
+
+        <div style="margin-top:10px; font-size:0.84rem; color:#666;">
+          Tip: “Connect” starts OAuth (Google/Microsoft). “Review” opens the availability preview. “Enabled” means it’s active for this queue.
+        </div>
+      </div>
+    </div>
+
+    <div class="wide-footer">
+      <div class="left">
+        <button type="button" class="modal-btn-secondary" id="closeBtn">Close</button>
+      </div>
+      <div class="right">
+        <button type="button" class="modal-btn-primary" id="saveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden inputs required by calendar-sync.js -->
+  <input type="hidden" id="calGoogleConnected" value="0">
+  <input type="hidden" id="calMsConnected" value="0">
+  <input type="hidden" id="calOtherConnected" value="0">
+
+  <script type="module">
+    import { setupCalendarSync, getCalendarSyncState } from '/modules/In-Time/manage/calendar-sync.js';
+
+    const errorEl = document.getElementById('calendarSyncError');
+
+    function showError(msg) {
+      errorEl.textContent = msg || 'Error';
+      errorEl.style.display = 'block';
+    }
+    function clearError() {
+      errorEl.textContent = '';
+      errorEl.style.display = 'none';
+    }
+
+    function qs(name) {
+      return new URLSearchParams(window.location.search).get(name);
+    }
+
+    const queueId = qs('queueId');
+    const returnTo = qs('returnTo') || '';
+
+    async function fetchJsonOptional(url, options = {}, errorLabel = 'Request') {
+      const res = await fetch(url, options);
+      const contentType = res.headers.get('content-type') || '';
+      const isJson = contentType.includes('application/json');
+      let data = null;
+      if (isJson) { try { data = await res.json(); } catch {} }
+
+      if (!res.ok) {
+        const msg = (data && data.error) || `${errorLabel} failed (HTTP ${res.status})`;
+        const err = new Error(msg);
+        err.httpStatus = res.status;
+        throw err;
+      }
+      if (data && data.ok === false) throw new Error(data.error || `${errorLabel} failed`);
+      return data ?? { ok:true };
+    }
+
+    // Same fuse/import candidate logic you already use on page 2
+    async function tryCalendarFuse(queueId, provider) {
+      const candidates = [
+        { url: `/api/intime/queues/${encodeURIComponent(queueId)}/calendar-sync/fuse`, method:'POST', body:{ provider } },
+        { url: `/api/intime/queues/${encodeURIComponent(queueId)}/calendar-sync/import`, method:'POST', body:{ provider } },
+        { url: `/api/intime/queues/${encodeURIComponent(queueId)}/calendar/import`, method:'POST', body:{ provider } },
+        { url: `/api/intime/queues/${encodeURIComponent(queueId)}/calendar/extract`, method:'POST', body:{ provider } },
+        { url: `/api/intime/queues/${encodeURIComponent(queueId)}/calendar-sync/refresh`, method:'POST', body:{ provider } },
+      ];
+
+      let lastErr = null;
+      for (const c of candidates) {
+        try {
+          return await fetchJsonOptional(c.url, {
+            method: c.method,
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(c.body || {})
+          }, 'Calendar import');
+        } catch (err) {
+          lastErr = err;
+          if (err && err.httpStatus === 404) continue;
+          throw err;
+        }
+      }
+
+      const e = new Error(
+        'Calendar was enabled, but no import/fuse endpoint was found on the backend (all candidates returned 404). ' +
+        'Add an endpoint to extract busy blocks and persist/return them via /calendar-view.'
+      );
+      e.httpStatus = 404;
+      throw e;
+    }
+
+    async function loadQueueFlags() {
+      if (!queueId) return { google:false, microsoft:false, other:false };
+
+      // Try: /api/intime/queues/:id  (if you have it). If not, fallback to list.
+      try {
+        const one = await fetchJsonOptional(`/api/intime/queues/${encodeURIComponent(queueId)}`, {
+          method:'GET',
+          headers:{ 'Accept':'application/json' }
+        }, 'Load queue');
+        const q = one?.queue || one;
+        return {
+          google: !!q?.calendar_sync_google,
+          microsoft: !!q?.calendar_sync_ms,
+          other: !!q?.calendar_sync_other,
+        };
+      } catch (err) {
+        if (err && err.httpStatus !== 404) throw err;
+
+        const list = await fetchJsonOptional('/api/intime/queues', {
+          method:'GET',
+          headers:{ 'Accept':'application/json' }
+        }, 'Load queues');
+        const queues = Array.isArray(list?.queues) ? list.queues : (Array.isArray(list) ? list : []);
+        const q = queues.find(x => String(x.id) === String(queueId));
+        return {
+          google: !!q?.calendar_sync_google,
+          microsoft: !!q?.calendar_sync_ms,
+          other: !!q?.calendar_sync_other,
+        };
+      }
+    }
+
+    function postToParent(payload) {
+      // Same-origin parent, so origin is safe
+      window.parent.postMessage(payload, window.location.origin);
+    }
+
+    document.getElementById('closeBtn').addEventListener('click', () => {
+      postToParent({ type:'calendarSyncClose', queueId, returnTo });
+    });
+
+    // Init UI using existing calendar-sync.js
+    (async () => {
+      try {
+        clearError();
+
+        const flags = await loadQueueFlags();
+
+        document.getElementById('calGoogleConnected').value = flags.google ? '1' : '0';
+        document.getElementById('calMsConnected').value     = flags.microsoft ? '1' : '0';
+        document.getElementById('calOtherConnected').value  = flags.other ? '1' : '0';
+
+        const root = document.getElementById('calendarSyncRoot');
+        setupCalendarSync(root, {
+          google: flags.google,
+          microsoft: flags.microsoft,
+          other: flags.other
+        });
+      } catch (err) {
+        console.error(err);
+        showError(err.message || 'Failed to initialize calendar sync.');
+      }
+    })();
+
+    document.getElementById('saveBtn').addEventListener('click', async () => {
+      if (!queueId) return showError('Missing queueId in URL.');
+
+      clearError();
+
+      const state = getCalendarSyncState(); // {google,microsoft,other}
+
+      try {
+        // 1) Save enabled flags
+        await fetchJsonOptional(`/api/intime/queues/${encodeURIComponent(queueId)}/calendar-sync`, {
+          method:'PATCH',
+          headers:{ 'Content-Type':'application/json', 'Accept':'application/json' },
+          body: JSON.stringify({
+            calendar_sync_google: !!state.google,
+            calendar_sync_ms: !!state.microsoft,
+            calendar_sync_other: !!state.other
+          })
+        }, 'Update calendar sync');
+
+        // 2) Fuse/import right away (best-effort)
+        const toImport = [];
+        if (state.google) toImport.push('google');
+        if (state.microsoft) toImport.push('microsoft');
+        if (state.other) toImport.push('other');
+
+        for (const p of toImport) {
+          try { await tryCalendarFuse(queueId, p); }
+          catch (err) {
+            // If 404, show message but do not block saving
+            if (err && err.httpStatus === 404) showError(err.message);
+            else throw err;
+          }
+        }
+
+        // 3) Notify parent (page 2) to update list & optionally refresh view calendar
+        postToParent({ type:'calendarSyncSaved', queueId, state });
+
+      } catch (err) {
+        console.error(err);
+        showError(err.message || 'Failed to update calendar sync.');
+      }
+    });
+  </script>
+</body>
+</html>

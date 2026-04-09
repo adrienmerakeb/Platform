@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>In-Time — Calendar Review</title>
+
+  <link rel="stylesheet" href="/css/style.css"/>
+
+  <style>
+    html, body { height:100%; margin:0; background:#f2f2f2; }
+    main {
+      min-height: 100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 18px 10px;
+      box-sizing:border-box;
+    }
+    /* Make the dialog look like your modal but in-page */
+    .frame-shell{
+      width: 100%;
+      max-width: 1100px;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <div class="frame-shell" id="mount"></div>
+  </main>
+
+  <script type="module">
+    import { renderCalendarReviewFrame } from '/modules/In-Time/manage/calendar-sync.js';
+
+    const qs = new URLSearchParams(location.search);
+    const provider = (qs.get('provider') || '').toLowerCase();
+    const returnTo = qs.get('returnTo') || '/modules/In-Time/manage/page%201.html?tab=2';
+
+    const mount = document.getElementById('mount');
+
+    renderCalendarReviewFrame(mount, provider, {
+      onDecision: ({ provider, enableForQueue }) => {
+        // We store the approval decision in URL params and return
+        const url = new URL(returnTo, location.origin);
+        url.searchParams.set('calendar', provider);
+        url.searchParams.set('review', '1');
+        url.searchParams.set('approved', enableForQueue ? '1' : '0');
+        location.href = url.toString();
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Visitor — Dashboard</title>
+
+  <!-- Same shared CSS as host / other pages -->
+  <link rel="stylesheet" href="/css/style.css"/>
+
+  <style>
+    /* ----- Role switch dropdown (bottom-right, opens upwards) ----- */
+    .role-switch {
+      position: fixed;
+      right: 16px;
+      bottom: calc(var(--band-h, 68px) + 12px); /* just above bottom band */
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      font-size: 0.9rem;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      z-index: 9999;
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+
+    .role-switch.open {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .role-switch-title {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      opacity: .75;
+      margin-bottom: 4px;
+    }
+
+    .role-switch-option {
+      border: none;
+      background: transparent;
+      color: inherit;
+      padding: 4px 10px;
+      text-align: left;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+
+    .role-switch-option:hover,
+    .role-switch-option.active {
+      background: rgba(255,255,255,0.18);
+    }
+  </style>
+</head>
+
+<body class="has-top-band has-bottom-band">
+<header class="site">
+  <div class="title" id="hello">Visitor — My Dashboard</div>
+</header>
+
+<main class="container">
+
+  <!-- Status bubble kept in DOM but hidden: no more status changes from here -->
+  <div class="settings" id="settings" style="display:none">
+    <strong>Status</strong><br/>
+    <label><input type="radio" name="status" value="V"> Visitor only</label><br/>
+    <label><input type="radio" name="status" value="VG"> Visitor + Guide</label><br/>
+    <label><input type="radio" name="status" value="G"> Guide only</label><br/>
+    <button class="ghost" id="apply-status" style="margin-top:8px">Apply</button>
+  </div>
+
+  <!-- Tabs (only visible when status = VG) -->
+  <div class="tabs" id="tabs" style="display:none; margin-bottom:1rem;">
+    <button class="tab" data-tab="visitor">Visitor</button>
+    <button class="tab" data-tab="guide">Guide</button>
+  </div>
+
+  <!-- VISITOR PANEL -->
+  <section class="panel" id="panel-visitor" style="display:none">
+    <p id="visitor-summary" class="muted" style="margin-bottom:0.75rem;"></p>
+
+    <!-- Visitor service cards -->
+    <section class="grid cards" id="visitor-services"></section>
+    <p id="visitor-services-info" class="muted" style="margin-top:1rem;text-align:center;"></p>
+
+    <!-- CTA to create a guide profile -->
+    <p id="guide-cta" style="margin-top:1rem;display:none">
+      <button class="primary" id="create-guide">Create your guide profile</button>
+    </p>
+  </section>
+
+  <!-- GUIDE PANEL -->
+  <section class="panel" id="panel-guide" style="display:none">
+    <p id="guide-summary" class="muted" style="margin-bottom:0.75rem;"></p>
+
+    <section class="grid cards" id="guide-services"></section>
+    <p id="guide-services-info" class="muted" style="margin-top:1rem;text-align:center;"></p>
+  </section>
+
+</main>
+
+<footer class="site"></footer>
+
+<!-- First-time prompt to create guide -->
+<div class="modal-backdrop" id="guide-modal" style="display:none">
+  <div class="modal">
+    <h3>Create a guide profile?</h3>
+    <p>You can unlock the Guide tools and switch between Visitor and Guide at any time.</p>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="primary" id="guide-modal-yes">Create guide profile</button>
+      <button class="ghost" id="guide-modal-no">Not now</button>
+    </div>
+  </div>
+</div>
+
+<!-- Role switch dropdown controlled by bottom-right FAB -->
+<div class="role-switch" id="role-switch" aria-hidden="true">
+  <div class="role-switch-title">View as</div>
+  <button class="role-switch-option" data-view="visitor">Visitor</button>
+  <button class="role-switch-option" data-view="guide">Guide</button>
+  <button class="role-switch-option" data-view="vg">Visitor &amp; Guide</button>
+</div>
+
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const $ = (id) => document.getElementById(id);
+
+  const helloEl               = $('hello');
+  const tabsEl                = $('tabs');
+  const panelVisitorEl        = $('panel-visitor');
+  const panelGuideEl          = $('panel-guide');
+  const settingsEl            = $('settings');       // now unused (kept hidden)
+  const applyStatusBtn        = $('apply-status');   // now unused
+
+  const visitorSummaryEl      = $('visitor-summary');
+  const guideSummaryEl        = $('guide-summary');
+  const visitorServicesEl     = $('visitor-services');
+  const guideServicesEl       = $('guide-services');
+  const visitorInfoEl         = $('visitor-services-info');
+  const guideInfoEl           = $('guide-services-info');
+  const guideCtaEl            = $('guide-cta');
+
+  const guideModalEl          = $('guide-modal');
+  const guideModalYesBtn      = $('guide-modal-yes');
+  const guideModalNoBtn       = $('guide-modal-no');
+  const createGuideBtn        = $('create-guide');
+
+  const roleSwitchEl          = $('role-switch');
+
+  // Exposed hooks for FAB
+  window.VisitorDashboard = window.VisitorDashboard || {};
+
+  /* ----------------------------------------------------------
+   * REUSABLE HELPERS
+   * -------------------------------------------------------- */
+
+  async function fetchMe() {
+    const r = await fetch('/api/me', { credentials: 'include' });
+    if (!r.ok) {
+      // no valid session -> back to visitor entry
+      window.location.href = '/visitor.html';
+      return null;
+    }
+    const { user } = await r.json();
+    return user;
+  }
+
+  function setTabsVisible(visible) {
+    tabsEl.style.display = visible ? 'flex' : 'none';
+  }
+
+  function activateTab(which) {
+    document.querySelectorAll('.tabs .tab').forEach(b => {
+      b.classList.toggle('active', b.dataset.tab === which);
+    });
+    panelVisitorEl.style.display = (which === 'visitor') ? 'block' : 'none';
+    panelGuideEl.style.display   = (which === 'guide')   ? 'block' : 'none';
+  }
+
+  async function setStatus(newStatus) {
+    const r = await fetch('/api/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (!r.ok) {
+      alert('Could not update status');
+      throw new Error('Status update failed');
+    }
+  }
+
+  async function createGuideProfile() {
+    const r = await fetch('/api/guide/create', {
+      method: 'POST',
+      credentials: 'include'
+    });
+    if (r.ok) {
+      localStorage.setItem('seen_guide_prompt', '1');
+      alert('Guide profile created! You can switch status anytime in Settings.');
+    } else {
+      alert('Could not create guide profile');
+      throw new Error('Guide profile create failed');
+    }
+  }
+
+  /* ----------------------------------------------------------
+   * SERVICE CARD + ICON BEHAVIOUR  (adapted from Host dashboard)
+   * -------------------------------------------------------- */
+
+  function buildUseUrl(serviceKey, slug) {
+    return `/modules/${serviceKey}/use/${slug}`;
+  }
+
+  function createServiceCardForUse(module) {
+    const folder = String(module.service_key || '');
+    const title  = module.display_name || folder;
+
+    const usePages    = Array.isArray(module.usePages) ? module.usePages : [];
+    const managePages = Array.isArray(module.managePages) ? module.managePages : [];
+
+    // Choose main "use" page if available, else fall back to manage/main.html
+    const mainPage =
+      usePages[0] ||
+      managePages[0] ||
+      { slug: 'main.html', label: title };
+
+    const iconBase   = module.icon_base || `/modules/${folder}/icons/${folder}`;
+    const logoSrcOff = iconBase + '-off.png';
+
+    const mainSlug = mainPage.slug;
+    const linkHtml = usePages
+      .filter(p => p.slug !== mainSlug)
+      .slice(0, 3)
+      .map(p => {
+        const href  = buildUseUrl(folder, p.slug);
+        const label = p.label || p.slug.replace('.html', '');
+        return `<a href="${href}" class="card-link">${label}</a>`;
+      })
+      .join('');
+
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    card.innerHTML = `
+      <div class="card-logo-area" data-main-href="${buildUseUrl(folder, mainPage.slug)}">
+        <img src="${logoSrcOff}" alt="${title} Logo" class="logo">
+        <div class="card-links">
+          ${linkHtml}
+        </div>
+      </div>
+
+      <a href="${buildUseUrl(folder, mainPage.slug)}" class="card-title-link">
+        <p class="card-title">${title}</p>
+      </a>
+    `;
+
+    return card;
+  }
+
+  function initCardIconBehaviour(rootSelector) {
+    const cards = document.querySelectorAll(`${rootSelector} .card`);
+
+    const toHover = (src) => src.replace(/-off(\.[a-z0-9]+)$/i, '-hover$1');
+    const toOn    = (src) => src.replace(/-off(\.[a-z0-9]+)$/i, '-on$1');
+    const toOff   = (src) => src
+      .replace(/-hover(\.[a-z0-9]+)$/i, '-off$1')
+      .replace(/-on(\.[a-z0-9]+)$/i, '-off$1');
+
+    cards.forEach(card => {
+      const area = card.querySelector('.card-logo-area');
+      const img  = card.querySelector('.logo');
+      if (!area || !img) return;
+
+      const baseOff   = img.getAttribute('src');  // "…-off.png"
+      const hoverSrc  = toHover(baseOff);        // "…-hover.png"
+      const selectSrc = toOn(baseOff);           // "…-on.png"
+      const mainHref  = area.dataset.mainHref || '';
+
+      // Preload hover & on icons
+      [hoverSrc, selectSrc].forEach(src => {
+        const i = new Image();
+        i.src = src;
+      });
+
+      // Give CSS the hover image for curtain effect
+      area.style.setProperty('--hover-src', `url("${hoverSrc}")`);
+
+      // Hover: curtain via CSS class
+      area.addEventListener('mouseenter', () => {
+        card.classList.add('hovering');
+      });
+
+      area.addEventListener('mouseleave', () => {
+        card.classList.remove('hovering');
+        if (!card.classList.contains('selected')) {
+          img.src = baseOff;
+        }
+      });
+
+      // Click on logo area:
+      area.addEventListener('click', (e) => {
+        const link = e.target.closest('a.card-link');
+        if (link) {
+          // normal navigation for sub-links
+          return;
+        }
+
+        e.preventDefault();
+
+        // Deselect all cards within the same root
+        document.querySelectorAll(`${rootSelector} .card`).forEach(c => {
+          c.classList.remove('selected', 'hovering');
+          const logo = c.querySelector('.logo');
+          if (logo) {
+            const current = logo.getAttribute('src') || '';
+            logo.src = toOff(current);
+          }
+        });
+
+        // Select this card + set "-on" icon
+        card.classList.add('selected');
+        img.src = selectSrc;
+
+        if (mainHref) {
+          window.location.href = mainHref;
+        }
+      });
+    });
+  }
+
+  async function loadVisitorServices() {
+    visitorServicesEl.innerHTML = '';
+    guideServicesEl.innerHTML   = '';
+    visitorInfoEl.textContent   = 'Loading your services…';
+    guideInfoEl.textContent     = '';
+
+    try {
+      const res = await fetch('/api/services', {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      if (!res.ok) {
+        // No valid visitor session → back to visitor login
+        window.location.href = '/visitor.html';
+        return null;
+      }
+
+      const payload = await res.json();
+      const user    = payload.user || {};
+      const modules = payload.modules || [];
+
+      // Role check: this dashboard is for visitors/guides
+      if (user.role !== 'visitor') {
+        window.location.href = '/visitor.html';
+        return null;
+      }
+
+      // If only one service: go directly to main "use" page
+      if (modules.length === 1) {
+        const m        = modules[0];
+        const folder   = String(m.service_key || '');
+        const usePages = Array.isArray(m.usePages) ? m.usePages : [];
+        const manage   = Array.isArray(m.managePages) ? m.managePages : [];
+        const mainPage = usePages[0] || manage[0] || { slug:'main.html' };
+        window.location.href = buildUseUrl(folder, mainPage.slug);
+        return { user, modules };
+      }
+
+      if (!modules.length) {
+        visitorInfoEl.textContent = 'No services are currently attached to your account.';
+        guideInfoEl.textContent   = '';
+        return { user, modules };
+      }
+
+      // Render cards for both panels (same modules for now)
+      modules
+        .slice()
+        .sort((a, b) => {
+          const pa = a.position ?? 0;
+          const pb = b.position ?? 0;
+          if (pa !== pb) return pa - pb;
+          const ka = String(a.service_key || '');
+          const kb = String(b.service_key || '');
+          return ka.localeCompare(kb);
+        })
+        .forEach(m => {
+          const cardVisitor = createServiceCardForUse(m);
+          visitorServicesEl.appendChild(cardVisitor);
+
+          const cardGuide = createServiceCardForUse(m);
+          guideServicesEl.appendChild(cardGuide);
+        });
+
+      visitorInfoEl.textContent = '';
+      guideInfoEl.textContent   = '';
+
+      // Initialize icon behaviour for each panel separately
+      initCardIconBehaviour('#visitor-services');
+      initCardIconBehaviour('#guide-services');
+
+      return { user, modules };
+
+    } catch (err) {
+      console.error('[VISITOR DASH] error loading services:', err);
+      visitorInfoEl.textContent = 'Error loading services. Please refresh the page.';
+      guideInfoEl.textContent   = '';
+      return null;
+    }
+  }
+
+  async function visitorLogout() {
+    try {
+      await fetch('/api/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (e) {
+      console.warn('Logout failed (will still redirect):', e);
+    } finally {
+      window.location.href = '/visitor.html';
+    }
+  }
+
+  // Expose logout for FAB
+  window.VisitorDashboard.logout = visitorLogout;
+
+  /* ----------------------------------------------------------
+   * ROLE SWITCH DROPDOWN (bottom-right FAB opens this)
+   * -------------------------------------------------------- */
+
+  function initRoleSwitchMenu(me) {
+    if (!roleSwitchEl) return;
+
+    const options = roleSwitchEl.querySelectorAll('.role-switch-option');
+
+    function openMenu() {
+      roleSwitchEl.classList.add('open');
+      roleSwitchEl.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeMenu() {
+      roleSwitchEl.classList.remove('open');
+      roleSwitchEl.setAttribute('aria-hidden', 'true');
+    }
+
+    function toggleMenu() {
+      if (roleSwitchEl.classList.contains('open')) {
+        closeMenu();
+      } else {
+        openMenu();
+      }
+    }
+
+    // Mark active option based on current status
+    const activeView =
+      me.status === 'G'  ? 'guide' :
+      me.status === 'VG' ? 'vg'    :
+      'visitor';
+    const activeBtn = roleSwitchEl.querySelector(`[data-view="${activeView}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    options.forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const view = btn.dataset.view;
+
+        // Visual active state
+        options.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        closeMenu();
+
+        let targetStatus = 'V';
+        if (view === 'guide') {
+          targetStatus = 'G';
+        } else if (view === 'vg') {
+          targetStatus = 'VG';
+        }
+
+        try {
+          // Only update if needed
+          if (me.status !== targetStatus) {
+            await setStatus(targetStatus);
+            me.status = targetStatus;
+          }
+        } catch (err) {
+          console.error('Status switch failed:', err);
+          return;
+        }
+
+        if (view === 'visitor') {
+          // stay / reload on dashboard
+          if (window.location.pathname !== '/pages/visitor/dashboard.html') {
+            window.location.href = '/pages/visitor/dashboard.html';
+          } else {
+            window.location.reload();
+          }
+        } else if (view === 'guide') {
+          window.location.href = "/modules/Let's Get Out!/manage/main.html";
+        } else if (view === 'vg') {
+          window.location.href = "/modules/Let's Get Out!/manage/page combo manage visitor.html";
+        }
+      });
+    });
+
+    // Close when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!roleSwitchEl.classList.contains('open')) return;
+      if (!roleSwitchEl.contains(e.target)) {
+        closeMenu();
+      }
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && roleSwitchEl.classList.contains('open')) {
+        closeMenu();
+      }
+    });
+
+    // Expose toggler for FAB bottom-right button
+    window.VisitorDashboard.toggleRoleSwitch = toggleMenu;
+  }
+
+  /* ----------------------------------------------------------
+   * MAIN INIT FLOW
+   * -------------------------------------------------------- */
+
+  (async () => {
+    const me = await fetchMe();
+    if (!me) return;
+
+    // Header text
+    helloEl.textContent = `Hi ${me.name || me.email}! Role: ${me.role} | Status: ${me.status}`;
+
+    // Load services (cards)
+    const servicesResult = await loadVisitorServices();
+    const modules = servicesResult?.modules || [];
+
+    // Set summaries
+    visitorSummaryEl.textContent =
+      'Access your services as a visitor: queues, promotions, tours and more.';
+    // ❌ guideSummaryEl text removed: no more "guide tools..." sentence
+    guideSummaryEl.textContent = '';
+
+    // Layout based on status (same semantics as before for panels)
+    if (me.role === 'visitor') {
+      if (me.status === 'V') {
+        setTabsVisible(false);
+        activateTab('visitor');
+        panelVisitorEl.style.display = 'block';
+        panelGuideEl.style.display   = 'none';
+
+        // Show CTA and first-time modal if no guide profile yet
+        guideCtaEl.style.display = me.has_guide_profile ? 'none' : 'block';
+        const key = 'seen_guide_prompt';
+        if (!me.has_guide_profile && !localStorage.getItem(key)) {
+          guideModalEl.style.display = 'flex';
+        }
+
+        guideModalNoBtn.onclick = () => {
+          guideModalEl.style.display = 'none';
+          localStorage.setItem(key, '1');
+        };
+        guideModalYesBtn.onclick = async () => {
+          try {
+            await createGuideProfile();
+            guideModalEl.style.display = 'none';
+          } catch {}
+        };
+        createGuideBtn.onclick   = async () => {
+          try {
+            await createGuideProfile();
+          } catch {}
+        };
+      }
+      else if (me.status === 'G') {
+        setTabsVisible(false);
+        activateTab('guide');
+        panelVisitorEl.style.display = 'none';
+        panelGuideEl.style.display   = 'block';
+        guideCtaEl.style.display     = 'none';
+        guideModalEl.style.display   = 'none';
+      }
+      else if (me.status === 'VG') {
+        setTabsVisible(true);
+        // Tab click wiring
+        document.querySelectorAll('.tabs .tab').forEach(b => {
+          b.onclick = () => activateTab(b.dataset.tab);
+        });
+        // Default to visitor tab on arrival
+        activateTab('visitor');
+        panelVisitorEl.style.display = 'block';
+        panelGuideEl.style.display   = 'block';
+
+        guideCtaEl.style.display   = 'none';
+        guideModalEl.style.display = 'none';
+      }
+    } else {
+      // Non-visitor roles normally won't use this dashboard; fallback to visitor.html
+      window.location.href = '/visitor.html';
+      return;
+    }
+
+    // ----- Role switch dropdown is initialised now that we know "me" -----
+    initRoleSwitchMenu(me);
+
+    // ----- Drawer + FAB bands -----
+
+    if (window.Drawer && typeof window.Drawer.mount === 'function') {
+      window.Drawer.mount({
+        mode: 'visitor',
+        onLogout: visitorLogout
+      });
+    }
+
+    if (window.FAB && typeof window.FAB.mount === 'function') {
+      window.FAB.mount({
+        useTopBand: true,
+        useBottomBand: true,
+
+        // TOP-LEFT: "Home" → open drawer with services
+        home: {
+          title: 'Home / Services',
+          label: '🏠',
+          onClick: () =>
+            window.Drawer &&
+            window.Drawer.open &&
+            window.Drawer.open()
+        },
+
+        // TOP-RIGHT: Visitor settings
+        config: {
+          title: 'Visitor settings',
+          label: '⚙️',
+          href: '/pages/visitor/settings.html'
+        },
+
+        // BOTTOM-RIGHT: open role/view switch menu
+        br: {
+          title: 'Change view',
+          label: '👤',
+          onClick: () =>
+            window.VisitorDashboard &&
+            window.VisitorDashboard.toggleRoleSwitch &&
+            window.VisitorDashboard.toggleRoleSwitch()
+        },
+
+        // BOTTOM-LEFT: Logout
+        logout: {
+          title: 'Logout',
+          iconPath: '/icons/ion-png-black/md-log-out.png',
+          onClick: () =>
+            window.VisitorDashboard &&
+            window.VisitorDashboard.logout &&
+            window.VisitorDashboard.logout()
+        }
+      });
+    }
+  })();
+});
+</script>
+
+</body>
+</html>

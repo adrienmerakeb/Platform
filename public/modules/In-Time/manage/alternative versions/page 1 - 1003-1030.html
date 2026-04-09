@@ -1,0 +1,2134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>In-Time — Create Virtual Queue</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" defer></script>
+  <link rel="stylesheet" href="/css/style.css"/>
+  <style>
+    :root{
+      --c-bg:#f7f7f5;--c-surface:#fff;--c-border:#e8e6e1;--c-border-m:#d4d1cb;
+      --c-text:#1a1916;--c-muted:#6b6860;--c-subtle:#9c9a96;
+      --c-accent:#1e6fcc;--c-accent-h:#1557a8;--c-accent-l:#e8f0fb;
+      --c-success:#1a7a4a;--c-success-l:#e6f4ec;
+      --c-danger:#b91c1c;--c-danger-l:#fef2f2;
+      --c-warn:#92400e;--c-warn-l:#fffbeb;--c-warn-b:#fde68a;
+      --c-arch-a:#7c3aed;--c-arch-b:#0891b2;--c-arch-c:#d97706;--c-arch-d:#16a34a;
+      --r-sm:8px;--r-md:12px;--r-lg:18px;--r-xl:24px;--r-pill:999px;
+      --shadow-sm:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
+      --shadow-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.04);
+      --shadow-lg:0 12px 32px rgba(0,0,0,.10),0 4px 8px rgba(0,0,0,.05);
+      --font-body:'DM Sans',system-ui,sans-serif;
+      --font-display:'DM Serif Display',Georgia,serif;
+      --topband-h:68px;--band-h:68px;
+    }
+    *,*::before,*::after{box-sizing:border-box}
+    html,body{margin:0;font-family:var(--font-body);font-size:15px;line-height:1.55;color:var(--c-text);background:var(--c-bg)}
+    body.has-top-band>header.site{display:none!important}
+    body.has-top-band main.wiz-outer{padding-top:calc(var(--topband-h) + 16px)}
+    body.has-bottom-band main.wiz-outer{padding-bottom:calc(var(--band-h) + 24px)}
+    main.wiz-outer{max-width:820px;margin:0 auto;padding:24px 16px 40px}
+
+    /* PROGRESS */
+    .wiz-progress{display:flex;align-items:center;margin-bottom:16px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--r-pill);padding:7px 12px;box-shadow:var(--shadow-sm);overflow-x:auto;scrollbar-width:none;gap:0}
+    .wiz-progress::-webkit-scrollbar{display:none}
+    .prog-phase{display:flex;align-items:center;flex-shrink:0}
+    .prog-dot{width:26px;height:26px;border-radius:50%;border:2px solid var(--c-border-m);background:var(--c-surface);display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:600;color:var(--c-subtle);cursor:pointer;transition:all .18s;flex-shrink:0;position:relative}
+    .prog-dot.done{background:var(--c-accent);border-color:var(--c-accent);color:#fff}
+    .prog-dot.current{background:var(--c-surface);border-color:var(--c-accent);border-width:2.5px;color:var(--c-accent);box-shadow:0 0 0 3px var(--c-accent-l)}
+    .prog-dot.locked{opacity:.35;cursor:not-allowed}
+    .prog-line{height:2px;width:14px;background:var(--c-border);flex-shrink:0;transition:background .18s}
+    .prog-line.done{background:var(--c-accent)}
+    .wiz-substep{text-align:center;font-size:.76rem;color:var(--c-muted);margin-bottom:14px;letter-spacing:.04em}
+    .wiz-substep strong{color:var(--c-text)}
+
+    /* CARD */
+    .wiz-card{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--r-xl);box-shadow:var(--shadow-lg);overflow:hidden}
+    .wiz-card-header{padding:28px 32px 20px;border-bottom:1px solid var(--c-border)}
+    .phase-label{font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--c-muted);margin-bottom:6px}
+    .wiz-card-header h1{font-family:var(--font-body);font-size:1.35rem;font-weight:600;margin:0 0 6px;letter-spacing:-.02em;line-height:1.3}
+    .wiz-card-header .lead{font-size:.87rem;color:var(--c-muted);margin:0;line-height:1.55}
+    .wiz-card-body{padding:24px 32px}
+    .wiz-card-footer{display:flex;justify-content:space-between;align-items:center;padding:18px 32px;border-top:1px solid var(--c-border);background:var(--c-bg);gap:12px}
+    .wiz-screen{display:none}.wiz-screen.active{display:block}
+
+    /* FORM */
+    .field{margin-bottom:16px}.field:last-child{margin-bottom:0}
+    .field-label{display:block;font-size:.76rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--c-muted);margin-bottom:6px}
+    .field-hint{font-size:.78rem;color:var(--c-muted);margin-top:5px;line-height:1.5}
+    input[type=text],input[type=email],input[type=number],input[type=url],input[type=time],input[type=date],select,textarea{width:100%;padding:10px 13px;border:1px solid var(--c-border-m);border-radius:var(--r-sm);font-family:var(--font-body);font-size:.9rem;color:var(--c-text);background:var(--c-surface);transition:border-color .15s,box-shadow .15s;outline:none}
+    input:focus,select:focus,textarea:focus{border-color:var(--c-accent);box-shadow:0 0 0 3px rgba(30,111,204,.12)}
+    input::placeholder{color:var(--c-subtle)}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .field-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+
+    /* CHOICE CARDS */
+    .choice-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+    .choice-grid-2{grid-template-columns:1fr 1fr}
+    .choice-grid-3{grid-template-columns:repeat(3,1fr)}
+    .choice-card{position:relative;border:2px solid var(--c-border);border-radius:var(--r-lg);padding:16px 18px;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s;background:var(--c-surface);user-select:none;display:block}
+    .choice-card:hover{border-color:var(--c-accent);background:var(--c-accent-l)}
+    .choice-card input[type=radio],.choice-card input[type=checkbox]{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;margin:0}
+    .choice-card.selected{border-color:var(--c-accent);background:var(--c-accent-l);box-shadow:0 0 0 3px rgba(30,111,204,.10)}
+    .choice-icon{font-size:1.5rem;margin-bottom:8px;display:block}
+    .choice-title{font-family:var(--font-display);font-size:.95rem;font-weight:400;color:var(--c-text);margin-bottom:4px;line-height:1.3}
+    .choice-desc{font-size:.76rem;color:var(--c-muted);line-height:1.5}
+    .choice-check{position:absolute;top:11px;right:11px;width:20px;height:20px;border-radius:50%;border:2px solid var(--c-border-m);background:var(--c-surface);display:flex;align-items:center;justify-content:center;font-size:.7rem;transition:all .15s;pointer-events:none}
+    .choice-card.selected .choice-check{background:var(--c-accent);border-color:var(--c-accent);color:#fff}
+    .choice-card.selected .choice-check::after{content:'✓'}
+    /* Archetype card colours */
+    .choice-card[data-arch=A].selected{border-color:var(--c-arch-a);background:#f5f3ff;box-shadow:0 0 0 3px rgba(124,58,237,.10)}
+    .choice-card[data-arch=A].selected .choice-check{background:var(--c-arch-a);border-color:var(--c-arch-a)}
+    .choice-card[data-arch=B].selected{border-color:var(--c-arch-b);background:#ecfeff;box-shadow:0 0 0 3px rgba(8,145,178,.10)}
+    .choice-card[data-arch=B].selected .choice-check{background:var(--c-arch-b);border-color:var(--c-arch-b)}
+    .choice-card[data-arch=C].selected{border-color:var(--c-arch-c);background:#fffbeb;box-shadow:0 0 0 3px rgba(217,119,6,.10)}
+    .choice-card[data-arch=C].selected .choice-check{background:var(--c-arch-c);border-color:var(--c-arch-c)}
+    .choice-card[data-arch=D].selected{border-color:var(--c-arch-d);background:#f0fdf4;box-shadow:0 0 0 3px rgba(22,163,74,.10)}
+    .choice-card[data-arch=D].selected .choice-check{background:var(--c-arch-d);border-color:var(--c-arch-d)}
+
+    /* ARCHETYPE BADGE */
+    .archetype-badge{display:inline-flex;align-items:center;gap:8px;padding:7px 16px;border-radius:var(--r-pill);font-size:.82rem;font-weight:600;border:2px solid;margin-bottom:14px}
+    .archetype-badge[data-arch=A]{background:#f5f3ff;border-color:var(--c-arch-a);color:var(--c-arch-a)}
+    .archetype-badge[data-arch=B]{background:#ecfeff;border-color:var(--c-arch-b);color:var(--c-arch-b)}
+    .archetype-badge[data-arch=C]{background:#fffbeb;border-color:var(--c-arch-c);color:var(--c-arch-c)}
+    .archetype-badge[data-arch=D]{background:#f0fdf4;border-color:var(--c-arch-d);color:var(--c-arch-d)}
+
+    /* CALLOUTS */
+    .callout{border-radius:var(--r-md);padding:14px 16px;font-size:.82rem;line-height:1.55;margin:14px 0;border:1px solid}
+    .callout-info{background:var(--c-accent-l);border-color:#bfdbfe;color:#1e40af}
+    .callout-warn{background:var(--c-warn-l);border-color:var(--c-warn-b);color:var(--c-warn)}
+    .callout-note{background:var(--c-bg);border-color:var(--c-border);color:var(--c-muted)}
+    .callout-success{background:var(--c-success-l);border-color:#a7f3d0;color:var(--c-success)}
+    .callout strong{display:block;margin-bottom:3px}
+
+    /* TOGGLE */
+    .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1px solid var(--c-border);border-radius:var(--r-md);background:var(--c-bg);margin-bottom:10px}
+    .toggle-row:last-child{margin-bottom:0}
+    .toggle-info{flex:1}
+    .toggle-title{font-size:.88rem;font-weight:500;color:var(--c-text)}
+    .toggle-desc{font-size:.76rem;color:var(--c-muted);margin-top:2px}
+    .toggle-switch{position:relative;width:40px;height:22px;flex-shrink:0;margin-left:14px}
+    .toggle-switch input{opacity:0;width:0;height:0;position:absolute}
+    .toggle-track{position:absolute;inset:0;border-radius:var(--r-pill);background:var(--c-border-m);cursor:pointer;transition:background .18s}
+    .toggle-track::before{content:'';position:absolute;width:16px;height:16px;top:3px;left:3px;border-radius:50%;background:#fff;transition:transform .18s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+    .toggle-switch input:checked+.toggle-track{background:var(--c-accent)}
+    .toggle-switch input:checked+.toggle-track::before{transform:translateX(18px)}
+
+    /* SLOT BUILDER */
+    .slot-list{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+    .slot-row{display:grid;grid-template-columns:1fr 90px 90px auto;gap:10px;align-items:end;padding:14px 16px;border:1px solid var(--c-border);border-radius:var(--r-md);background:var(--c-bg)}
+    .slot-field label{display:block;font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--c-muted);margin-bottom:5px}
+    .slot-field input,.slot-field select{padding:7px 10px;font-size:.85rem}
+    .slot-remove{padding:7px 10px;border-radius:var(--r-sm);border:1px solid var(--c-border-m);background:var(--c-surface);color:var(--c-danger);cursor:pointer;font-size:.82rem;transition:all .14s;align-self:flex-end;white-space:nowrap}
+    .slot-remove:hover{background:var(--c-danger-l);border-color:var(--c-danger)}
+
+    /* MAP */
+    #locationMap{width:100%;height:220px;border-radius:var(--r-md);border:1px solid var(--c-border-m);margin-top:10px}
+    .coords-row{display:flex;gap:10px;margin-top:8px}
+
+    /* SUMMARY */
+    .summary-section{margin-bottom:20px;border:1px solid var(--c-border);border-radius:var(--r-lg);overflow:hidden}
+    .summary-section-title{padding:10px 16px;background:var(--c-bg);border-bottom:1px solid var(--c-border);font-size:.74rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c-muted)}
+    .summary-row{display:flex;padding:10px 16px;border-bottom:1px solid var(--c-border);font-size:.85rem;gap:12px}
+    .summary-row:last-child{border-bottom:none}
+    .s-key{width:170px;flex-shrink:0;color:var(--c-muted);font-size:.8rem}
+    .s-val{flex:1;font-weight:500}
+    .warn-list{display:flex;flex-direction:column;gap:10px}
+    .warn-item{display:flex;gap:12px;padding:12px 16px;border-radius:var(--r-md);border:1px solid var(--c-warn-b);background:var(--c-warn-l);font-size:.82rem;color:var(--c-warn);align-items:flex-start}
+    .warn-icon{font-size:1.1rem;flex-shrink:0;margin-top:1px}
+    .warn-body strong{display:block;margin-bottom:2px}
+
+    /* BUTTONS */
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:var(--r-pill);border:1px solid transparent;font-family:var(--font-body);font-size:.88rem;font-weight:500;cursor:pointer;transition:all .15s;text-decoration:none;white-space:nowrap;line-height:1}
+    .btn-primary{background:var(--c-accent);color:#fff;border-color:var(--c-accent)}
+    .btn-primary:hover{background:var(--c-accent-h);border-color:var(--c-accent-h)}
+    .btn-secondary{background:var(--c-surface);color:var(--c-text);border-color:var(--c-border-m)}
+    .btn-secondary:hover{background:var(--c-bg);border-color:var(--c-muted)}
+    .btn-ghost{background:transparent;color:var(--c-muted);border-color:transparent;font-size:.82rem}
+    .btn-ghost:hover{color:var(--c-text);background:var(--c-bg)}
+    .btn-create{background:#1a7a4a;color:#fff;border-color:#1a7a4a;padding:12px 28px;font-size:.94rem;font-weight:600}
+    .btn-create:hover{background:#15603b}
+    .btn:disabled{opacity:.45;cursor:not-allowed}
+
+    /* MISC */
+    .err-strip{display:none;padding:10px 16px;border-radius:var(--r-sm);background:var(--c-danger-l);border:1px solid #fecaca;color:var(--c-danger);font-size:.82rem;margin-top:14px}
+    .err-strip.show{display:block}
+    .badge{display:inline-block;padding:2px 8px;border-radius:var(--r-pill);font-size:.68rem;font-weight:600;letter-spacing:.03em;vertical-align:middle}
+    .badge-blue{background:var(--c-accent-l);color:var(--c-accent)}
+    .badge-gray{background:var(--c-bg);color:var(--c-muted);border:1px solid var(--c-border)}
+    .badge-green{background:var(--c-success-l);color:var(--c-success)}
+    .channel-chips{display:flex;flex-wrap:wrap;gap:8px}
+    .channel-chip{position:relative;display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:var(--r-pill);border:1.5px solid var(--c-border-m);background:var(--c-surface);font-size:.84rem;font-weight:500;cursor:pointer;transition:all .15s;user-select:none}
+    .channel-chip input{position:absolute;opacity:0;inset:0;cursor:pointer}
+    .channel-chip:hover{border-color:var(--c-accent);background:var(--c-accent-l)}
+    .channel-chip.selected{border-color:var(--c-accent);background:var(--c-accent-l);color:var(--c-accent)}
+    .sep{height:1px;background:var(--c-border);margin:20px 0}
+    .cond-section{display:none;margin-top:16px}
+    .cond-section.show{display:block}
+
+    @media(max-width:640px){
+      main.wiz-outer{padding-inline:10px}
+      .wiz-card-header{padding:20px 16px 16px}
+      .wiz-card-body{padding:18px 16px}
+      .wiz-card-footer{padding:14px 16px}
+      .choice-grid-2,.choice-grid-3{grid-template-columns:1fr}
+      .field-row,.field-row-3{grid-template-columns:1fr}
+      .slot-row{grid-template-columns:1fr 1fr}
+      .s-key{width:110px}
+      .prog-line{width:8px}
+    }
+  </style>
+</head>
+<body class="has-top-band has-bottom-band">
+<header class="site">
+  <div class="title">Create a new Virtual Queue</div>
+  <div class="subtitle">Configure your queue step by step.</div>
+</header>
+
+<main class="wiz-outer">
+  <nav class="wiz-progress" id="wizProgress" aria-label="Wizard progress"></nav>
+  <div class="wiz-substep" id="wizSubstep"></div>
+
+  <!-- 0.1 -->
+  <div class="wiz-screen active" id="screen-0-1">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 0 · Queue Identity</div>
+        <h1>Let's start with the basics</h1>
+        <p class="lead">Name your queue and pin its location. The address sets the timezone and region used for all scheduling rules.</p>
+      </div>
+      <div class="wiz-card-body">
+        <div class="field">
+          <label class="field-label" for="f-queue-name">Queue name</label>
+          <input type="text" id="f-queue-name" placeholder="e.g. Main Entrance — Weekdays">
+          <p class="field-hint">Leave blank to auto-generate "My Virtual Queue 1".</p>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label" for="f-venue">Venue / business name</label>
+            <input type="text" id="f-venue" placeholder="e.g. City Museum of Art">
+          </div>
+          <div class="field">
+            <label class="field-label" for="f-biz-type">Business type</label>
+            <select id="f-biz-type">
+              <option value="">— Select —</option>
+              <option value="museum">Museum / Attraction</option>
+              <option value="clinic">Clinic / Medical practice</option>
+              <option value="restaurant">Restaurant</option>
+              <option value="government">Government / Public service</option>
+              <option value="retail">Retail store</option>
+              <option value="tour">Tour / Guided experience</option>
+              <option value="event">Event / Concert</option>
+              <option value="transport">Transport / Transit</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div class="field">
+          <label class="field-label" for="f-address">Address or place name <span class="badge badge-blue">Required</span></label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="f-address" placeholder="Start typing an address…" style="flex:1">
+            <button type="button" class="btn btn-secondary" id="btn-geocode">Search</button>
+          </div>
+        </div>
+        <div id="locationMap"></div>
+        <div class="coords-row" id="coordsRow" style="display:none">
+          <div class="field" style="flex:1;margin:0"><label class="field-label">Latitude</label><input type="number" id="f-lat" step="0.000001"></div>
+          <div class="field" style="flex:1;margin:0"><label class="field-label">Longitude</label><input type="number" id="f-lng" step="0.000001"></div>
+        </div>
+        <div style="margin-top:8px"><button type="button" class="btn btn-ghost" id="btn-toggle-coords">Show GPS coordinates</button></div>
+        <div class="callout callout-note" style="margin-top:12px">
+          <strong>📍 Location defines timezone and region routing.</strong>
+          All schedule rules use the timezone derived from this location. This cannot be changed after creation.
+        </div>
+        <div class="sep"></div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label" for="f-language">Default language</label>
+            <select id="f-language">
+              <option value="en">English</option><option value="fr">French</option><option value="es">Spanish</option>
+              <option value="de">German</option><option value="it">Italian</option><option value="pt">Portuguese</option>
+              <option value="ar">Arabic</option><option value="zh">Chinese (Simplified)</option>
+              <option value="ja">Japanese</option><option value="ko">Korean</option><option value="nl">Dutch</option>
+              <option value="pl">Polish</option><option value="ru">Russian</option><option value="tr">Turkish</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label" for="f-currency">Currency</label>
+            <select id="f-currency">
+              <option value="USD">USD — US Dollar</option><option value="EUR">EUR — Euro</option>
+              <option value="GBP">GBP — British Pound</option><option value="JPY">JPY — Japanese Yen</option>
+              <option value="CAD">CAD — Canadian Dollar</option><option value="AUD">AUD — Australian Dollar</option>
+              <option value="CHF">CHF — Swiss Franc</option><option value="CNY">CNY — Chinese Yuan</option>
+              <option value="INR">INR — Indian Rupee</option><option value="BRL">BRL — Brazilian Real</option>
+              <option value="MXN">MXN — Mexican Peso</option><option value="SGD">SGD — Singapore Dollar</option>
+              <option value="SEK">SEK — Swedish Krona</option><option value="NOK">NOK — Norwegian Krone</option>
+              <option value="DKK">DKK — Danish Krone</option><option value="PLN">PLN — Polish Zloty</option>
+              <option value="AED">AED — UAE Dirham</option><option value="ZAR">ZAR — South African Rand</option>
+              <option value="THB">THB — Thai Baht</option><option value="KRW">KRW — South Korean Won</option>
+              <option value="HKD">HKD — Hong Kong Dollar</option><option value="NZD">NZD — New Zealand Dollar</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="f-timezone">Timezone <span class="badge badge-gray">Auto-detected</span></label>
+          <input type="text" id="f-timezone" placeholder="e.g. Europe/Paris" style="background:var(--c-bg);color:var(--c-muted)">
+          <p class="field-hint">Determined automatically from the address. You can override manually.</p>
+        </div>
+        <div id="err-0-1" class="err-strip"></div>
+      </div>
+      <div class="wiz-card-footer">
+        <span></span>
+        <button type="button" class="btn btn-primary" data-next="1-1">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1.1 -->
+  <div class="wiz-screen" id="screen-1-1">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 1 · Classification — Step 1 of 2</div>
+        <h1>How are people typically processed?</h1>
+        <p class="lead">During busy periods, how does your queue work? Your answer determines which engine powers this queue.</p>
+      </div>
+      <div class="wiz-card-body">
+        <div class="choice-grid choice-grid-2">
+          <label class="choice-card" data-arch="B" data-value="one">
+            <input type="radio" name="throughput" value="one">
+            <div class="choice-check"></div>
+            <span class="choice-icon">👤</span>
+            <div class="choice-title">One at a time</div>
+            <div class="choice-desc">Each person or group is handled individually through a single service point — doctors, consultants, individual counters.</div>
+          </label>
+          <label class="choice-card" data-arch="A" data-value="distinct">
+            <input type="radio" name="throughput" value="distinct">
+            <div class="choice-check"></div>
+            <span class="choice-icon">🪟</span>
+            <div class="choice-title">Several through distinct resources</div>
+            <div class="choice-desc">Multiple counters, lanes, or booths operating in parallel. Each resource handles one person or group independently.</div>
+          </label>
+          <label class="choice-card" data-arch="C" data-value="batch">
+            <input type="radio" name="throughput" value="batch">
+            <div class="choice-check"></div>
+            <span class="choice-icon">🏛️</span>
+            <div class="choice-title">Many at once in batches</div>
+            <div class="choice-desc">Groups admitted in timed waves — a fixed number enters every N minutes. Museums, attractions, ferry boarding.</div>
+          </label>
+          <label class="choice-card" data-arch="D" data-value="flow">
+            <input type="radio" name="throughput" value="flow">
+            <div class="choice-check"></div>
+            <span class="choice-icon">🌊</span>
+            <div class="choice-title">Continuous open flow</div>
+            <div class="choice-desc">People released dynamically as capacity frees up. No fixed slot structure — the queue moves fluidly based on actual throughput.</div>
+          </label>
+        </div>
+        <div id="arch-hint" class="callout callout-info" style="display:none;margin-top:16px"></div>
+        <div id="err-1-1" class="err-strip"></div>
+      </div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="0-1">← Back</button>
+        <button type="button" class="btn btn-primary" data-next="1-2">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1.2 -->
+  <div class="wiz-screen" id="screen-1-2">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 1 · Classification — Step 2 of 2</div>
+        <h1 id="s12-title">Booking timing</h1>
+        <p class="lead" id="s12-lead">How do visitors access and join your queue?</p>
+      </div>
+      <div class="wiz-card-body" id="s12-body"></div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="1-1">← Back</button>
+        <button type="button" class="btn btn-primary" data-next="2-1">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2.1 -->
+  <div class="wiz-screen" id="screen-2-1">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 2 · Capacity Logic</div>
+        <h1 id="s21-title">Capacity model</h1>
+        <p class="lead" id="s21-lead">Based on your queue type, here is the matching capacity system.</p>
+      </div>
+      <div class="wiz-card-body" id="s21-body"></div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="1-2">← Back</button>
+        <button type="button" class="btn btn-primary" data-next="2-2">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2.2 -->
+  <div class="wiz-screen" id="screen-2-2">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 2 · Capacity Details</div>
+        <h1 id="s22-title">Configure your capacity</h1>
+        <p class="lead" id="s22-lead"></p>
+      </div>
+      <div class="wiz-card-body" id="s22-body"></div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="2-1">← Back</button>
+        <button type="button" class="btn btn-primary" data-next="3-1">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3.1 -->
+  <div class="wiz-screen" id="screen-3-1">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 3 · Access &amp; Identity</div>
+        <h1>Who can book this queue?</h1>
+        <p class="lead">Control who has access. Your archetype constrains which options are valid.</p>
+      </div>
+      <div class="wiz-card-body" id="s31-body"></div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="2-2">← Back</button>
+        <button type="button" class="btn btn-primary" data-next="3-2">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3.2 -->
+  <div class="wiz-screen" id="screen-3-2">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 3 · Identity Rules</div>
+        <h1>Identity-specific rules</h1>
+        <p class="lead">Configure rules for each access type you enabled.</p>
+      </div>
+      <div class="wiz-card-body" id="s32-body"></div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="3-1">← Back</button>
+        <button type="button" class="btn btn-primary" data-next="4-1">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4.1 -->
+  <div class="wiz-screen" id="screen-4-1">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 4 · Admission &amp; Operations</div>
+        <h1>How will arrivals be validated?</h1>
+        <p class="lead">This determines how completion and no-show logic works for your queue.</p>
+      </div>
+      <div class="wiz-card-body">
+        <div class="choice-grid choice-grid-3">
+          <label class="choice-card" data-value="scan">
+            <input type="radio" name="admission_mode" value="scan">
+            <div class="choice-check"></div>
+            <span class="choice-icon">📷</span>
+            <div class="choice-title">Scan at entry</div>
+            <div class="choice-desc">Host scans visitor's QR code to confirm arrival. Most accurate tracking.</div>
+          </label>
+          <label class="choice-card" data-value="no_scan">
+            <input type="radio" name="admission_mode" value="no_scan">
+            <div class="choice-check"></div>
+            <span class="choice-icon">⏱️</span>
+            <div class="choice-title">No-scan mode</div>
+            <div class="choice-desc">Bookings auto-complete after a time window. No QR validation required.</div>
+          </label>
+          <label class="choice-card" data-value="scan_fallback">
+            <input type="radio" name="admission_mode" value="scan_fallback">
+            <div class="choice-check"></div>
+            <span class="choice-icon">🔄</span>
+            <div class="choice-title">Scan with fallback</div>
+            <div class="choice-desc">Scan is default. If not scanned within the window, booking auto-completes.</div>
+          </label>
+        </div>
+        <div id="noscan-config" class="cond-section">
+          <div class="callout callout-warn">
+            <strong>⚠️ No-scan mode changes completion logic.</strong>
+            Bookings auto-complete after the last-call window. No-shows are determined by the same timer.
+          </div>
+          <div class="field-row" style="margin-top:14px">
+            <div class="field">
+              <label class="field-label" for="f-noscan-window">Last-call window (minutes)</label>
+              <input type="number" id="f-noscan-window" min="1" max="120" value="10">
+              <p class="field-hint">After this window, booking is auto-completed.</p>
+            </div>
+          </div>
+        </div>
+        <div class="callout callout-note" style="margin-top:16px">
+          <strong>ℹ️ Offline scan packages are always generated</strong> regardless of this setting.
+        </div>
+        <div id="err-4-1" class="err-strip"></div>
+      </div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="3-2">← Back</button>
+        <button type="button" class="btn btn-primary" data-next="4-2">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4.2 -->
+  <div class="wiz-screen" id="screen-4-2">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 4 · Calling Logic</div>
+        <h1>How does the queue call visitors?</h1>
+        <p class="lead" id="s42-lead">Configure how the host signals when it's a visitor's turn.</p>
+      </div>
+      <div class="wiz-card-body" id="s42-body"></div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="4-1">← Back</button>
+        <button type="button" class="btn btn-primary" data-next="5-1">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5.1 -->
+  <div class="wiz-screen" id="screen-5-1">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 5 · Time Transparency</div>
+        <h1>What time information is shown to visitors?</h1>
+        <p class="lead">Control how much timing detail is visible on the visitor side.</p>
+      </div>
+      <div class="wiz-card-body" id="s51-body"></div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="4-2">← Back</button>
+        <button type="button" class="btn btn-primary" data-next="5-2">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5.2 -->
+  <div class="wiz-screen" id="screen-5-2">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 5 · Early Entry &amp; Reallocation</div>
+        <h1>Earlier slot offers</h1>
+        <p class="lead">If an earlier slot opens up, should the system proactively offer it to waiting visitors?</p>
+      </div>
+      <div class="wiz-card-body" id="s52-body"></div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="5-1">← Back</button>
+        <button type="button" class="btn btn-primary" data-next="6-1">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6.1 -->
+  <div class="wiz-screen" id="screen-6-1">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 6 · Communication</div>
+        <h1>Allowed communication channels</h1>
+        <p class="lead">Select how In-Time can reach your visitors with confirmations, reminders, and status updates.</p>
+      </div>
+      <div class="wiz-card-body">
+        <div class="channel-chips">
+          <label class="channel-chip" id="chip-email"><input type="checkbox" name="channel" value="email"> 📧 Email</label>
+          <label class="channel-chip selected" id="chip-inapp"><input type="checkbox" name="channel" value="inapp" checked> 📱 In-app</label>
+          <label class="channel-chip" id="chip-sms"><input type="checkbox" name="channel" value="sms"> 💬 SMS</label>
+          <label class="channel-chip" id="chip-whatsapp"><input type="checkbox" name="channel" value="whatsapp"> 🟢 WhatsApp</label>
+        </div>
+        <div id="err-6-1" class="err-strip"></div>
+      </div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="5-2">← Back</button>
+        <button type="button" class="btn btn-primary" id="btn-6-1-next">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6.2 (conditional: WhatsApp selected) -->
+  <div class="wiz-screen" id="screen-6-2">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 6 · WhatsApp Setup</div>
+        <h1>WhatsApp configuration</h1>
+        <p class="lead">Choose how In-Time sends WhatsApp messages to your visitors.</p>
+      </div>
+      <div class="wiz-card-body">
+        <div class="choice-grid choice-grid-2">
+          <label class="choice-card" data-value="deeplink">
+            <input type="radio" name="whatsapp_mode" value="deeplink">
+            <div class="choice-check"></div>
+            <span class="choice-icon">🔗</span>
+            <div class="choice-title">Deep-link only</div>
+            <div class="choice-desc">Generate a tap-to-chat link. No API connection required.</div>
+          </label>
+          <label class="choice-card" data-value="cloud_api">
+            <input type="radio" name="whatsapp_mode" value="cloud_api">
+            <div class="choice-check"></div>
+            <span class="choice-icon">☁️</span>
+            <div class="choice-title">WhatsApp Cloud API</div>
+            <div class="choice-desc">Connect your Meta Business account for automated messages and approved templates.</div>
+          </label>
+        </div>
+        <div class="callout callout-warn" style="margin-top:16px">
+          <strong>📋 Direct Meta billing applies.</strong>
+          WhatsApp Business API messages are billed by Meta to your account. In-Time is not a payment intermediary for WhatsApp costs.
+        </div>
+        <div id="cloud-api-setup" class="cond-section">
+          <div class="sep"></div>
+          <div class="callout callout-info">
+            <strong>☁️ Cloud API setup</strong>
+            After creating the queue you'll be guided through Meta Business account connection and a capability test.
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-title">Access Template Studio after setup</div>
+              <div class="toggle-desc">Create and submit message templates for Meta approval directly in In-Time.</div>
+            </div>
+            <label class="toggle-switch"><input type="checkbox" id="toggle-template-studio" checked><span class="toggle-track"></span></label>
+          </div>
+        </div>
+        <div id="err-6-2" class="err-strip"></div>
+      </div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="6-1">← Back</button>
+        <button type="button" class="btn btn-primary" id="btn-6-2-next">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6.3 (conditional: cloud_api only) -->
+  <div class="wiz-screen" id="screen-6-3">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 6 · WhatsApp Templates</div>
+        <h1>Message template requirements</h1>
+        <p class="lead">Cloud API bulk messaging requires Meta-approved templates before use.</p>
+      </div>
+      <div class="wiz-card-body">
+        <div class="callout callout-warn">
+          <strong>📋 Bulk sending requires approved templates.</strong>
+          Templates must be submitted and approved (typically 24–48h) before automated outbound messages can be sent.
+        </div>
+        <div class="sep"></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="callout callout-note" style="margin:0"><strong>📅 Booking confirmation</strong> Sent when a booking is created.</div>
+          <div class="callout callout-note" style="margin:0"><strong>⏰ Entry reminder</strong> Sent N minutes before estimated entry.</div>
+          <div class="callout callout-note" style="margin:0"><strong>📣 Queue call</strong> Sent when the visitor's turn is active.</div>
+          <div class="callout callout-note" style="margin:0"><strong>❌ Cancellation notice</strong> Sent if a booking is cancelled.</div>
+        </div>
+        <div class="sep"></div>
+        <div class="callout callout-info">
+          <strong>ℹ️ Template fallback</strong>
+          If a template is unavailable, In-Time falls back to in-app notifications automatically.
+        </div>
+        <div class="toggle-row" style="margin-top:16px">
+          <div class="toggle-info">
+            <div class="toggle-title">Launch Template Studio after queue creation</div>
+            <div class="toggle-desc">You'll be redirected to create and submit your initial templates.</div>
+          </div>
+          <label class="toggle-switch"><input type="checkbox" id="toggle-launch-studio" checked><span class="toggle-track"></span></label>
+        </div>
+      </div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="6-2">← Back</button>
+        <button type="button" class="btn btn-primary" data-next="7-1">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7.1 -->
+  <div class="wiz-screen" id="screen-7-1">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 7 · Payments</div>
+        <h1>External payment gate</h1>
+        <p class="lead">Optionally require visitors to complete a payment before their booking is confirmed.</p>
+      </div>
+      <div class="wiz-card-body">
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-title">Enable payment redirect</div>
+            <div class="toggle-desc">Visitors are sent to an external payment URL before booking confirmation.</div>
+          </div>
+          <label class="toggle-switch"><input type="checkbox" id="toggle-payment-gate"><span class="toggle-track"></span></label>
+        </div>
+        <div id="payment-gate-config" class="cond-section">
+          <div class="sep"></div>
+          <div class="choice-grid choice-grid-2">
+            <label class="choice-card" data-value="best_attempt">
+              <input type="radio" name="payment_mode" value="best_attempt">
+              <div class="choice-check"></div>
+              <div class="choice-title">Best attempt</div>
+              <div class="choice-desc">Booking is created even if payment is unconfirmed. System tries to verify but doesn't block.</div>
+            </label>
+            <label class="choice-card" data-value="mandatory">
+              <input type="radio" name="payment_mode" value="mandatory">
+              <div class="choice-check"></div>
+              <div class="choice-title">Mandatory</div>
+              <div class="choice-desc">Booking held on HOLD until payment confirmed via webhook. No confirmation without payment.</div>
+            </label>
+          </div>
+          <div class="toggle-row" style="margin-top:14px">
+            <div class="toggle-info">
+              <div class="toggle-title">Enable "have tickets?" prompt</div>
+              <div class="toggle-desc">Show visitors an option to indicate they already have tickets, bypassing payment.</div>
+            </div>
+            <label class="toggle-switch"><input type="checkbox" id="toggle-has-tickets"><span class="toggle-track"></span></label>
+          </div>
+          <div class="callout callout-warn" style="margin-top:14px">
+            <strong>🔔 Webhook dependency.</strong>
+            Mandatory mode depends on your payment provider sending a webhook to In-Time. Failed webhooks leave bookings on HOLD indefinitely.
+          </div>
+        </div>
+        <div id="err-7-1" class="err-strip"></div>
+      </div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" id="btn-7-1-prev">← Back</button>
+        <button type="button" class="btn btn-primary" data-next="7-2">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7.2 -->
+  <div class="wiz-screen" id="screen-7-2">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 7 · Confirmation Security</div>
+        <h1>Booking confirmation mechanics</h1>
+        <p class="lead">Control how bookings are confirmed and what security steps are applied.</p>
+      </div>
+      <div class="wiz-card-body">
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-title">Manual host confirmation</div>
+            <div class="toggle-desc">Bookings remain on HOLD until manually approved in your dashboard.</div>
+          </div>
+          <label class="toggle-switch"><input type="checkbox" id="toggle-manual-confirm"><span class="toggle-track"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-title">Anonymous secure confirmation</div>
+            <div class="toggle-desc">Anonymous bookings require a confirmation link click (email or SMS) to become active.</div>
+          </div>
+          <label class="toggle-switch"><input type="checkbox" id="toggle-anon-confirm"><span class="toggle-track"></span></label>
+        </div>
+        <div class="sep"></div>
+        <div class="field">
+          <label class="field-label" for="f-confirm-hold">Confirmation hold time (minutes)</label>
+          <input type="number" id="f-confirm-hold" min="5" max="1440" value="60">
+          <p class="field-hint">Unconfirmed bookings are automatically cancelled after this window.</p>
+        </div>
+        <div class="field">
+          <label class="field-label">Confirmation channel</label>
+          <div class="choice-grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
+            <label class="choice-card" data-value="email"><input type="radio" name="confirm_channel" value="email" checked><div class="choice-check"></div><div class="choice-title">Email</div></label>
+            <label class="choice-card" data-value="sms"><input type="radio" name="confirm_channel" value="sms"><div class="choice-check"></div><div class="choice-title">SMS link</div></label>
+            <label class="choice-card" data-value="whatsapp"><input type="radio" name="confirm_channel" value="whatsapp"><div class="choice-check"></div><div class="choice-title">WhatsApp link</div></label>
+          </div>
+        </div>
+      </div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="7-1">← Back</button>
+        <button type="button" class="btn btn-primary" data-next="8-1">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8.1 -->
+  <div class="wiz-screen" id="screen-8-1">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 8 · Calendar Sync</div>
+        <h1>External calendar synchronisation</h1>
+        <p class="lead">Connect your personal calendar so your busy times automatically block slots in this queue.</p>
+      </div>
+      <div class="wiz-card-body">
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-title">Enable calendar sync</div>
+            <div class="toggle-desc">In-Time periodically reads your calendar and blocks conflicting queue slots.</div>
+          </div>
+          <label class="toggle-switch"><input type="checkbox" id="toggle-cal-sync"><span class="toggle-track"></span></label>
+        </div>
+        <div id="cal-sync-config" class="cond-section">
+          <div class="sep"></div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px">
+            <label class="choice-card" style="flex:1;min-width:150px" data-value="google"><input type="radio" name="cal_provider" value="google"><div class="choice-check"></div><span class="choice-icon" style="font-size:1.2rem">📅</span><div class="choice-title">Google Calendar</div></label>
+            <label class="choice-card" style="flex:1;min-width:150px" data-value="microsoft"><input type="radio" name="cal_provider" value="microsoft"><div class="choice-check"></div><span class="choice-icon" style="font-size:1.2rem">📅</span><div class="choice-title">Outlook / M365</div></label>
+            <label class="choice-card" style="flex:1;min-width:150px" data-value="caldav"><input type="radio" name="cal_provider" value="caldav"><div class="choice-check"></div><span class="choice-icon" style="font-size:1.2rem">📅</span><div class="choice-title">CalDAV / iCal</div></label>
+          </div>
+          <div class="field-row" style="margin-top:14px">
+            <div class="field">
+              <label class="field-label" for="f-sync-horizon">Sync horizon (days ahead)</label>
+              <input type="number" id="f-sync-horizon" min="1" max="365" value="30">
+            </div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="toggle-title">Allow manual refresh</div><div class="toggle-desc">Host can trigger a calendar sync manually from the dashboard.</div></div>
+            <label class="toggle-switch"><input type="checkbox" id="toggle-manual-refresh" checked><span class="toggle-track"></span></label>
+          </div>
+        </div>
+      </div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="7-2">← Back</button>
+        <button type="button" class="btn btn-primary" data-next="8-2">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8.2 -->
+  <div class="wiz-screen" id="screen-8-2">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 8 · Conflict Policy</div>
+        <h1>How should calendar conflicts be resolved?</h1>
+        <p class="lead">When a sync detects a conflict with an existing booking, how should In-Time respond?</p>
+      </div>
+      <div class="wiz-card-body">
+        <div class="toggle-row">
+          <div class="toggle-info"><div class="toggle-title">Require manual review for all conflicts</div><div class="toggle-desc">Conflicting bookings are flagged for your review before any action is taken.</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="toggle-conflict-review" checked><span class="toggle-track"></span></label>
+        </div>
+        <div class="field" style="margin-top:16px">
+          <label class="field-label" for="f-conflict-action">Bulk resolution default action</label>
+          <select id="f-conflict-action">
+            <option value="hold">Put conflicting bookings on HOLD (recommended)</option>
+            <option value="cancel">Auto-cancel conflicting bookings</option>
+            <option value="reallocate">Auto-reallocate to nearest available slot</option>
+            <option value="notify_only">Notify host and visitor only — no action</option>
+          </select>
+          <p class="field-hint">Applied during bulk resolution. Individual conflicts can still be handled manually.</p>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-info"><div class="toggle-title">Notify impacted visitors</div><div class="toggle-desc">Automatically send notifications to visitors whose booking was affected.</div></div>
+          <label class="toggle-switch"><input type="checkbox" id="toggle-notify-impacted" checked><span class="toggle-track"></span></label>
+        </div>
+      </div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="8-1">← Back</button>
+        <button type="button" class="btn btn-primary" data-next="9-1">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9.1 -->
+  <div class="wiz-screen" id="screen-9-1">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 9 · Branding</div>
+        <h1>Queue look &amp; feel</h1>
+        <p class="lead">Customise how your queue appears to visitors on the booking page.</p>
+      </div>
+      <div class="wiz-card-body">
+        <div class="field">
+          <label class="field-label">Theme template</label>
+          <div class="choice-grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
+            <label class="choice-card" data-value="default"><input type="radio" name="theme" value="default" checked><div class="choice-check"></div><span class="choice-icon">☀️</span><div class="choice-title">Default light</div></label>
+            <label class="choice-card" data-value="dark"><input type="radio" name="theme" value="dark"><div class="choice-check"></div><span class="choice-icon">🌙</span><div class="choice-title">Dark mode</div></label>
+            <label class="choice-card" data-value="brand"><input type="radio" name="theme" value="brand"><div class="choice-check"></div><span class="choice-icon">🎨</span><div class="choice-title">Brand colours</div></label>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="f-host-wallpaper">Host wallpaper URL <span class="badge badge-gray">Optional</span></label>
+          <input type="url" id="f-host-wallpaper" placeholder="https://…">
+        </div>
+        <div class="field">
+          <label class="field-label" for="f-queue-wallpaper">Queue wallpaper override <span class="badge badge-gray">Optional</span></label>
+          <input type="url" id="f-queue-wallpaper" placeholder="https://…">
+          <p class="field-hint">Overrides the host wallpaper for this queue only.</p>
+        </div>
+        <div class="callout callout-note">
+          <strong>🖼️ Preview</strong>
+          A live preview of the booking page will be available from the queue management dashboard after creation.
+        </div>
+      </div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="8-2">← Back</button>
+        <button type="button" class="btn btn-primary" data-next="10-1">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10.1 -->
+  <div class="wiz-screen" id="screen-10-1">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 10 · Review &amp; Confirm</div>
+        <h1>Configuration summary</h1>
+        <p class="lead">Review the consequences of your configuration before creating the queue.</p>
+      </div>
+      <div class="wiz-card-body" id="s101-body"></div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="9-1">← Back</button>
+        <button type="button" class="btn btn-primary" data-next="10-2">Review warnings →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10.2 -->
+  <div class="wiz-screen" id="screen-10-2">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 10 · Validation</div>
+        <h1>Before you create</h1>
+        <p class="lead">Read the operational consequences of your configuration.</p>
+      </div>
+      <div class="wiz-card-body" id="s102-body"></div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="10-1">← Back</button>
+        <button type="button" class="btn btn-primary" data-next="10-3">I understand — continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10.3 -->
+  <div class="wiz-screen" id="screen-10-3">
+    <div class="wiz-card">
+      <div class="wiz-card-header">
+        <div class="phase-label">Phase 10 · Create</div>
+        <h1>Create your Virtual Queue</h1>
+        <p class="lead">Everything is configured. This will generate the queue record, QR code, public booking page, and all background jobs.</p>
+      </div>
+      <div class="wiz-card-body">
+        <div id="s103-final-name" class="callout callout-success" style="margin-bottom:16px"></div>
+        <div class="summary-section">
+          <div class="summary-section-title">What happens when you click "Create"</div>
+          <div class="summary-row"><div class="s-key">Queue record</div><div class="s-val">Created with all configured parameters.</div></div>
+          <div class="summary-row"><div class="s-key">QR code</div><div class="s-val">Generated and available immediately.</div></div>
+          <div class="summary-row"><div class="s-key">Booking page</div><div class="s-val">A unique public URL is generated for visitor access.</div></div>
+          <div class="summary-row"><div class="s-key">Background jobs</div><div class="s-val">Wave schedules, scan packages, and calendar sync jobs start automatically.</div></div>
+          <div class="summary-row"><div class="s-key">Home region</div><div class="s-val" id="s103-region-lock">Locked — cannot be changed after creation.</div></div>
+        </div>
+        <div id="create-err" class="err-strip"></div>
+        <div id="create-loading" style="display:none;text-align:center;padding:20px;color:var(--c-muted);font-size:.9rem">Creating your queue…</div>
+      </div>
+      <div class="wiz-card-footer">
+        <button type="button" class="btn btn-secondary" data-prev="10-2">← Back</button>
+        <button type="button" class="btn btn-create" id="btn-create-queue">✔ Create Virtual Queue</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+<script>
+'use strict';
+// ================================================================
+// WIZARD STATE
+// ================================================================
+const S = {
+  // Phase 0
+  queue_name: '', venue: '', biz_type: '', address: '', lat: null, lng: null,
+  timezone: '', language: 'en', currency: 'USD',
+  // Phase 1
+  throughput: null,   // 'one'|'distinct'|'batch'|'flow'
+  archetype: null,    // 'A'|'B'|'C'|'D'
+  reservation: null,  // varies per archetype
+  ete_mode: null,     // D only
+  // Phase 2
+  capacity_model: null,
+  slot_types: [],     // B/A
+  wave_duration: 30, wave_capacity: 50, wave_mode: 'constant',
+  advance_horizon: 30,
+  flow_release: 'manual', flow_ete: false,
+  // Phase 3
+  booking_access: [],  // ['anonymous','registered','listed','group']
+  anon_device_limit: 1, anon_confirmation: false, anon_channel: 'email',
+  listed_request_workflow: false, listed_bulk_invite: false,
+  group_max_per_day: 1, group_capacity: 10, group_horizon: 7,
+  // Phase 4
+  admission_mode: 'scan', noscan_window: 10,
+  call_mode: null,   // per archetype
+  call_lead_time: 15, call_parallel: false,
+  // Phase 5
+  show_eet: true, show_ete: false,
+  early_entry_enabled: false, early_entry_window: 30,
+  early_entry_max_candidates: 5, early_entry_interval: 10,
+  // Phase 6
+  channels: ['inapp'],
+  whatsapp_mode: null, // 'deeplink'|'cloud_api'
+  template_studio: true, launch_studio: true,
+  // Phase 7
+  payment_gate: false, payment_mode: 'best_attempt', has_tickets_prompt: false,
+  manual_confirm: false, anon_secure_confirm: false,
+  confirm_hold: 60, confirm_channel: 'email',
+  // Phase 8
+  cal_sync: false, cal_provider: null, cal_horizon: 30, cal_manual_refresh: true,
+  conflict_review: true, conflict_action: 'hold', notify_impacted: true,
+  // Phase 9
+  theme: 'default', host_wallpaper: '', queue_wallpaper: '',
+};
+
+// ================================================================
+// PHASE METADATA
+// ================================================================
+const PHASES = [
+  { n:0,  label:'Identity',     screens:['0-1'] },
+  { n:1,  label:'Classify',     screens:['1-1','1-2'] },
+  { n:2,  label:'Capacity',     screens:['2-1','2-2'] },
+  { n:3,  label:'Access',       screens:['3-1','3-2'] },
+  { n:4,  label:'Admission',    screens:['4-1','4-2'] },
+  { n:5,  label:'Time',         screens:['5-1','5-2'] },
+  { n:6,  label:'Comms',        screens:['6-1','6-2','6-3'] },
+  { n:7,  label:'Payments',     screens:['7-1','7-2'] },
+  { n:8,  label:'Calendar',     screens:['8-1','8-2'] },
+  { n:9,  label:'Branding',     screens:['9-1'] },
+  { n:10, label:'Review',       screens:['10-1','10-2','10-3'] },
+];
+
+// ================================================================
+// ARCHETYPE HELPERS
+// ================================================================
+const ARCH_LABELS = {
+  A: '🪟 Archetype A — Discrete Resources',
+  B: '👤 Archetype B — Individual Practice',
+  C: '🏛️ Archetype C — Wave / Batch',
+  D: '🌊 Archetype D — Bulk Live-Flow',
+};
+const ARCH_HINTS = {
+  A: 'Multiple parallel counters or lanes — each handling one person independently. The capacity system uses resource slots.',
+  B: 'Single-service appointment model — one person or group at a time. Ideal for doctors, consultants, single-counter services.',
+  C: 'Group admissions in timed waves. Capacity is expressed as wave size and duration. Typical of museums and attractions.',
+  D: 'Continuous positional flow. No fixed slots — visitors receive a queue number and are called when their turn arrives.',
+};
+
+function deriveArchetype(throughput) {
+  return { one:'B', distinct:'A', batch:'C', flow:'D' }[throughput] || null;
+}
+
+// ================================================================
+// NAVIGATION / SCREEN SYSTEM
+// ================================================================
+let currentScreen = '0-1';
+const visitedPhases = new Set([0]);
+
+function screenToPhase(screenId) {
+  const phase = PHASES.find(p => p.screens.includes(screenId));
+  return phase ? phase.n : 0;
+}
+
+function allScreensInOrder() {
+  // Build flat ordered list, skipping conditional screens dynamically
+  const all = [];
+  PHASES.forEach(p => p.screens.forEach(s => all.push(s)));
+  return all;
+}
+
+function getNextScreen(from) {
+  // Handle conditional routing
+  if (from === '6-1') {
+    return S.channels.includes('whatsapp') ? '6-2' : '7-1';
+  }
+  if (from === '6-2') {
+    return S.whatsapp_mode === 'cloud_api' ? '6-3' : '7-1';
+  }
+  if (from === '7-2' && S.archetype === 'D') {
+    // D archetype has no advance; skip phase 8 if cal_sync not needed
+    return '8-1';
+  }
+  // Default: next in flat list
+  const flat = allScreensInOrder();
+  const idx = flat.indexOf(from);
+  return idx >= 0 && idx < flat.length - 1 ? flat[idx + 1] : null;
+}
+
+function getPrevScreen(from) {
+  if (from === '7-1') {
+    // back: came from 6-3 (cloud_api) or 6-2 (deeplink) or 6-1 (no whatsapp)
+    if (S.channels.includes('whatsapp')) {
+      return S.whatsapp_mode === 'cloud_api' ? '6-3' : '6-2';
+    }
+    return '6-1';
+  }
+  const flat = allScreensInOrder();
+  const idx = flat.indexOf(from);
+  return idx > 0 ? flat[idx - 1] : null;
+}
+
+function showScreen(id, direction) {
+  const prev = document.getElementById('screen-' + currentScreen);
+  const next = document.getElementById('screen-' + id);
+  if (!next) return;
+
+  if (prev) prev.classList.remove('active');
+  next.classList.add('active');
+  currentScreen = id;
+
+  const phase = screenToPhase(id);
+  visitedPhases.add(phase);
+
+  renderProgress();
+  renderSubstep(id);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // Trigger dynamic content rendering
+  renderDynamic(id);
+}
+
+// ================================================================
+// PROGRESS BAR
+// ================================================================
+function renderProgress() {
+  const bar = document.getElementById('wizProgress');
+  const curPhase = screenToPhase(currentScreen);
+  let html = '';
+  PHASES.forEach((p, i) => {
+    const isDone = p.n < curPhase;
+    const isCurrent = p.n === curPhase;
+    const isLocked = p.n > curPhase;
+    const cls = isDone ? 'done' : isCurrent ? 'current' : 'locked';
+    if (i > 0) html += `<div class="prog-line ${isDone ? 'done' : ''}"></div>`;
+    html += `<div class="prog-phase"><div class="prog-dot ${cls}" title="${p.label}" data-phase="${p.n}">${isDone ? '✓' : p.n}</div></div>`;
+  });
+  bar.innerHTML = html;
+
+  bar.querySelectorAll('.prog-dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      const n = parseInt(dot.dataset.phase);
+      if (n < screenToPhase(currentScreen)) {
+        // Jump back to first screen of that phase
+        const target = PHASES[n].screens[0];
+        showScreen(target);
+      }
+    });
+  });
+}
+
+function renderSubstep(screenId) {
+  const phase = PHASES.find(p => p.screens.includes(screenId));
+  if (!phase) return;
+  const sub = document.getElementById('wizSubstep');
+  if (phase.screens.length > 1) {
+    const idx = phase.screens.indexOf(screenId) + 1;
+    sub.innerHTML = `Phase <strong>${phase.n}</strong> · ${phase.label} — step ${idx} of ${phase.screens.length}`;
+  } else {
+    sub.innerHTML = `Phase <strong>${phase.n}</strong> · ${phase.label}`;
+  }
+}
+
+// ================================================================
+// DYNAMIC SCREEN CONTENT
+// ================================================================
+function renderDynamic(id) {
+  const handlers = {
+    '1-2': render_1_2,
+    '2-1': render_2_1,
+    '2-2': render_2_2,
+    '3-1': render_3_1,
+    '3-2': render_3_2,
+    '4-2': render_4_2,
+    '5-1': render_5_1,
+    '5-2': render_5_2,
+    '10-1': render_10_1,
+    '10-2': render_10_2,
+    '10-3': render_10_3,
+  };
+  if (handlers[id]) handlers[id]();
+}
+
+// 1.2 — Reservation logic (depends on archetype)
+function render_1_2() {
+  const a = S.archetype;
+  let title = '', lead = '', body = '';
+
+  if (a === 'B' || a === 'A') {
+    title = 'Do visitors select a future time in advance?';
+    lead  = a === 'B'
+      ? 'For single-service queues, decide whether visitors can pre-book a time slot.'
+      : 'For discrete-resource queues, decide whether visitors can pre-book a specific lane or window.';
+    body = choiceGrid([
+      { value:'advance', icon:'📅', title:'Yes — advance bookings only', desc:'Visitors select a time slot from a calendar before arriving.' },
+      { value:'live',    icon:'🚶', title:'No — live-flow only', desc:'First-come, first-served. No advance booking available.' },
+      { value:'mixed',   icon:'🔀', title:'Both — advance + live next-in-line', desc:'Visitors can either book ahead or join a live queue on arrival.' },
+    ], 'reservation', S.reservation);
+  } else if (a === 'C') {
+    title = 'What booking horizon do you want to support?';
+    lead  = 'For wave-based queues, decide how far in advance visitors can reserve a place in a wave.';
+    body = choiceGrid([
+      { value:'same_day',     icon:'☀️', title:'Same-day only', desc:'Visitors can only reserve a wave slot on the day itself.' },
+      { value:'advance_plus', icon:'📆', title:'Same-day + future days', desc:'Visitors can book a spot in any upcoming wave, days in advance.' },
+      { value:'mixed_wave',   icon:'🔀', title:'Same-day next available wave + future', desc:'Combines an instant next-available option with future day planning.' },
+    ], 'reservation', S.reservation);
+  } else if (a === 'D') {
+    title = 'What time information do you want to show visitors?';
+    lead  = 'Bulk live-flow does not support advance booking. Decide what queue status visitors can see.';
+    body = choiceGrid([
+      { value:'numbers',     icon:'🔢', title:'Queue numbers only', desc:'Visitors see their position number. No estimated wait time shown.' },
+      { value:'numbers_ete', icon:'⏱️', title:'Queue numbers + estimated wait', desc:'Visitors see their number and a live estimated time until their turn.' },
+    ], 'ete_mode', S.ete_mode);
+  }
+
+  document.getElementById('s12-title').textContent = title;
+  document.getElementById('s12-lead').textContent  = lead;
+  const b = document.getElementById('s12-body');
+  b.innerHTML = body + '<div id="err-1-2" class="err-strip"></div>';
+  wireChoiceCards(b);
+}
+
+// 2.1 — Capacity model info (read-only, archetype-derived)
+function render_2_1() {
+  const a = S.archetype;
+  const badge = `<div class="archetype-badge" data-arch="${a}">${ARCH_LABELS[a]}</div>`;
+  const models = {
+    B: `<div class="callout callout-info"><strong>Individual appointment slots</strong>
+          This queue uses appointment slot types. You define one or more named slot types, each with a duration and availability windows.
+          The system schedules exactly one visitor (or group) per slot.</div>
+        <div class="callout callout-note">Booking formula locked to: <strong>${fmtReservation()}</strong></div>`,
+    A: `<div class="callout callout-info"><strong>Discrete resource slots</strong>
+          This queue uses parallel resource lanes. Each slot type can have multiple occurrences (lanes/counters),
+          an embedded capacity per lane, and a time grid. You choose the grid interval and truncation policy.</div>
+        <div class="callout callout-note">Booking formula locked to: <strong>${fmtReservation()}</strong></div>`,
+    C: `<div class="callout callout-info"><strong>Wave admission system</strong>
+          Visitors are admitted in timed waves. You define the wave duration and total capacity per wave.
+          Capacity mode can be constant or time-varying. </div>
+        <div class="callout callout-note">Booking formula locked to: <strong>${fmtReservation()}</strong></div>`,
+    D: `<div class="callout callout-info"><strong>Positional live-flow</strong>
+          Visitors receive a queue position number. The host releases positions manually or via a scheduled incremental profile.
+          ${S.ete_mode === 'numbers_ete' ? 'Estimated waiting time will be shown.' : 'Only queue numbers are shown.'}</div>
+        <div class="callout callout-note">Advance booking: <strong>Not available for this archetype.</strong></div>`,
+  };
+  document.getElementById('s21-body').innerHTML = badge + (models[a] || '');
+}
+
+// 2.2 — Capacity details (editable fields per archetype)
+function render_2_2() {
+  const a = S.archetype;
+  let lead = '', body = '';
+
+  if (a === 'B') {
+    lead = 'Define the slot types visitors can book. Each type has a name, duration, and optional description.';
+    body = slotBuilder('B');
+  } else if (a === 'A') {
+    lead = 'Define slot types for each resource lane or counter. Each type can have multiple parallel occurrences.';
+    body = slotBuilder('A');
+  } else if (a === 'C') {
+    lead = 'Configure how waves are structured — their duration, capacity, and any advance horizon.';
+    body = `
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label" for="f-wave-duration">Wave duration (minutes)</label>
+          <input type="number" id="f-wave-duration" min="5" max="480" value="${S.wave_duration}">
+          <p class="field-hint">Duration of each admission wave.</p>
+        </div>
+        <div class="field">
+          <label class="field-label" for="f-wave-cap">Wave capacity (persons per wave)</label>
+          <input type="number" id="f-wave-cap" min="1" max="10000" value="${S.wave_capacity}">
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label">Capacity mode</label>
+        ${choiceGrid([
+          { value:'constant',     icon:'📊', title:'Constant',     desc:'Same capacity for every wave.' },
+          { value:'time_varying', icon:'📈', title:'Time-varying', desc:'Capacity varies by time of day. Configure per-wave overrides in the dashboard.' },
+        ], 'wave_mode', S.wave_mode)}
+      </div>
+      ${S.reservation !== 'same_day' ? `
+      <div class="field">
+        <label class="field-label" for="f-advance-horizon">Advance booking horizon (days)</label>
+        <input type="number" id="f-advance-horizon" min="1" max="365" value="${S.advance_horizon}">
+        <p class="field-hint">How many days ahead visitors can book a wave slot.</p>
+      </div>` : ''}
+    `;
+  } else if (a === 'D') {
+    lead = 'Configure how queue positions are released to visitors.';
+    body = `
+      <div class="field">
+        <label class="field-label">Release mode</label>
+        ${choiceGrid([
+          { value:'manual',       icon:'👆', title:'Manual',               desc:'Host manually releases the next N positions from the dashboard.' },
+          { value:'scheduled',    icon:'⏰', title:'Scheduled incremental', desc:'System releases positions automatically at fixed intervals.' },
+          { value:'fixed_time',   icon:'📋', title:'Fixed-time releases',   desc:'Define specific times of day when batches are released.' },
+        ], 'flow_release', S.flow_release)}
+      </div>
+      ${S.ete_mode === 'numbers_ete' ? `
+      <div class="field" style="margin-top:14px">
+        <label class="field-label" for="f-ete-proc-time">Estimated processing time per person (minutes)</label>
+        <input type="number" id="f-ete-proc-time" min="1" max="480" value="5">
+        <p class="field-hint">Used to compute the estimated waiting time shown to visitors.</p>
+      </div>` : ''}
+    `;
+  }
+
+  document.getElementById('s22-title').textContent = 'Configure your capacity';
+  document.getElementById('s22-lead').textContent  = lead;
+  const b = document.getElementById('s22-body');
+  b.innerHTML = body + '<div id="err-2-2" class="err-strip"></div>';
+  wireChoiceCards(b);
+  wireSlotBuilder(b);
+
+  // Wire wave fields
+  const wd = b.querySelector('#f-wave-duration');
+  if (wd) wd.addEventListener('change', e => S.wave_duration = parseInt(e.target.value) || 30);
+  const wc = b.querySelector('#f-wave-cap');
+  if (wc) wc.addEventListener('change', e => S.wave_capacity = parseInt(e.target.value) || 50);
+  const ah = b.querySelector('#f-advance-horizon');
+  if (ah) ah.addEventListener('change', e => S.advance_horizon = parseInt(e.target.value) || 30);
+}
+
+// 3.1 — Who can book (archetype-gated options)
+function render_3_1() {
+  const a = S.archetype;
+  const options = [];
+  if (a !== 'B') options.push({ value:'anonymous', icon:'👻', title:'Anonymous', desc:'Anyone with the link or QR can book. No account required.' });
+  options.push({ value:'registered', icon:'👤', title:'Registered visitors only', desc:'A visitor profile is required to book.' });
+  options.push({ value:'listed', icon:'📋', title:'My allowlist only', desc:'Only visitors you have explicitly approved can book.' });
+  if (a === 'C') options.push({ value:'group', icon:'👥', title:'Group visitors', desc:'Enable group / tour operator bookings with special capacity rules.' });
+
+  const b = document.getElementById('s31-body');
+  b.innerHTML = `
+    <div class="field">
+      <p class="field-hint" style="margin:0 0 14px">Select all access types you want to allow. They can be combined.</p>
+      <div class="choice-grid choice-grid-2">
+        ${options.map(o => `
+          <label class="choice-card${S.booking_access.includes(o.value) ? ' selected' : ''}" data-value="${o.value}" data-multi="true">
+            <input type="checkbox" name="booking_access" value="${o.value}"${S.booking_access.includes(o.value) ? ' checked' : ''}>
+            <div class="choice-check"></div>
+            <span class="choice-icon">${o.icon}</span>
+            <div class="choice-title">${o.title}</div>
+            <div class="choice-desc">${o.desc}</div>
+          </label>`).join('')}
+      </div>
+    </div>
+    ${a === 'B' ? '<div class="callout callout-note"><strong>ℹ️ Archetype B note.</strong> Anonymous bookings are not available for individual practice queues. Registered or listed only.</div>' : ''}
+    <div id="err-3-1" class="err-strip"></div>`;
+
+  // Wire multi-select checkboxes — use 'change' on the input, not 'click' on the label,
+  // to avoid the double-fire caused by label click toggling the checkbox natively then firing again.
+  b.querySelectorAll('.choice-card[data-multi] input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      cb.closest('.choice-card').classList.toggle('selected', cb.checked);
+      const v = cb.value;
+      if (cb.checked) { if (!S.booking_access.includes(v)) S.booking_access.push(v); }
+      else { S.booking_access = S.booking_access.filter(x => x !== v); }
+    });
+  });
+  wireChoiceCards(b);
+}
+
+// 3.2 — Identity-specific rules
+function render_3_2() {
+  const b = document.getElementById('s32-body');
+  let html = '';
+
+  if (!S.booking_access.length) {
+    html = '<div class="callout callout-note">No access types selected. Go back and select at least one.</div>';
+    b.innerHTML = html; return;
+  }
+
+  if (S.booking_access.includes('anonymous')) {
+    html += `<div style="margin-bottom:20px">
+      <div class="phase-label" style="margin-bottom:10px">Anonymous visitor rules</div>
+      <div class="callout callout-note" style="margin-top:0"><strong>Device-based booking limit.</strong>
+        Anonymous visitors are tracked by device fingerprint. You can limit how many active bookings a single device can hold.
+      </div>
+      <div class="field-row" style="margin-top:12px">
+        <div class="field">
+          <label class="field-label" for="f-anon-device-limit">Max active bookings per device</label>
+          <input type="number" id="f-anon-device-limit" min="1" max="10" value="${S.anon_device_limit}">
+        </div>
+      </div>
+      <div class="toggle-row" style="margin-top:10px">
+        <div class="toggle-info"><div class="toggle-title">Secure confirmation required</div><div class="toggle-desc">Anonymous bookings must confirm via email or phone link before activation.</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-anon-sec"${S.anon_confirmation ? ' checked' : ''}><span class="toggle-track"></span></label>
+      </div>
+      <div id="anon-channel-config" class="${S.anon_confirmation ? 'cond-section show' : 'cond-section'}" style="margin-top:10px">
+        <div class="field"><label class="field-label">Confirmation channel</label>
+        ${choiceGrid([
+          {value:'email',    icon:'📧', title:'Email'},
+          {value:'sms',      icon:'💬', title:'Phone link (SMS)'},
+        ], 'anon_conf_channel', S.anon_channel)}
+        </div>
+      </div>
+    </div><div class="sep"></div>`;
+  }
+
+  if (S.booking_access.includes('listed')) {
+    html += `<div style="margin-bottom:20px">
+      <div class="phase-label" style="margin-bottom:10px">Allowlist rules</div>
+      <div class="callout callout-note" style="margin-top:0"><strong>Listed requires registration.</strong>
+        Visitors on your allowlist must also have a registered account to book.</div>
+      <div class="toggle-row" style="margin-top:10px">
+        <div class="toggle-info"><div class="toggle-title">Enable access request workflow</div><div class="toggle-desc">Visitors not on the list can request access. You review and approve/deny.</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-listed-request"${S.listed_request_workflow ? ' checked' : ''}><span class="toggle-track"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-info"><div class="toggle-title">Bulk invite support</div><div class="toggle-desc">Upload a CSV of emails to add to your allowlist in bulk.</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-listed-bulk"${S.listed_bulk_invite ? ' checked' : ''}><span class="toggle-track"></span></label>
+      </div>
+    </div><div class="sep"></div>`;
+  }
+
+  if (S.booking_access.includes('group')) {
+    html += `<div>
+      <div class="phase-label" style="margin-bottom:10px">Group visitor rules</div>
+      <div class="field-row">
+        <div class="field"><label class="field-label" for="f-grp-max">Max bookings per day</label><input type="number" id="f-grp-max" min="1" max="100" value="${S.group_max_per_day}"></div>
+        <div class="field"><label class="field-label" for="f-grp-cap">Default group capacity</label><input type="number" id="f-grp-cap" min="2" max="10000" value="${S.group_capacity}"></div>
+        <div class="field"><label class="field-label" for="f-grp-horizon">Booking horizon (days)</label><input type="number" id="f-grp-horizon" min="1" max="365" value="${S.group_horizon}"></div>
+      </div>
+    </div>`;
+  }
+
+  if (!html) html = '<div class="callout callout-note">No identity-specific rules needed for your selection.</div>';
+  b.innerHTML = html + '<div id="err-3-2" class="err-strip"></div>';
+
+  // Wire toggles
+  const anonSec = b.querySelector('#toggle-anon-sec');
+  if (anonSec) anonSec.addEventListener('change', e => {
+    S.anon_confirmation = e.target.checked;
+    const cc = b.querySelector('#anon-channel-config');
+    if (cc) cc.classList.toggle('show', e.target.checked);
+  });
+  wireChoiceCards(b);
+
+  // Group fields
+  ['f-grp-max','f-grp-cap','f-grp-horizon'].forEach((id, i) => {
+    const el = b.querySelector('#'+id);
+    if (el) el.addEventListener('change', e => {
+      if (i===0) S.group_max_per_day = parseInt(e.target.value)||1;
+      if (i===1) S.group_capacity    = parseInt(e.target.value)||10;
+      if (i===2) S.group_horizon     = parseInt(e.target.value)||7;
+    });
+  });
+}
+
+// 4.2 — Calling logic (per archetype)
+function render_4_2() {
+  const a = S.archetype;
+  const bodies = {
+    B: `<div class="choice-grid choice-grid-2">
+          <label class="choice-card" data-value="single_next"><input type="radio" name="call_mode" value="single_next"><div class="choice-check"></div><span class="choice-icon">📢</span><div class="choice-title">Single next call</div><div class="choice-desc">Host calls the next visitor when ready. One at a time.</div></label>
+          <label class="choice-card" data-value="scheduled_call"><input type="radio" name="call_mode" value="scheduled_call"><div class="choice-check"></div><span class="choice-icon">⏰</span><div class="choice-title">Scheduled call lead</div><div class="choice-desc">Send a reminder N minutes before the visitor's booked slot so they're ready on time.</div></label>
+        </div>
+        <div id="call-lead-config" class="cond-section" style="margin-top:14px">
+          <div class="field"><label class="field-label" for="f-call-lead">Call lead time (minutes before slot)</label><input type="number" id="f-call-lead" min="1" max="60" value="${S.call_lead_time}"></div>
+        </div>`,
+    A: `<div class="choice-grid choice-grid-2">
+          <label class="choice-card" data-value="call_per_lane"><input type="radio" name="call_mode" value="call_per_lane"><div class="choice-check"></div><span class="choice-icon">🪟</span><div class="choice-title">Call next per lane</div><div class="choice-desc">Each resource lane calls visitors independently.</div></label>
+          <label class="choice-card" data-value="call_parallel"><input type="radio" name="call_mode" value="call_parallel"><div class="choice-check"></div><span class="choice-icon">⚡</span><div class="choice-title">Parallel lane support</div><div class="choice-desc">Call multiple lanes simultaneously to maximise throughput.</div></label>
+        </div>`,
+    C: `<div class="callout callout-info"><strong>Wave call mode.</strong> The system automatically calls the full wave when a new admission window opens. No per-visitor calling required.</div>
+        <div class="callout callout-note">Scan is strongly recommended for wave queues to maintain accurate statistics.</div>`,
+    D: `<div class="choice-grid choice-grid-2">
+          <label class="choice-card" data-value="manual_release"><input type="radio" name="call_mode" value="manual_release"><div class="choice-check"></div><span class="choice-icon">👆</span><div class="choice-title">Manual release count</div><div class="choice-desc">Host taps "call next N" to release positions when ready.</div></label>
+          <label class="choice-card" data-value="scheduled_release"><input type="radio" name="call_mode" value="scheduled_release"><div class="choice-check"></div><span class="choice-icon">📋</span><div class="choice-title">Scheduled release profile</div><div class="choice-desc">Define a release schedule — e.g. 10 positions every 5 minutes.</div></label>
+        </div>`,
+  };
+
+  const b = document.getElementById('s42-body');
+  b.innerHTML = (bodies[a] || '') + '<div id="err-4-2" class="err-strip"></div>';
+  wireChoiceCards(b);
+
+  // Wire call mode selection for B
+  b.querySelectorAll('input[name=call_mode]').forEach(r => {
+    r.addEventListener('change', () => {
+      S.call_mode = r.value;
+      const config = b.querySelector('#call-lead-config');
+      if (config) config.classList.toggle('show', r.value === 'scheduled_call');
+    });
+  });
+  const cl = b.querySelector('#f-call-lead');
+  if (cl) cl.addEventListener('change', e => S.call_lead_time = parseInt(e.target.value)||15);
+}
+
+// 5.1 — Time transparency
+function render_5_1() {
+  const a = S.archetype;
+  const b = document.getElementById('s51-body');
+
+  let html = '';
+  if (a === 'D') {
+    html = `<div class="callout callout-note">For bulk live-flow, visitor-facing time information is controlled by your ETE choice in Phase 1: <strong>${S.ete_mode === 'numbers_ete' ? 'Queue numbers + estimated wait' : 'Queue numbers only'}</strong>.</div>`;
+  } else {
+    // Has advance? Show EET
+    const hasAdvance = S.reservation && S.reservation !== 'live';
+    if (hasAdvance) {
+      html += `<div class="toggle-row">
+        <div class="toggle-info"><div class="toggle-title">Show Estimated Entry Time (EET) for advance bookings</div><div class="toggle-desc">Show the booked entry time to visitors on the booking confirmation and queue page.</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-eet"${S.show_eet ? ' checked' : ''}><span class="toggle-track"></span></label>
+      </div>`;
+    }
+    // Has live? Show ETE option
+    const hasLive = S.reservation === 'live' || S.reservation === 'mixed' || S.reservation === 'mixed_wave';
+    if (hasLive || a === 'B' || a === 'A') {
+      html += `<div class="toggle-row">
+        <div class="toggle-info"><div class="toggle-title">Show Estimated Time of Entry (ETE) for live visitors</div><div class="toggle-desc">Show a live estimate of how long until it's the visitor's turn.</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="toggle-ete"${S.show_ete ? ' checked' : ''}><span class="toggle-track"></span></label>
+      </div>`;
+    }
+    if (a === 'C') {
+      html = `<div class="callout callout-info"><strong>Wave queues show EET only.</strong> The confirmed wave entry time is shown to all booked visitors. Live ETE is not applicable for wave admission.</div>`;
+    }
+  }
+  if (!html) html = '<div class="callout callout-note">No visitor-facing time settings are applicable for this configuration.</div>';
+  b.innerHTML = html + '<div id="err-5-1" class="err-strip"></div>';
+
+  const eet = b.querySelector('#toggle-eet');
+  if (eet) eet.addEventListener('change', e => S.show_eet = e.target.checked);
+  const ete = b.querySelector('#toggle-ete');
+  if (ete) ete.addEventListener('change', e => S.show_ete = e.target.checked);
+}
+
+// 5.2 — Early entry
+function render_5_2() {
+  const a = S.archetype;
+  const b = document.getElementById('s52-body');
+
+  // Auto-default: EET queues OFF, ETE live ON
+  const isETE = S.show_ete || S.ete_mode === 'numbers_ete';
+  const defaultOn = isETE && a !== 'C';
+
+  if (a === 'C') {
+    b.innerHTML = '<div class="callout callout-note">Earlier slot offers are not applicable to wave queues. Wave slots are fixed and non-reallocatable dynamically.</div>';
+    return;
+  }
+  if (a === 'D' && S.ete_mode === 'numbers') {
+    b.innerHTML = '<div class="callout callout-note">Earlier slot offers are hidden when no ETE is shown to visitors. Enable ETE in Phase 5.1 to unlock this feature.</div>';
+    return;
+  }
+
+  b.innerHTML = `
+    <div class="toggle-row">
+      <div class="toggle-info"><div class="toggle-title">Enable earlier slot offers</div><div class="toggle-desc">When a slot earlier than a visitor's booked time opens up, offer it to them automatically.</div></div>
+      <label class="toggle-switch"><input type="checkbox" id="toggle-early-entry"${defaultOn ? ' checked' : ''}><span class="toggle-track"></span></label>
+    </div>
+    <div id="early-entry-config" class="${defaultOn ? 'cond-section show' : 'cond-section'}">
+      <div class="sep"></div>
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label" for="f-ee-window">Visibility window (minutes ahead)</label>
+          <input type="number" id="f-ee-window" min="5" max="240" value="${S.early_entry_window}">
+          <p class="field-hint">How far ahead to look for free slots to offer.</p>
+        </div>
+        <div class="field">
+          <label class="field-label" for="f-ee-max">Max candidates to notify</label>
+          <input type="number" id="f-ee-max" min="1" max="20" value="${S.early_entry_max_candidates}">
+          <p class="field-hint">How many waiting visitors to offer the slot to simultaneously.</p>
+        </div>
+        <div class="field">
+          <label class="field-label" for="f-ee-interval">Sequential offer interval (seconds)</label>
+          <input type="number" id="f-ee-interval" min="5" max="300" value="${S.early_entry_interval}">
+          <p class="field-hint">Seconds before moving to next candidate if no response.</p>
+        </div>
+      </div>
+    </div>
+    <div id="err-5-2" class="err-strip"></div>`;
+
+  const ee = b.querySelector('#toggle-early-entry');
+  ee.addEventListener('change', e => {
+    S.early_entry_enabled = e.target.checked;
+    b.querySelector('#early-entry-config').classList.toggle('show', e.target.checked);
+  });
+  S.early_entry_enabled = defaultOn;
+}
+
+// 10.1 — Summary
+function render_10_1() {
+  const b = document.getElementById('s101-body');
+  b.innerHTML = `
+    <div class="summary-section">
+      <div class="summary-section-title">Classification</div>
+      ${sr('Queue archetype', ARCH_LABELS[S.archetype] || '—')}
+      ${sr('Booking formula', fmtReservation())}
+      ${sr('Capacity model', fmtCapacityModel())}
+    </div>
+    <div class="summary-section">
+      <div class="summary-section-title">Visitor Access</div>
+      ${sr('Who can book', S.booking_access.join(', ') || '—')}
+      ${S.booking_access.includes('group') ? sr('Group rules', `Max ${S.group_max_per_day}/day, ${S.group_capacity} per booking, ${S.group_horizon}-day horizon`) : ''}
+    </div>
+    <div class="summary-section">
+      <div class="summary-section-title">Operations</div>
+      ${sr('Admission mode', fmtAdmission())}
+      ${sr('No-scan window', S.admission_mode !== 'scan' ? S.noscan_window + ' minutes' : 'N/A')}
+      ${sr('Calling mode', S.call_mode || 'Wave auto-call')}
+    </div>
+    <div class="summary-section">
+      <div class="summary-section-title">Time Semantics</div>
+      ${sr('EET shown', S.show_eet ? 'Yes' : 'No')}
+      ${sr('ETE shown', S.show_ete || S.ete_mode === 'numbers_ete' ? 'Yes' : 'No')}
+      ${sr('Early entry offers', S.early_entry_enabled ? `Yes (${S.early_entry_window} min window, ${S.early_entry_max_candidates} candidates)` : 'Disabled')}
+    </div>
+    <div class="summary-section">
+      <div class="summary-section-title">Payments &amp; Messaging</div>
+      ${sr('Payment gate', S.payment_gate ? (S.payment_mode === 'mandatory' ? 'Mandatory' : 'Best attempt') : 'Disabled')}
+      ${sr('Manual confirmation', S.manual_confirm ? 'Yes — bookings HOLD until approved' : 'No')}
+      ${sr('WhatsApp', S.channels.includes('whatsapp') ? (S.whatsapp_mode === 'cloud_api' ? 'Cloud API' : 'Deep-link') : 'Not enabled')}
+      ${sr('Channels', S.channels.join(', ') || 'in-app only')}
+    </div>
+    <div class="summary-section">
+      <div class="summary-section-title">Sync &amp; Branding</div>
+      ${sr('Calendar sync', S.cal_sync ? (S.cal_provider || 'Enabled') : 'Disabled')}
+      ${sr('Theme', S.theme)}
+      ${sr('Location', S.address || '—')}
+      ${sr('Timezone', S.timezone || 'Not detected')}
+    </div>`;
+}
+
+// 10.2 — Warnings
+function render_10_2() {
+  const warnings = [];
+
+  if (S.admission_mode === 'no_scan' || S.admission_mode === 'scan_fallback') {
+    warnings.push({ icon:'⚠️', title:'No-scan mode enabled', body:`Admissions will auto-complete after ${S.noscan_window} minutes. No-show logic uses the same timer. Stats accuracy is reduced.` });
+  }
+  if (S.manual_confirm) {
+    warnings.push({ icon:'⚠️', title:'Manual confirmation active', body:'All new bookings will remain on HOLD until you manually approve them in the host dashboard.' });
+  }
+  if (S.payment_gate && S.payment_mode === 'mandatory') {
+    warnings.push({ icon:'⚠️', title:'Mandatory payment — webhook dependency', body:'Bookings stay on HOLD until your payment provider sends a webhook callback. Failed or delayed webhooks can block bookings indefinitely.' });
+  }
+  if (S.channels.includes('whatsapp') && S.whatsapp_mode === 'cloud_api') {
+    warnings.push({ icon:'📋', title:'WhatsApp Cloud API — templates required', body:'Automated WhatsApp messages cannot be sent until at least one template is approved by Meta. In-Time will fall back to in-app notifications in the meantime.' });
+  }
+  if (!S.timezone) {
+    warnings.push({ icon:'🕐', title:'Timezone not detected', body:"The queue's timezone could not be auto-detected from the address. All scheduling rules will use UTC until you update it from the management dashboard." });
+  }
+  if (S.booking_access.includes('anonymous') && !S.anon_confirmation) {
+    warnings.push({ icon:'ℹ️', title:'Anonymous bookings without confirmation', body:'Anonymous visitors can book without any confirmation step. Consider enabling secure confirmation to reduce phantom bookings.' });
+  }
+  warnings.push({ icon:'🔒', title:'Home region locked on creation', body:`This queue's home region (${S.timezone || 'UTC'}) is locked permanently at creation. It cannot be changed later. Verify the location is correct.` });
+
+  const b = document.getElementById('s102-body');
+  if (!warnings.length) {
+    b.innerHTML = '<div class="callout callout-success"><strong>✅ No warnings.</strong> Your configuration looks clean. Ready to create.</div>';
+    return;
+  }
+  b.innerHTML = `<div class="warn-list">${warnings.map(w => `
+    <div class="warn-item">
+      <div class="warn-icon">${w.icon}</div>
+      <div class="warn-body"><strong>${w.title}</strong>${w.body}</div>
+    </div>`).join('')}</div>`;
+}
+
+// 10.3 — Final create screen
+function render_10_3() {
+  const name = S.queue_name || 'My Virtual Queue';
+  document.getElementById('s103-final-name').innerHTML = `<strong>✅ Ready to create: "${name}"</strong>`;
+  document.getElementById('s103-region-lock').textContent =
+    `Locked — timezone: ${S.timezone || 'UTC'}`;
+}
+
+// ================================================================
+// HELPERS
+// ================================================================
+function sr(key, val) {
+  return `<div class="summary-row"><div class="s-key">${key}</div><div class="s-val">${val}</div></div>`;
+}
+function fmtReservation() {
+  const map = { advance:'Advance bookings only', live:'Live-flow only', mixed:'Mixed (advance + live)', same_day:'Same-day only', advance_plus:'Same-day + future', mixed_wave:'Mixed wave', numbers:'Queue numbers only', numbers_ete:'Queue numbers + ETE' };
+  return map[S.reservation || S.ete_mode] || '—';
+}
+function fmtCapacityModel() {
+  const map = { A:'Discrete resource slots', B:'Individual appointment slots', C:'Wave admission', D:'Positional live-flow' };
+  return map[S.archetype] || '—';
+}
+function fmtAdmission() {
+  return { scan:'Scan at entry', no_scan:'No-scan (auto-complete)', scan_fallback:'Scan + fallback' }[S.admission_mode] || '—';
+}
+
+function choiceGrid(options, name, current) {
+  return `<div class="choice-grid choice-grid-2">
+    ${options.map(o => `
+      <label class="choice-card${current === o.value ? ' selected' : ''}" data-value="${o.value}">
+        <input type="radio" name="${name}" value="${o.value}"${current === o.value ? ' checked' : ''}>
+        <div class="choice-check"></div>
+        ${o.icon ? `<span class="choice-icon">${o.icon}</span>` : ''}
+        <div class="choice-title">${o.title}</div>
+        ${o.desc ? `<div class="choice-desc">${o.desc}</div>` : ''}
+      </label>`).join('')}
+  </div>`;
+}
+
+function slotBuilder(arch) {
+  const hasOccurrences = arch === 'A';
+  return `
+    <div class="slot-list" id="slot-list"></div>
+    <button type="button" class="btn btn-secondary" id="btn-add-slot">+ Add slot type</button>
+    <p class="field-hint" style="margin-top:8px">Define the types of appointments or service slots visitors can book.</p>`;
+}
+
+let slotCounter = 0;
+function wireSlotBuilder(container) {
+  const list = container.querySelector('#slot-list');
+  const btn  = container.querySelector('#btn-add-slot');
+  if (!list || !btn) return;
+
+  // Seed initial slot if empty
+  if (!S.slot_types.length) {
+    S.slot_types = [{ id: ++slotCounter, name: 'Standard', duration: 30, occurrences: 1 }];
+  }
+  renderSlotList(list);
+
+  btn.addEventListener('click', () => {
+    if (S.slot_types.length >= 10) { alert('Maximum 10 slot types.'); return; }
+    S.slot_types.push({ id: ++slotCounter, name: 'Slot ' + (S.slot_types.length + 1), duration: 30, occurrences: 1 });
+    renderSlotList(list);
+  });
+}
+
+function renderSlotList(list) {
+  const isA = S.archetype === 'A';
+  list.innerHTML = S.slot_types.map((slot, idx) => `
+    <div class="slot-row" data-slot-id="${slot.id}">
+      <div class="slot-field">
+        <label>Name</label>
+        <input type="text" class="sf-name" value="${escHtml(slot.name)}" placeholder="Slot type name">
+      </div>
+      <div class="slot-field">
+        <label>Duration (min)</label>
+        <input type="number" class="sf-duration" min="1" max="480" value="${slot.duration}">
+      </div>
+      ${isA ? `<div class="slot-field"><label>Lanes / occurrences</label><input type="number" class="sf-occ" min="1" max="50" value="${slot.occurrences}"></div>` : '<div></div>'}
+      <button type="button" class="slot-remove" data-idx="${idx}">✕ Remove</button>
+    </div>`).join('');
+
+  list.querySelectorAll('.sf-name').forEach((el, i) => {
+    el.addEventListener('input', () => S.slot_types[i].name = el.value);
+  });
+  list.querySelectorAll('.sf-duration').forEach((el, i) => {
+    el.addEventListener('change', () => S.slot_types[i].duration = parseInt(el.value)||30);
+  });
+  list.querySelectorAll('.sf-occ').forEach((el, i) => {
+    el.addEventListener('change', () => S.slot_types[i].occurrences = parseInt(el.value)||1);
+  });
+  list.querySelectorAll('.slot-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx);
+      S.slot_types.splice(idx, 1);
+      renderSlotList(list);
+    });
+  });
+}
+
+function wireChoiceCards(container) {
+  // Use radio change event (not label click) to avoid the double-fire
+  // caused by label click triggering both the label handler and the radio's native click.
+  container.querySelectorAll('.choice-card:not([data-multi]) input[type=radio]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      if (!radio.checked) return;
+      const name = radio.name;
+      container.querySelectorAll(`.choice-card input[name="${name}"]`).forEach(r => {
+        r.closest('.choice-card').classList.toggle('selected', r === radio);
+      });
+      const stateMap = {
+        throughput: () => { S.throughput = radio.value; S.archetype = deriveArchetype(radio.value); },
+        reservation: () => { S.reservation = radio.value; },
+        ete_mode: () => { S.ete_mode = radio.value; S.reservation = radio.value; },
+        wave_mode: () => { S.wave_mode = radio.value; },
+        flow_release: () => { S.flow_release = radio.value; },
+        admission_mode: () => {
+          S.admission_mode = radio.value;
+          const ns = document.getElementById('noscan-config');
+          if (ns) ns.classList.toggle('show', radio.value !== 'scan');
+        },
+        call_mode: () => { S.call_mode = radio.value; },
+        confirm_channel: () => { S.confirm_channel = radio.value; },
+        payment_mode: () => { S.payment_mode = radio.value; },
+        cal_provider: () => { S.cal_provider = radio.value; },
+        theme: () => { S.theme = radio.value; },
+        whatsapp_mode: () => {
+          S.whatsapp_mode = radio.value;
+          const cc = document.getElementById('cloud-api-setup');
+          if (cc) cc.classList.toggle('show', radio.value === 'cloud_api');
+        },
+        anon_conf_channel: () => { S.anon_channel = radio.value; },
+      };
+      if (stateMap[name]) stateMap[name]();
+      if (name === 'throughput') {
+        const hint = document.getElementById('arch-hint');
+        if (hint) { hint.textContent = ARCH_HINTS[S.archetype] || ''; hint.style.display = 'block'; }
+      }
+    });
+  });
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ================================================================
+// VALIDATION
+// ================================================================
+function validate(screenId) {
+  const errs = {
+    '0-1': () => {
+      if (!document.getElementById('f-address').value.trim()) return 'Please enter an address for your queue location.';
+      return null;
+    },
+    '1-1': () => !S.throughput ? 'Please select how people are processed in your queue.' : null,
+    '1-2': () => {
+      if (S.archetype === 'D') return S.ete_mode ? null : 'Please select what time information to show visitors.';
+      return S.reservation ? null : 'Please select a booking timing option.';
+    },
+    '2-2': () => {
+      if ((S.archetype === 'B' || S.archetype === 'A') && !S.slot_types.length) return 'Please define at least one slot type.';
+      return null;
+    },
+    '3-1': () => !S.booking_access.length ? 'Please select at least one access type.' : null,
+    '4-1': () => !S.admission_mode ? 'Please select an admission mode.' : null,
+    '6-2': () => !S.whatsapp_mode ? 'Please choose a WhatsApp setup mode.' : null,
+  };
+  const fn = errs[screenId];
+  if (!fn) return null;
+  const msg = fn();
+  if (msg) {
+    const errEl = document.getElementById('err-' + screenId);
+    if (errEl) { errEl.textContent = msg; errEl.classList.add('show'); }
+  } else {
+    const errEl = document.getElementById('err-' + screenId);
+    if (errEl) errEl.classList.remove('show');
+  }
+  return msg;
+}
+
+// ================================================================
+// NAVIGATION WIRING
+// ================================================================
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-next]');
+  if (btn) {
+    const target = btn.dataset.next;
+    if (validate(currentScreen)) return;
+    // Save visible state before navigating
+    saveCurrentScreenState();
+    showScreen(target);
+    return;
+  }
+  const bkBtn = e.target.closest('[data-prev]');
+  if (bkBtn) {
+    showScreen(bkBtn.dataset.prev);
+    return;
+  }
+});
+
+// Special next buttons with conditional routing
+document.getElementById('btn-6-1-next').addEventListener('click', () => {
+  if (validate(currentScreen)) return;
+  saveCurrentScreenState();
+  showScreen(S.channels.includes('whatsapp') ? '6-2' : '7-1');
+});
+
+document.getElementById('btn-6-2-next').addEventListener('click', () => {
+  if (validate(currentScreen)) return;
+  saveCurrentScreenState();
+  showScreen(S.whatsapp_mode === 'cloud_api' ? '6-3' : '7-1');
+});
+
+document.getElementById('btn-7-1-prev').addEventListener('click', () => {
+  if (S.channels.includes('whatsapp')) {
+    showScreen(S.whatsapp_mode === 'cloud_api' ? '6-3' : '6-2');
+  } else {
+    showScreen('6-1');
+  }
+});
+
+// ================================================================
+// SAVE STATE FROM CURRENT VISIBLE SCREEN
+// ================================================================
+function saveCurrentScreenState() {
+  switch(currentScreen) {
+    case '0-1':
+      S.queue_name = document.getElementById('f-queue-name').value.trim();
+      S.venue      = document.getElementById('f-venue').value.trim();
+      S.biz_type   = document.getElementById('f-biz-type').value;
+      S.address    = document.getElementById('f-address').value.trim();
+      S.language   = document.getElementById('f-language').value;
+      S.currency   = document.getElementById('f-currency').value;
+      S.timezone   = document.getElementById('f-timezone').value.trim();
+      S.lat        = parseFloat(document.getElementById('f-lat').value) || null;
+      S.lng        = parseFloat(document.getElementById('f-lng').value) || null;
+      break;
+    case '4-1':
+      S.noscan_window = parseInt(document.getElementById('f-noscan-window')?.value) || 10;
+      break;
+    case '6-1':
+      S.channels = Array.from(document.querySelectorAll('input[name=channel]:checked')).map(x => x.value);
+      break;
+    case '7-1':
+      S.payment_gate = document.getElementById('toggle-payment-gate').checked;
+      break;
+    case '7-2':
+      S.manual_confirm    = document.getElementById('toggle-manual-confirm').checked;
+      S.anon_secure_confirm = document.getElementById('toggle-anon-confirm').checked;
+      S.confirm_hold      = parseInt(document.getElementById('f-confirm-hold').value) || 60;
+      break;
+    case '8-1':
+      S.cal_sync          = document.getElementById('toggle-cal-sync').checked;
+      S.cal_horizon       = parseInt(document.getElementById('f-sync-horizon')?.value) || 30;
+      S.cal_manual_refresh = document.getElementById('toggle-manual-refresh')?.checked;
+      break;
+    case '8-2':
+      S.conflict_review   = document.getElementById('toggle-conflict-review').checked;
+      S.conflict_action   = document.getElementById('f-conflict-action').value;
+      S.notify_impacted   = document.getElementById('toggle-notify-impacted').checked;
+      break;
+    case '9-1':
+      S.host_wallpaper  = document.getElementById('f-host-wallpaper').value.trim();
+      S.queue_wallpaper = document.getElementById('f-queue-wallpaper').value.trim();
+      break;
+  }
+}
+
+// ================================================================
+// CHANNEL CHIPS
+// ================================================================
+document.querySelectorAll('.channel-chip input[type=checkbox]').forEach(cb => {
+  cb.addEventListener('change', () => {
+    cb.closest('.channel-chip').classList.toggle('selected', cb.checked);
+    S.channels = Array.from(document.querySelectorAll('input[name=channel]:checked')).map(x => x.value);
+  });
+});
+
+// Payment gate toggle
+document.getElementById('toggle-payment-gate').addEventListener('change', e => {
+  S.payment_gate = e.target.checked;
+  document.getElementById('payment-gate-config').classList.toggle('show', e.target.checked);
+});
+
+// Calendar sync toggle
+document.getElementById('toggle-cal-sync').addEventListener('change', e => {
+  S.cal_sync = e.target.checked;
+  document.getElementById('cal-sync-config').classList.toggle('show', e.target.checked);
+});
+
+// ================================================================
+// MAP
+// ================================================================
+let locationMap, locationMarker, mapInitialized = false;
+const NOMINATIM = 'https://nominatim.openstreetmap.org';
+
+function initMap() {
+  if (mapInitialized) return;
+  mapInitialized = true;
+
+  locationMap = L.map('locationMap').setView([48.8566, 2.3522], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(locationMap);
+
+  locationMap.on('click', e => {
+    setCoords(e.latlng.lat, e.latlng.lng);
+    reverseGeocode(e.latlng.lat, e.latlng.lng);
+  });
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      locationMap.setView([pos.coords.latitude, pos.coords.longitude], 14);
+      setCoords(pos.coords.latitude, pos.coords.longitude);
+      reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+    }, () => {});
+  }
+
+  setTimeout(() => locationMap.invalidateSize(), 80);
+}
+
+function setCoords(lat, lng) {
+  S.lat = lat; S.lng = lng;
+  document.getElementById('f-lat').value = lat.toFixed(6);
+  document.getElementById('f-lng').value = lng.toFixed(6);
+  if (!locationMarker) { locationMarker = L.marker([lat,lng]).addTo(locationMap); }
+  else { locationMarker.setLatLng([lat,lng]); }
+  guessTimezone(lat, lng);
+}
+
+function guessTimezone(lat, lng) {
+  // Simple lookup: use Intl if browser supports it or use common region guesses
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    // Better: we'd call a timezone API, but for now set a placeholder
+    if (!document.getElementById('f-timezone').value) {
+      document.getElementById('f-timezone').value = tz;
+      S.timezone = tz;
+    }
+  } catch(e) {}
+}
+
+async function geocodeAddress(q) {
+  if (!q || q.length < 3) return;
+  try {
+    const r = await fetch(`${NOMINATIM}/search?format=json&q=${encodeURIComponent(q)}&limit=1`, { headers:{ Accept:'application/json' } });
+    const d = await r.json();
+    if (!d || !d.length) return;
+    const lat = parseFloat(d[0].lat), lng = parseFloat(d[0].lon);
+    if (!isFinite(lat) || !isFinite(lng)) return;
+    if (!mapInitialized) initMap();
+    locationMap.setView([lat, lng], 15);
+    setCoords(lat, lng);
+    document.getElementById('f-address').value = d[0].display_name;
+  } catch(e) { console.error(e); }
+}
+
+async function reverseGeocode(lat, lng) {
+  try {
+    const r = await fetch(`${NOMINATIM}/reverse?format=json&lat=${lat}&lon=${lng}`, { headers:{ Accept:'application/json' } });
+    const d = await r.json();
+    if (d && d.display_name) document.getElementById('f-address').value = d.display_name;
+  } catch(e) {}
+}
+
+document.getElementById('btn-geocode').addEventListener('click', () => {
+  geocodeAddress(document.getElementById('f-address').value.trim());
+});
+document.getElementById('f-address').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); geocodeAddress(e.target.value.trim()); }
+});
+document.getElementById('btn-toggle-coords').addEventListener('click', () => {
+  const row = document.getElementById('coordsRow');
+  const btn = document.getElementById('btn-toggle-coords');
+  const hidden = row.style.display === 'none';
+  row.style.display = hidden ? 'flex' : 'none';
+  btn.textContent = hidden ? 'Hide GPS coordinates' : 'Show GPS coordinates';
+});
+document.getElementById('f-lat').addEventListener('change', () => {
+  const lat = parseFloat(document.getElementById('f-lat').value);
+  const lng = parseFloat(document.getElementById('f-lng').value);
+  if (isFinite(lat) && isFinite(lng)) { if (!mapInitialized) initMap(); locationMap.setView([lat,lng],15); setCoords(lat,lng); reverseGeocode(lat,lng); }
+});
+
+// ================================================================
+// CREATE QUEUE — API CALL
+// ================================================================
+document.getElementById('btn-create-queue').addEventListener('click', async () => {
+  const errEl = document.getElementById('create-err');
+  const loader = document.getElementById('create-loading');
+  const btn = document.getElementById('btn-create-queue');
+  errEl.classList.remove('show');
+  loader.style.display = 'block';
+  btn.disabled = true;
+
+  const payload = buildPayload();
+
+  try {
+    const res = await fetch('/api/intime/queues', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to create queue');
+    window.location.href = '/modules/In-Time/manage/page 2.html';
+  } catch(e) {
+    errEl.textContent = e.message || 'An error occurred. Please try again.';
+    errEl.classList.add('show');
+    loader.style.display = 'none';
+    btn.disabled = false;
+  }
+});
+
+function buildPayload() {
+  return {
+    name:          S.queue_name || null,
+    venue:         S.venue || null,
+    location:      S.address || null,
+    gps_lat:       S.lat,
+    gps_lng:       S.lng,
+    timezone:      S.timezone || null,
+    language:      S.language,
+    currency:      S.currency,
+    biz_type:      S.biz_type || null,
+
+    archetype:     S.archetype,
+    reservation:   S.reservation || S.ete_mode,
+    capacity: {
+      model:       S.archetype,
+      slot_types:  S.slot_types,
+      wave_duration:  S.wave_duration,
+      wave_capacity:  S.wave_capacity,
+      wave_mode:      S.wave_mode,
+      advance_horizon: S.advance_horizon,
+      flow_release:    S.flow_release,
+    },
+    booking_access:    S.booking_access,
+    anon_device_limit: S.anon_device_limit,
+    anon_confirmation: S.anon_confirmation,
+    listed_request_workflow: S.listed_request_workflow,
+    group_rules: S.booking_access.includes('group') ? {
+      max_per_day: S.group_max_per_day,
+      capacity:    S.group_capacity,
+      horizon:     S.group_horizon,
+    } : null,
+
+    admission_mode:  S.admission_mode,
+    noscan_window:   S.noscan_window,
+    call_mode:       S.call_mode,
+
+    show_eet:              S.show_eet,
+    show_ete:              S.show_ete || S.ete_mode === 'numbers_ete',
+    early_entry_enabled:   S.early_entry_enabled,
+    early_entry_window:    S.early_entry_window,
+    early_entry_max_candidates: S.early_entry_max_candidates,
+
+    channels:        S.channels,
+    whatsapp_mode:   S.whatsapp_mode,
+
+    payment_gate:    S.payment_gate,
+    payment_mode:    S.payment_mode,
+    manual_confirm:  S.manual_confirm,
+    confirm_hold:    S.confirm_hold,
+    confirm_channel: S.confirm_channel,
+
+    cal_sync:        S.cal_sync,
+    cal_provider:    S.cal_provider,
+    cal_horizon:     S.cal_horizon,
+    conflict_action: S.conflict_action,
+
+    theme:           S.theme,
+    host_wallpaper:  S.host_wallpaper || null,
+    queue_wallpaper: S.queue_wallpaper || null,
+  };
+}
+
+// ================================================================
+// FAB / DRAWER
+// ================================================================
+window.InTimeNav = {
+  goHostHome:       () => window.location.href = '/pages/host/dashboard.html',
+  goHostSettings:   () => window.location.href = '/pages/host/settings.html',
+  goBackFromManage: () => history.length > 1 ? history.back() : window.location.href = '/pages/host/dashboard.html',
+  performLogout: async () => {
+    try { await fetch('/api/auth/logout', { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'} }); } catch(e) {}
+    try { localStorage.removeItem('auth_token'); localStorage.removeItem('user_profile'); } catch(e) {}
+    window.location.href = '/pages/auth/login.html';
+  },
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderProgress();
+  renderSubstep('0-1');
+  initMap();
+
+  // Wire choice cards on all static (non-dynamic) screens
+  ['screen-1-1','screen-4-1','screen-6-2','screen-7-1','screen-7-2','screen-8-1','screen-9-1'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) wireChoiceCards(el);
+  });
+
+  if (window.Drawer?.mount) window.Drawer.mount({ mode:'host', onLogout: window.InTimeNav.performLogout });
+  if (window.FAB?.mount) window.FAB.mount({
+    useTopBand: true, useBottomBand: true,
+    home:   { title:'Home',     label:'🏠', onClick: window.InTimeNav.goHostHome },
+    config: { title:'Settings', label:'⚙️', onClick: window.InTimeNav.goHostSettings },
+    onBack: window.InTimeNav.goBackFromManage,
+  });
+});
+
+// Geometry-based hard hide of bottom-right FAB button
+function hideBottomRightFab() {
+  const bandH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--band-h')) || 68;
+  const vh = window.innerHeight, vw = window.innerWidth;
+  Array.from(document.querySelectorAll('button,a')).filter(el => {
+    if (el.closest('.wiz-card-footer')) return false;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return false;
+    return (r.top + r.height/2) > vh - bandH - 80 && (r.left + r.width/2) > vw * 0.6;
+  }).forEach(el => { el.style.display='none'; el.style.visibility='hidden'; el.style.pointerEvents='none'; });
+}
+hideBottomRightFab();
+new MutationObserver(hideBottomRightFab).observe(document.body, { childList:true, subtree:true });
+window.addEventListener('resize', hideBottomRightFab);
+</script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+{
+  "A11": {
+    "label": "In-Time - Virtual queuing services",
+    "module_key": "In-Time",
+    "display_name": "In-Time"
+  },
+  "A12": {
+    "label": "Let’s Get Out - Tour guiding services",
+    "module_key": "Let's Get Out!",
+    "display_name": "Let's Get Out!"
+  },
+  "A13": {
+    "label": "My events - Events organizing services",
+    "module_key": "My Events",
+    "display_name": "My Events"
+  },
+  "A14": {
+    "label": "Cool Stuff - Promos & discounts management services",
+    "module_key": "Promos & Discounts Coupons",
+    "display_name": "Promos & Discounts Coupons"
+  },
+
+  "A15": {
+    "label": "My Advertisements",
+    "module_key": "My Advertisements",
+    "display_name": "My Advertisements"
+  },
+  "A16": {
+    "label": "What to Watch Tonight",
+    "module_key": "What to Watch Tonight",
+    "display_name": "What to Watch Tonight"
+  }
+}

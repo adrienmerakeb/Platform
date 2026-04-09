@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Book a spot — In-Time</title>
+<link rel="stylesheet" href="/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --v:#7c3aed;--v-s:#ede9fc;--v-d:#6d28d9;
+  --blue:#2563eb;--blue-s:#eff6ff;
+  --green:#16a34a;--green-s:#f0fdf4;
+  --amber:#d97706;--amber-s:#fffbeb;
+  --red:#dc2626;--red-s:#fef2f2;
+  --txt:#1a1825;--muted:#6b6880;--hint:#9b98aa;
+  --surf:#fff;--bg:#f4f3f8;--bord:#e2e0ea;--bord-f:#7c3aed;
+  --gray:#f0eff5;--gray-m:#d4d2de;
+  --r:14px;--ri:9px;
+  --sh:0 2px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --ring:0 0 0 3px rgba(124,58,237,.18);
+  --font:"DM Sans",sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:var(--font);background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55}
+.shell{max-width:560px;margin:0 auto;padding:84px 18px 120px}
+.hero{background:linear-gradient(135deg,var(--v) 0%,var(--v-d) 100%);border-radius:var(--r);padding:20px 20px 18px;margin-bottom:20px;color:#fff;position:relative;overflow:hidden;box-shadow:0 6px 24px rgba(124,58,237,.3);}
+.hero::before{content:"";position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.07);pointer-events:none;}
+.hero-tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:rgba(255,255,255,.18);border-radius:999px;padding:3px 10px;margin-bottom:10px;}
+.hero h1{font-size:20px;font-weight:700;margin-bottom:4px}
+.hero-sub{font-size:13px;opacity:.85;margin-bottom:2px}
+.hero-addr{font-size:12px;opacity:.65}
+.hero-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.hero-pill{font-size:11.5px;font-weight:600;padding:3px 11px;border-radius:999px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);}
+.step-bar{display:flex;align-items:flex-start;gap:0;margin-bottom:20px;background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);padding:14px 16px;}
+.step-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;text-align:center;}
+.step-item:not(:last-child)::after{content:"";position:absolute;top:10px;left:calc(50% + 13px);right:calc(-50% + 13px);height:2px;background:var(--bord);}
+.step-item.done:not(:last-child)::after,.step-item.active:not(:last-child)::after{background:var(--v)}
+.step-dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--bord);background:var(--surf);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;transition:all .2s;}
+.step-item.active .step-dot{border-color:var(--v);background:var(--v);color:#fff}
+.step-item.done .step-dot{border-color:var(--green);background:var(--green);color:#fff}
+.step-item.active .step-lbl{color:var(--v);font-weight:700}
+.step-item.done .step-lbl{color:var(--green)}
+.step-lbl{font-size:10.5px;color:var(--hint);white-space:nowrap}
+.card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);padding:18px 20px;margin-bottom:14px;}
+.card-title{font-size:14.5px;font-weight:700;color:var(--txt);margin-bottom:4px}
+.card-sub{font-size:13px;color:var(--muted);line-height:1.5}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+@media(max-width:380px){.mode-grid{grid-template-columns:1fr}}
+.mode-card{background:var(--surf);border:1.5px solid var(--bord);border-radius:var(--r);padding:20px 14px;cursor:pointer;transition:all .18s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.mode-card:hover{border-color:var(--v);background:var(--v-s);transform:translateY(-2px);box-shadow:0 6px 20px rgba(124,58,237,.12);}
+.mode-ico{font-size:30px}
+.mode-title{font-size:14px;font-weight:700;color:var(--txt)}
+.mode-desc{font-size:11.5px;color:var(--muted);line-height:1.4}
+.mode-card:hover .mode-title{color:var(--v)}
+.slot-type-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.slot-type-card{background:var(--surf);border:1.5px solid var(--bord);border-radius:var(--r);padding:14px 16px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:12px;}
+.slot-type-card:hover,.slot-type-card.sel{border-color:var(--v);background:var(--v-s)}
+.stc-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--bord);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;transition:all .15s;}
+.slot-type-card.sel .stc-check{background:var(--v);border-color:var(--v);color:#fff}
+.stc-name{font-size:14px;font-weight:700;color:var(--txt)}
+.stc-meta{font-size:12px;color:var(--muted);margin-top:2px}
+.date-row{display:flex;align-items:center;gap:10px;margin-bottom:16px;background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);padding:13px 16px;}
+.date-row label{font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap}
+.date-row input[type=date]{flex:1;border:1.5px solid var(--bord);border-radius:var(--ri);padding:8px 11px;font-family:var(--font);font-size:14px;color:var(--txt);background:var(--surf);outline:none;transition:border-color .18s,box-shadow .18s;}
+.date-row input:focus{border-color:var(--bord-f);box-shadow:var(--ring)}
+.sec-lbl{font-size:11.5px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;}
+.wave-outer{display:flex;align-items:center;gap:8px;margin-bottom:16px;}
+.wave-scroll{flex:1;display:flex;gap:10px;overflow-x:auto;padding:4px 2px 10px;scroll-snap-type:x mandatory;scrollbar-width:none;}
+.wave-scroll::-webkit-scrollbar{display:none}
+.nav-arr{flex-shrink:0;width:32px;height:32px;border-radius:50%;border:1.5px solid var(--bord);background:var(--surf);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:var(--muted);transition:all .15s;}
+.nav-arr:hover{background:var(--gray);border-color:var(--v);color:var(--v)}
+.wave-card{min-width:126px;max-width:146px;flex:0 0 auto;scroll-snap-align:center;background:var(--surf);border:1.5px solid var(--bord);border-radius:var(--r);padding:11px 12px 9px;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .12s;position:relative;}
+.wave-card:hover{border-color:var(--v);transform:translateY(-2px);box-shadow:0 6px 18px rgba(124,58,237,.12)}
+.wave-card.sel{border-color:var(--v);background:var(--v-s);box-shadow:0 6px 18px rgba(124,58,237,.18);transform:translateY(-2px)}
+.wave-card.past,.wave-card.full{opacity:.4;pointer-events:none}
+.wave-card.now-wave{border-color:var(--green)}
+.wave-card.now-wave .wave-time{color:var(--green)}
+.wave-now-badge{position:absolute;top:7px;right:7px;font-size:9.5px;font-weight:700;color:var(--green);background:var(--green-s);border-radius:999px;padding:1px 7px;}
+.wave-time{font-size:15px;font-weight:700;color:var(--txt);margin-bottom:1px}
+.wave-window{font-size:11px;color:var(--muted)}
+.wave-rem{font-size:11.5px;color:var(--muted);margin-top:5px}
+.wave-rem strong{color:var(--txt)}
+.party-row{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.party-lbl strong{display:block;font-size:14px;font-weight:600;color:var(--txt)}
+.party-lbl small{font-size:12px;color:var(--muted)}
+.party-ctrl{display:flex;align-items:center;gap:12px}
+.ps-btn{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--bord);background:var(--surf);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;transition:all .12s;}
+.ps-btn:hover{background:var(--v);border-color:var(--v);color:#fff}
+.ps-val{font-size:22px;font-weight:700;color:var(--v);min-width:32px;text-align:center}
+.live-recap{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:14px;}
+.lr-hd{background:linear-gradient(135deg,var(--green-s),#f0fdf4);padding:14px 18px;border-bottom:1px solid var(--bord);display:flex;align-items:center;gap:10px;}
+.lr-hd-ico{font-size:22px}
+.lr-hd-title{font-size:14.5px;font-weight:700;color:var(--green)}
+.lr-hd-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.lr-row{display:flex;justify-content:space-between;align-items:center;padding:8px 18px;border-bottom:1px solid var(--bord);}
+.lr-row:last-child{border-bottom:none}
+.lr-key{font-size:13px;color:var(--muted);font-weight:500}
+.lr-val{font-size:13.5px;font-weight:700;color:var(--txt);text-align:right}
+.lr-val.hl{color:var(--v)}
+.time-badge{display:inline-flex;align-items:center;gap:5px;background:var(--amber-s);border:1.5px solid #fcd34d;border-radius:var(--ri);padding:4px 12px;font-size:13.5px;font-weight:700;color:var(--amber);}
+.time-badge.green{background:var(--green-s);border-color:#86efac;color:var(--green)}
+.recap-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:14px;overflow:hidden;}
+.recap-row{display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid var(--bord);}
+.recap-row:last-child{border-bottom:none}
+.rk{font-size:13px;color:var(--muted);font-weight:500}
+.rv{font-size:13.5px;font-weight:700;color:var(--txt);text-align:right}
+.book-btn{width:100%;padding:14px;border:none;border-radius:var(--r);background:var(--v);color:#fff;font-family:var(--font);font-size:15px;font-weight:700;cursor:pointer;transition:background .18s,transform .1s;box-shadow:0 4px 18px rgba(124,58,237,.28);}
+.book-btn:hover{background:var(--v-d)}
+.book-btn:active{transform:scale(.98)}
+.book-btn:disabled{opacity:.4;pointer-events:none}
+.book-btn.green{background:var(--green);box-shadow:0 4px 16px rgba(22,163,74,.25)}
+.book-btn.green:hover{background:#15803d}
+.back-link{display:inline-flex;align-items:center;gap:5px;font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer;margin-bottom:16px;background:none;border:none;font-family:var(--font);padding:0;}
+.back-link:hover{color:var(--v)}
+.conf-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);padding:26px 22px;text-align:center;margin-bottom:14px;}
+.conf-ico{font-size:48px;margin-bottom:12px}
+.conf-title{font-size:20px;font-weight:700;color:var(--green);margin-bottom:6px}
+.conf-sub{font-size:13.5px;color:var(--muted);margin-bottom:18px;line-height:1.6}
+.code-pill{display:inline-block;font-size:22px;font-weight:700;letter-spacing:.12em;color:var(--v);background:var(--v-s);border:1.5px solid var(--v);border-radius:var(--ri);padding:10px 24px;margin-bottom:8px;cursor:pointer;}
+.code-pill:hover{background:var(--v);color:#fff}
+.conf-qr{max-width:180px;border-radius:var(--ri);border:1px solid var(--bord);margin:12px auto 0;display:block}
+.conf-hint{font-size:12px;color:var(--hint);margin-top:8px}
+.conf-pos{display:inline-flex;align-items:center;gap:8px;background:var(--v-s);border:1.5px solid var(--v);border-radius:var(--ri);padding:8px 18px;margin:12px 0;font-size:14px;font-weight:700;color:var(--v);}
+.btn-row{display:flex;flex-direction:column;gap:10px}
+.sec-btn{width:100%;padding:12px;border-radius:var(--r);border:1.5px solid var(--bord);background:var(--gray);color:var(--txt);font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;}
+.sec-btn:hover{background:var(--bord)}
+.errbar{background:var(--red-s);border:1.5px solid #fca5a5;border-radius:var(--ri);padding:10px 14px;font-size:13px;color:var(--red);font-weight:500;margin-bottom:14px;display:none}
+.errbar.on{display:block}
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(26,24,37,.9);color:#fff;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:200;white-space:nowrap;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body class="has-top-band has-bottom-band">
+<header class="site"><div class="title">Book a Spot</div></header>
+
+<div class="shell">
+
+  <div class="hero" id="hero">
+    <div class="hero-tag" id="heroTag">&#x1F550; In-Time</div>
+    <h1 id="heroTitle">Loading&hellip;</h1>
+    <div id="heroSub"></div>
+    <div id="heroAddr"></div>
+    <div class="hero-pills" id="heroPills"></div>
+  </div>
+
+  <div class="errbar" id="errbar"></div>
+  <div id="stepBar"></div>
+
+  <!-- SCREEN: mode choice (MIXED) -->
+  <div id="scMode" style="display:none">
+    <div class="card">
+      <div class="card-title">How would you like to book?</div>
+      <div class="card-sub">This queue supports both live walk-in and advance reservations.</div>
+    </div>
+    <div class="mode-grid">
+      <div class="mode-card" onclick="chooseLive()">
+        <div class="mode-ico">⚡</div>
+        <div class="mode-title">Book next available</div>
+        <div class="mode-desc">Join the live queue and get the next open slot today — no date needed.</div>
+        <div style="margin-top:6px;font-size:11px;font-weight:700;color:var(--v);background:var(--v-s);border-radius:999px;padding:3px 10px;display:inline-block">Instant</div>
+      </div>
+      <div class="mode-card" onclick="chooseAdvance()">
+        <div class="mode-ico">📅</div>
+        <div class="mode-title">Book for later</div>
+        <div class="mode-desc">Choose a specific date and time slot ahead of your visit.</div>
+        <div style="margin-top:6px;font-size:11px;font-weight:700;color:var(--amber);background:var(--amber-s);border-radius:999px;padding:3px 10px;display:inline-block">In advance</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN: slot type -->
+  <div id="scSlotType" style="display:none">
+    <button class="back-link" onclick="goBack()">&#8592; Back</button>
+    <div class="card"><div class="card-title">What type of slot?</div>
+      <div class="card-sub">Select the service or resource you need.</div></div>
+    <div class="slot-type-list" id="slotTypeList"></div>
+    <button class="book-btn" id="btnSlotTypeNext" onclick="confirmSlotType()" disabled>Continue &rarr;</button>
+  </div>
+
+  <!-- SCREEN: date + wave calendar (ADVANCE) -->
+  <div id="scCalendar" style="display:none">
+    <button class="back-link" onclick="goBack()">&#8592; Back</button>
+    <div class="date-row">
+      <label for="datePicker">&#x1F4C5; Date</label>
+      <input type="date" id="datePicker">
+    </div>
+    <div class="sec-lbl" id="waveLabel">Available time slots</div>
+    <div class="wave-outer">
+      <button class="nav-arr" onclick="document.getElementById('waveScroll').scrollBy({left:-320,behavior:'smooth'})">&#9664;</button>
+      <div class="wave-scroll" id="waveScroll"></div>
+      <button class="nav-arr" onclick="document.getElementById('waveScroll').scrollBy({left:320,behavior:'smooth'})">&#9654;</button>
+    </div>
+    <div class="party-row">
+      <div class="party-lbl"><strong>Party size</strong><small>How many people?</small></div>
+      <div class="party-ctrl">
+        <button class="ps-btn" onclick="adjustPS(-1)">&#8722;</button>
+        <div class="ps-val" id="psValAdv">1</div>
+        <button class="ps-btn" onclick="adjustPS(+1)">+</button>
+      </div>
+    </div>
+    <button class="book-btn" id="btnCalNext" onclick="goToRecap()" disabled>Continue &rarr;</button>
+  </div>
+
+  <!-- SCREEN: live next-slot recap -->
+  <div id="scLive" style="display:none">
+    <button class="back-link" onclick="goBack()">&#8592; Back</button>
+    <div class="live-recap">
+      <div class="lr-hd">
+        <span class="lr-hd-ico">&#x26A1;</span>
+        <div><div class="lr-hd-title">Next available slot</div>
+          <div class="lr-hd-sub" id="liveRecapSub">Joining the live queue</div></div>
+      </div>
+      <div id="liveRecapBody"></div>
+    </div>
+    <div class="party-row">
+      <div class="party-lbl"><strong>Party size</strong><small>How many people?</small></div>
+      <div class="party-ctrl">
+        <button class="ps-btn" onclick="adjustPS(-1)">&#8722;</button>
+        <div class="ps-val" id="psValLive">1</div>
+        <button class="ps-btn" onclick="adjustPS(+1)">+</button>
+      </div>
+    </div>
+    <button class="book-btn green" id="btnLiveConfirm" onclick="confirmBooking()">&#x2713; Confirm my spot</button>
+  </div>
+
+  <!-- SCREEN: advance recap -->
+  <div id="scRecap" style="display:none">
+    <button class="back-link" onclick="goBack()">&#8592; Back</button>
+    <div class="card"><div class="card-title">Confirm your booking</div>
+      <div class="card-sub">Review the details then confirm.</div></div>
+    <div class="recap-card" id="recapCard"></div>
+    <button class="book-btn" id="btnConfirm" onclick="confirmBooking()">&#x2713; Confirm booking</button>
+  </div>
+
+  <!-- SCREEN: confirmation -->
+  <div id="scConf" style="display:none">
+    <div class="conf-card">
+      <div class="conf-ico">&#x1F389;</div>
+      <div class="conf-title">Booking confirmed!</div>
+      <div class="conf-sub" id="confSub">Your spot is reserved.</div>
+      <div id="confPosWrap" style="display:none">
+        <div class="conf-pos">&#x1F522; Queue position: <span id="confPos">&mdash;</span></div>
+      </div>
+      <div class="code-pill" id="confCode" onclick="copyCode()" title="Tap to copy">&mdash;</div>
+      <div class="conf-hint">Tap code to copy &middot; Show QR at entry</div>
+      <img class="conf-qr" id="confQr" src="" alt="Booking QR" style="display:none">
+    </div>
+    <div class="btn-row">
+      <a class="book-btn" id="followBtn" href="#" style="text-align:center;text-decoration:none;display:block">
+        &#x1F4CD; Follow my progression &rarr;
+      </a>
+      <button class="sec-btn" onclick="bookAnother()">Book another spot</button>
+      <button class="sec-btn" onclick="location.href='/modules/In-Time/use/page 1.html'">My bookings &rarr;</button>
+    </div>
+  </div>
+
+</div>
+<div id="toast"></div>
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+<script>
+'use strict';
+const params=new URLSearchParams(location.search);
+const queueId=params.get('queueId')||params.get('queue_id');
+const nameHint=params.get('name')||'';
+const addrHint=params.get('addr')||'';
+let queue=null,formula='LIVE_ONLY',arch='D',slots=[],waves=[],selectedWave=null,selectedSlotType=null,partySize=1,chosenMode=null;
+const MAX_PS=5;
+const screenStack=[];
+const SCREENS=['scMode','scSlotType','scCalendar','scLive','scRecap','scConf'];
+let _tt;
+function toast(msg,ms=2500){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),ms);}
+function setErr(msg){const e=document.getElementById('errbar');e.textContent=msg||'';e.classList.toggle('on',!!msg);}
+function esc(s){const d=document.createElement('div');d.textContent=String(s??'');return d.innerHTML;}
+function todayISO(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function getDeviceId(){let id=localStorage.getItem('intime_device_id');if(!id){id=crypto.randomUUID();localStorage.setItem('intime_device_id',id);}return id;}
+function tMin(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
+function toHHMM(min){return `${String(Math.floor(min/60)).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`;}
+function formatCode(raw){if(!raw)return '';const s=String(raw).toUpperCase().replace(/-/g,'');if(s.length===9)return s.slice(0,3)+'-'+s.slice(3,6)+'-'+s.slice(6);return s;}
+function getSelectedDate(){return document.getElementById('datePicker').value||todayISO();}
+
+/* ── Screen nav ── */
+function showScreen(id){SCREENS.forEach(s=>document.getElementById(s).style.display='none');document.getElementById(id).style.display='';window.scrollTo({top:0,behavior:'smooth'});renderStepBar(id);}
+function pushScreen(id){screenStack.push(id);showScreen(id);}
+function goBack(){screenStack.pop();const prev=screenStack[screenStack.length-1];if(prev)showScreen(prev);else location.href='/modules/In-Time/use/page 2.html';}
+
+/* ── Step bar ── */
+function hasSlotTypeStep(){ return slots.length > 1; }
+function stepsFor(){
+  const st = hasSlotTypeStep();
+  if(formula==='MIXED')    return st?['Mode','Type','Schedule','Confirm','Done']:['Mode','Schedule','Confirm','Done'];
+  if(formula==='ADVANCE_ONLY') return st?['Type','Schedule','Confirm','Done']:['Schedule','Confirm','Done'];
+  return st?['Type','Next slot','Done']:['Next slot','Done'];
+}
+/* Dynamic step index maps — recalculated based on whether slot-type step exists */
+function stepIdx(cur){
+  const st = hasSlotTypeStep();
+  if(formula==='MIXED'){
+    const m={scMode:0};
+    if(st){ m.scSlotType=1; m.scCalendar=2; m.scLive=2; m.scRecap=3; m.scConf=4; }
+    else  { m.scCalendar=1; m.scLive=1;     m.scRecap=2; m.scConf=3; }
+    return m[cur]??0;
+  }
+  if(formula==='ADVANCE_ONLY'){
+    const m={};
+    if(st){ m.scSlotType=0; m.scCalendar=1; m.scRecap=2; m.scConf=3; }
+    else  { m.scCalendar=0; m.scRecap=1;    m.scConf=2; }
+    return m[cur]??0;
+  }
+  /* LIVE_ONLY */
+  const m={};
+  if(st){ m.scSlotType=0; m.scLive=1; m.scConf=2; }
+  else  { m.scLive=0;     m.scConf=1; }
+  return m[cur]??0;
+}
+function renderStepBar(cur){
+  const bar=document.getElementById('stepBar');
+  const steps=stepsFor();
+  if(steps.length<=1){bar.innerHTML='';return;}
+  const ai=stepIdx(cur);
+  bar.innerHTML='<div class="step-bar">'+steps.map((s,i)=>{
+    const cls=i<ai?'done':i===ai?'active':'';
+    return `<div class="step-item ${cls}"><div class="step-dot">${i<ai?'✓':i+1}</div><div class="step-lbl">${s}</div></div>`;
+  }).join('')+'</div>';
+}
+
+/* ── Party size ── */
+function adjustPS(d){
+  partySize=Math.max(1,Math.min(MAX_PS,partySize+d));
+  ['psValAdv','psValLive'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=partySize;});
+  /* Update live recap party row if visible */
+  const lr=document.getElementById('lrPartyVal');
+  if(lr)lr.textContent=partySize;
+  updateCalBtn();
+}
+
+/* ── Slot type screen ── */
+function buildSlotTypeScreen(){
+  if(!slots.length){return false;}
+  if(slots.length===1){selectedSlotType=slots[0];return false;}
+  document.getElementById('slotTypeList').innerHTML=slots.map(s=>`
+    <div class="slot-type-card" id="stc-${s.id}" onclick="selectSlotType(${s.id})">
+      <div class="stc-check" id="stcc-${s.id}"></div>
+      <div style="flex:1;min-width:0">
+        <div class="stc-name">${esc(s.name)}</div>
+        <div class="stc-meta">${s.duration?s.duration+' min':''}${s.capacity>1?' &middot; up to '+s.capacity+' people':''}</div>
+      </div>
+      <div style="color:var(--hint);font-size:14px">&#8594;</div>
+    </div>`).join('');
+  return true;
+}
+function selectSlotType(id){
+  selectedSlotType=slots.find(s=>s.id===id)||null;
+  document.querySelectorAll('.slot-type-card').forEach(el=>el.classList.toggle('sel',el.id==='stc-'+id));
+  document.querySelectorAll('.stc-check').forEach(el=>{el.innerHTML=el.id==='stcc-'+id?'&#x2713;':''});
+  document.getElementById('btnSlotTypeNext').disabled=false;
+}
+function confirmSlotType(){
+  if(!selectedSlotType)return;
+  const maxPS=selectedSlotType.capacity||MAX_PS;
+  partySize=Math.min(partySize,maxPS);
+  ['psValAdv','psValLive'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=partySize;});
+  const mode=chosenMode||(formula==='LIVE_ONLY'?'live':'advance');
+  if(mode==='live'){buildLiveScreen();pushScreen('scLive');}
+  else{initDatePicker();buildWaves();pushScreen('scCalendar');}
+}
+
+/* ── Mixed mode ── */
+function chooseLive(){chosenMode='live';const ns=buildSlotTypeScreen();if(ns)pushScreen('scSlotType');else{buildLiveScreen();pushScreen('scLive');}}
+function chooseAdvance(){chosenMode='advance';const ns=buildSlotTypeScreen();if(ns)pushScreen('scSlotType');else{initDatePicker();buildWaves();pushScreen('scCalendar');}}
+
+/* ── Date picker ── */
+function initDatePicker(){const dp=document.getElementById('datePicker');const today=todayISO();dp.min=today;if(!dp.value||dp.value<today)dp.value=today;dp.onchange=()=>{selectedWave=null;buildWaves();updateCalBtn();};}
+function updateCalBtn(){document.getElementById('btnCalNext').disabled=!selectedWave;}
+
+/* ── Waves ── */
+function getWaveConfig(){
+  let openMin=9*60,closeMin=18*60,cadence=15,cap=40;
+  const q=queue;
+  if(q.wave_config_json){const wc=typeof q.wave_config_json==='string'?JSON.parse(q.wave_config_json):q.wave_config_json;if(wc.wave_duration)cadence=Number(wc.wave_duration);if(wc.wave_capacity)cap=Number(wc.wave_capacity);}
+  if(selectedSlotType){if(selectedSlotType.duration)cadence=selectedSlotType.duration;if(selectedSlotType.capacity)cap=selectedSlotType.capacity;}
+  if(q.schedule_json){
+    const sc=typeof q.schedule_json==='string'?JSON.parse(q.schedule_json):q.schedule_json;
+    if(sc.globalOpen)openMin=tMin(sc.globalOpen);
+    if(sc.globalClose)closeMin=tMin(sc.globalClose);
+    const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const dn=dayNames[new Date(getSelectedDate()+'T12:00:00').getDay()];
+    const dc=sc.days?.find(d=>d.n===dn);
+    if(dc&&!dc.on)return null;
+    if(dc&&!sc.sameHours){openMin=tMin(dc.open||'09:00');closeMin=tMin(dc.close||'17:00');}
+  }
+  return{openMin,closeMin,cadence,cap};
+}
+function buildWaves(){
+  document.getElementById('waveLabel').textContent=arch==='C'?'Available waves':'Available time slots';
+  const scroll=document.getElementById('waveScroll');
+  const cfg=getWaveConfig();
+  if(!cfg){scroll.innerHTML='<div style="padding:16px;color:var(--muted);font-size:13px">Closed on this day.</div>';waves=[];return;}
+  const{openMin,closeMin,cadence,cap}=cfg;
+  waves=[];let cur=openMin;
+  while(cur<closeMin){const stop=Math.min(cur+cadence,closeMin);waves.push({start:cur,stop,label:toHHMM(cur),capacity:cap,remaining:cap,el:null});cur=stop;}
+  renderWaves();
+  const nowMin=new Date().getHours()*60+new Date().getMinutes();
+  const isToday=getSelectedDate()===todayISO();
+  const ti=isToday?waves.findIndex(w=>w.stop>nowMin):0;
+  if(ti>=0&&waves[ti]?.el)setTimeout(()=>waves[ti].el.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'}),80);
+}
+function renderWaves(){
+  const scroll=document.getElementById('waveScroll');scroll.innerHTML='';
+  const nowMin=new Date().getHours()*60+new Date().getMinutes();
+  const isToday=getSelectedDate()===todayISO();
+  waves.forEach(w=>{
+    const past=isToday&&w.stop<=nowMin,isCur=isToday&&w.start<=nowMin&&nowMin<w.stop,full=w.remaining<=0;
+    const el=document.createElement('div');
+    el.className='wave-card'+(past||full?' past':'')+(isCur?' now-wave':'');
+    if(w===selectedWave)el.classList.add('sel');
+    el.innerHTML=(isCur?'<div class="wave-now-badge">Now</div>':'')+
+      `<div class="wave-time">${esc(w.label)}</div>
+       <div class="wave-window">${esc(toHHMM(w.start))}&ndash;${esc(toHHMM(w.stop))}</div>
+       <div class="wave-rem">Available: <strong>${w.remaining}</strong></div>`;
+    if(!past&&!full)el.addEventListener('click',()=>{selectedWave=w;waves.forEach(x=>x.el?.classList.remove('sel'));el.classList.add('sel');updateCalBtn();});
+    w.el=el;scroll.appendChild(el);
+  });
+}
+
+/* ── Live screen ── */
+function buildLiveScreen(){
+  const nowMin=new Date().getHours()*60+new Date().getMinutes();
+  const cfg=getWaveConfig();
+  const sub=document.getElementById('liveRecapSub');
+  const body=document.getElementById('liveRecapBody');
+  const btn=document.getElementById('btnLiveConfirm');
+  btn.disabled=false;
+
+  if(!cfg){
+    sub.textContent='Queue closed today';
+    body.innerHTML='<div class="lr-row"><span class="lr-key">Status</span><span class="lr-val" style="color:var(--red)">Closed today</span></div>';
+    btn.disabled=true;
+    return;
+  }
+
+  const{openMin,closeMin,cadence,cap}=cfg;
+
+  /* For arch D (continuous): no wave slots, just join now */
+  if(arch==='D'){
+    const isOpen=nowMin>=openMin&&nowMin<closeMin;
+    sub.textContent=isOpen?'Queue is open — join now':'Queue not open yet';
+    if(!isOpen){btn.disabled=true;}
+    const showETE=!!queue.show_ete;
+    let rows=`<div class="lr-row"><span class="lr-key">📍 Venue</span><span class="lr-val">${esc(queue.venue_name||queue.name||'—')}</span></div>`;
+    rows+=`<div class="lr-row"><span class="lr-key">📅 Date</span><span class="lr-val">${esc(todayISO())}</span></div>`;
+    rows+=`<div class="lr-row"><span class="lr-key">⏰ Opens</span><span class="lr-val">${esc(toHHMM(openMin))} – ${esc(toHHMM(closeMin))}</span></div>`;
+    rows+=`<div class="lr-row"><span class="lr-key">🌊 Type</span><span class="lr-val">Continuous flow</span></div>`;
+    if(showETE)rows+=`<div class="lr-row"><span class="lr-key">⏱ Est. wait</span><span class="lr-val"><span class="time-badge">~${cadence} min</span></span></div>`;
+    if(isOpen)rows+=`<div class="lr-row"><span class="lr-key">Status</span><span class="lr-val"><span class="time-badge green">Open now ✓</span></span></div>`;
+    if(selectedSlotType)rows+=`<div class="lr-row"><span class="lr-key">🏷 Type</span><span class="lr-val">${esc(selectedSlotType.name)}</span></div>`;
+    body.innerHTML=rows;
+    window._liveSlotDate=todayISO();window._liveSlotStart=nowMin;window._liveSlotStop=nowMin+cadence;
+    return;
+  }
+
+  /* Arch A/B/C — find next available wave */
+  let ns=null,ne=null,cur=openMin;
+  while(cur<closeMin){const stop=Math.min(cur+cadence,closeMin);if(stop>nowMin){ns=cur;ne=stop;break;}cur=stop;}
+
+  if(ns===null){
+    sub.textContent='No more slots today';
+    body.innerHTML='<div class="lr-row"><span class="lr-key">Status</span><span class="lr-val" style="color:var(--red)">Queue closed for today</span></div>';
+    btn.disabled=true;
+    return;
+  }
+
+  const minsUntil=ns<=nowMin?0:ns-nowMin;
+  const isNow=ns<=nowMin&&nowMin<ne;
+  sub.textContent=isNow?'Slot is open now — book your spot':`Next slot opens in ${minsUntil} min`;
+
+  const showEET=queue.show_eet!==false;
+  const showETE=!!queue.show_ete;
+
+  let rows=`<div class="lr-row"><span class="lr-key">📍 Venue</span><span class="lr-val">${esc(queue.venue_name||queue.name||'—')}</span></div>`;
+  rows+=`<div class="lr-row"><span class="lr-key">📅 Date</span><span class="lr-val">${esc(todayISO())}</span></div>`;
+  rows+=`<div class="lr-row"><span class="lr-key">⏰ Time slot</span><span class="lr-val hl">${esc(toHHMM(ns))} – ${esc(toHHMM(ne))}</span></div>`;
+
+  if(arch==='C'){
+    rows+=`<div class="lr-row"><span class="lr-key">🏟 Wave capacity</span><span class="lr-val">${cap} spots</span></div>`;
+  }
+
+  if(showEET){
+    if(minsUntil>0){
+      rows+=`<div class="lr-row"><span class="lr-key">⏱ Entry in</span><span class="lr-val"><span class="time-badge">${minsUntil} min</span></span></div>`;
+    } else if(isNow){
+      rows+=`<div class="lr-row"><span class="lr-key">⏱ Entry</span><span class="lr-val"><span class="time-badge green">Now ✓</span></span></div>`;
+    }
+  }
+  if(showETE&&arch!=='D'){
+    rows+=`<div class="lr-row"><span class="lr-key">⏳ Slot duration</span><span class="lr-val">~${cadence} min</span></div>`;
+  }
+  if(selectedSlotType)rows+=`<div class="lr-row"><span class="lr-key">🏷 Type</span><span class="lr-val">${esc(selectedSlotType.name)}</span></div>`;
+  rows+=`<div class="lr-row"><span class="lr-key">👥 Party size</span><span class="lr-val" id="lrPartyVal">${partySize}</span></div>`;
+  body.innerHTML=rows;
+  window._liveSlotDate=todayISO();window._liveSlotStart=ns;window._liveSlotStop=ne;
+}
+
+/* ── Advance recap ── */
+function goToRecap(){
+  if(!selectedWave)return;
+  document.getElementById('recapCard').innerHTML=[
+    ['&#x1F4CD; Venue',queue.venue_name||queue.name||'&mdash;'],
+    ['&#x1F4C5; Date',getSelectedDate()],
+    ['&#x23F0; Time slot',`${selectedWave.label}&ndash;${toHHMM(selectedWave.stop)}`],
+    selectedSlotType?['&#x1F3F7; Type',selectedSlotType.name]:null,
+    ['&#x1F465; Party size',partySize],
+  ].filter(Boolean).map(([k,v])=>`<div class="recap-row"><span class="rk">${k}</span><span class="rv">${v}</span></div>`).join('');
+  pushScreen('scRecap');
+}
+
+/* ── Book ── */
+async function confirmBooking(){
+  if(!queue){toast('Queue not loaded yet');return;}
+  setErr('');
+  const isLive=arch==='D'||(chosenMode||formula)==='live'||formula==='LIVE_ONLY';
+  const slotDate=isLive?(window._liveSlotDate||todayISO()):getSelectedDate();
+  const deviceId=getDeviceId();
+  const activeBtn=document.getElementById(isLive?'btnLiveConfirm':'btnConfirm');
+  activeBtn.disabled=true;activeBtn.textContent='Booking\u2026';
+  try{
+    const r=await fetch('/api/intime/bookings',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({queue_id:Number(queueId),device_id:deviceId,source:isLive?'live':'advance',slots:[{slot_date:slotDate,party_size:partySize}],include_qr:true})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok)throw new Error(d.error||`HTTP ${r.status}`);
+    showConf(d,slotDate,isLive);
+  }catch(err){
+    setErr('Booking failed: '+err.message);
+    activeBtn.disabled=false;activeBtn.textContent=isLive?'&#x2713; Confirm my spot':'&#x2713; Confirm booking';
+  }
+}
+function showConf(d,slotDate,isLive){
+  const b=d.bookings?.[0];
+  const code=formatCode(b?.human_ref);
+  document.getElementById('confCode').textContent=code||'—';
+
+  /* Build sub line */
+  const timeLabel=isLive&&window._liveSlotStart!=null?' at '+toHHMM(window._liveSlotStart):'';
+  const typeLabel=selectedSlotType?' ('+selectedSlotType.name+')':'';
+  const psLabel=partySize>1?' · '+partySize+' people':'';
+  document.getElementById('confSub').textContent=
+    (queue.name||'Queue')+' · '+slotDate+timeLabel+typeLabel+psLabel;
+
+  /* Queue position — relevant for arch D (continuous flow) */
+  const posWrap=document.getElementById('confPosWrap');
+  if(arch==='D'&&b?.booking_id){
+    document.getElementById('confPos').textContent='#'+b.booking_id;
+    posWrap.style.display='';
+  } else {
+    posWrap.style.display='none';
+  }
+
+  /* QR */
+  const qrImg=d.qr?.[0]?.image_base64||null;
+  const qi=document.getElementById('confQr');
+  if(qrImg){qi.src=qrImg;qi.style.display='';}
+  else qi.style.display='none';
+
+  /* Follow link */
+  const fu=new URL('/modules/In-Time/use/page 4.html',location.origin);
+  if(b?.token_id)fu.searchParams.set('token',b.token_id);
+  if(b?.booking_id)fu.searchParams.set('bid',b.booking_id);
+  fu.searchParams.set('queueId',queueId);
+  document.getElementById('followBtn').href=fu.toString();
+
+  pushScreen('scConf');
+}
+function copyCode(){const c=document.getElementById('confCode').textContent;navigator.clipboard.writeText(c).then(()=>toast('Copied!')).catch(()=>toast(c));}
+function bookAnother(){
+  selectedWave=null;selectedSlotType=null;partySize=1;chosenMode=null;
+  window._liveSlotDate=null;window._liveSlotStart=null;window._liveSlotStop=null;
+  ['psValAdv','psValLive'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='1';});
+  document.getElementById('confQr').style.display='none';
+  document.getElementById('confPosWrap').style.display='none';
+  document.getElementById('confCode').textContent='—';
+  screenStack.length=0;
+  startFlow();
+}
+
+/* ── Hero ── */
+function updateHero(q){
+  document.getElementById('heroTitle').textContent=q.name||nameHint||'Virtual Queue';
+  document.getElementById('heroSub').textContent=q.venue_name||'';
+  document.getElementById('heroAddr').textContent=q.location_text?'📍 '+q.location_text:(addrHint?'📍 '+addrHint:'');
+  document.title='Book — '+(q.name||'Queue')+' — In-Time';
+  const al={A:'Resource',B:'Individual',C:'Wave',D:'Continuous'},fl={LIVE_ONLY:'Live',ADVANCE_ONLY:'Advance',MIXED:'Mixed'};
+  const pills=[];
+  if(q.archetype)pills.push(al[q.archetype]||q.archetype);
+  if(q.booking_formula)pills.push(fl[q.booking_formula]||q.booking_formula);
+  document.getElementById('heroPills').innerHTML=pills.map(p=>`<span class="hero-pill">${esc(p)}</span>`).join('');
+  const tl={LIVE_ONLY:'⚡ Live queue',ADVANCE_ONLY:'📅 Advance booking',MIXED:'🔀 Live or advance'};
+  document.getElementById('heroTag').textContent=tl[q.booking_formula]||'🕐 In-Time';
+}
+
+/* ── Start flow ── */
+function startFlow(){
+  screenStack.length=0;
+  if(formula==='MIXED'){pushScreen('scMode');return;}
+  if(formula==='LIVE_ONLY'){const ns=buildSlotTypeScreen();if(ns){pushScreen('scSlotType');return;}buildLiveScreen();pushScreen('scLive');return;}
+  const ns=buildSlotTypeScreen();if(ns){pushScreen('scSlotType');return;}
+  initDatePicker();buildWaves();pushScreen('scCalendar');
+}
+
+/* ── Load ── */
+async function loadQueue(){
+  if(nameHint)document.getElementById('heroTitle').textContent=nameHint;
+  if(addrHint)document.getElementById('heroAddr').textContent='\u1F4CD '+addrHint;
+  if(!queueId){setErr('No queue ID. Please scan a QR code again.');return;}
+  try{
+    const r=await fetch(`/api/intime/queues/${encodeURIComponent(queueId)}`,{credentials:'same-origin',headers:{Accept:'application/json'}});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok||!d.queue)throw new Error(d.error||'Queue not found');
+    queue=d.queue;formula=queue.booking_formula||'LIVE_ONLY';arch=queue.archetype||'D';
+    if(queue.slots_json){const raw=typeof queue.slots_json==='string'?JSON.parse(queue.slots_json):queue.slots_json;if(Array.isArray(raw))slots=raw;}
+    updateHero(queue);startFlow();
+  }catch(err){setErr('Could not load queue: '+err.message);console.error('[p3]',err);}
+}
+loadQueue();
+if(window.Drawer?.mount)Drawer.mount({mode:'visitor'});
+if(window.FAB?.mount)FAB.mount({useTopBand:true,useBottomBand:true,
+  home:{label:'\u{1F3E0}',title:'Home',onClick:()=>Drawer?.open?.()},
+  config:{label:'\u21BA',title:'Restart',onClick:()=>bookAnother()},
+  onBack:()=>{if(screenStack.length>1)goBack();else location.href='/modules/In-Time/use/page 2.html';},
+});
+</script>
+</body>
+</html>

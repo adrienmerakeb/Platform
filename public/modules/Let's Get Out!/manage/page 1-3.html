@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Let’s Get Out! — Configure Live Guiding (2/2)</title>
+
+  <link rel="stylesheet" href="/css/style.css"/>
+
+  <style>
+    body.has-top-band.has-bottom-band main.container {
+      padding-top: 8vh;
+      padding-bottom: 8vh;
+    }
+
+    main.container {
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+
+    .wizard-hero {
+      margin: 0px auto 0px;
+      padding: 16px 20px 18px;
+      border-radius: 20px;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      backdrop-filter: blur(14px);
+    }
+
+    .wizard-hero h1 {
+      margin: 0 0 4px;
+      font-size: 1.6rem;
+      letter-spacing: .02em;
+    }
+
+    .wizard-hero p {
+      margin: 0;
+      font-size: 0.95rem;
+      opacity: 0.9;
+    }
+
+    .wizard-steps {
+      margin-top: 6px;
+      font-size: 0.82rem;
+      opacity: 0.8;
+    }
+
+    .wizard-body {
+      margin: 16px auto 80px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .wizard-card {
+      border-radius: 18px;
+      padding: 16px 18px 18px;
+      background: #ffffff;
+      color: #1b1b1b;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    }
+
+    .wizard-card h2 {
+      margin: 0 0 6px;
+      font-size: 1.05rem;
+    }
+
+    .wizard-card p {
+      margin: 0 0 10px;
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    .field-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .field {
+      flex: 1 1 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.9rem;
+    }
+
+    .field label {
+      font-weight: 600;
+      font-size: 0.86rem;
+    }
+
+    .field input,
+    .field textarea,
+    .field select {
+      border-radius: 10px;
+      border: 1px solid #d0d7de;
+      padding: 7px 9px;
+      font: inherit;
+    }
+
+    .field textarea {
+      min-height: 70px;
+      resize: vertical;
+    }
+
+    .hint {
+      font-size: 0.8rem;
+      color: #777;
+    }
+
+    /* Bottom actions bar */
+    .bottom-actions {
+      position: fixed;
+      left: 50%;
+      bottom: calc(var(--band-h, 68px) - 10px);
+      transform: translateX(-50%);
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.95);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+      z-index: 990;
+    }
+
+    .bottom-actions button {
+      border-radius: 999px;
+      border: none;
+      padding: 8px 16px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .bottom-actions .ghost {
+      background: transparent;
+      border: 1px solid #d0d7de;
+      color: #555;
+    }
+
+    .bottom-actions .primary {
+      background: #1e88e5;
+      color: #fff;
+    }
+
+    @media (max-width: 640px) {
+      .wizard-hero {
+        margin-top: 64px;
+        padding-inline: 14px;
+      }
+      .wizard-body {
+        margin-bottom: 96px;
+      }
+      .bottom-actions {
+        width: 90%;
+        justify-content: space-between;
+      }
+    }
+  </style>
+</head>
+
+<body class="has-top-band has-bottom-band">
+<header class="site">
+  <div class="title">Let’s Get Out! — Configure Live Guiding (2/2)</div>
+  <div class="subtitle" id="guidingSubtitle">
+    Loading guiding info…
+  </div>
+</header>
+
+<main class="container">
+  <section class="wizard-hero">
+    <h1>Live session configuration</h1>
+    <p>
+      Configure how your Live guiding will be presented to visitors: session
+      slots, duration, pricing and communication options.
+    </p>
+    <div class="wizard-steps">
+      Step 2 of 2 — Live content &amp; options
+    </div>
+  </section>
+
+  <section class="wizard-body">
+
+    <article class="wizard-card">
+      <h2>Session basics</h2>
+      <p class="hint">
+        These settings will be used as defaults when visitors request a Live session.
+      </p>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="sessionDuration">Default session duration (minutes)</label>
+          <input type="number" id="sessionDuration" min="15" step="15" value="60"/>
+        </div>
+        <div class="field">
+          <label for="sessionPrice">Price per session (EUR)</label>
+          <input type="number" id="sessionPrice" min="0" step="0.5" placeholder="e.g. 29.90"/>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:10px;">
+        <label for="sessionNotes">Notes for visitors</label>
+        <textarea id="sessionNotes"
+                  placeholder="Describe how the Live session works, tools used (Zoom, WhatsApp, etc.), languages, etc."></textarea>
+      </div>
+    </article>
+
+    <article class="wizard-card">
+      <h2>Calendar &amp; messaging</h2>
+      <p class="hint">
+        These options will be refined later in your Live management dashboard.
+      </p>
+
+      <div class="field">
+        <label for="liveCalendarHint">Calendar preset (info only for now)</label>
+        <input id="liveCalendarHint"
+               type="text"
+               placeholder="e.g. Evenings &amp; weekends only (changeable later)"/>
+      </div>
+    </article>
+
+  </section>
+</main>
+
+<footer class="site"></footer>
+
+<div class="bottom-actions">
+  <button type="button" class="ghost" id="btnLiveBack">Back to step 1</button>
+  <button type="button" class="primary" id="btnLiveFinish">Finish &amp; publish</button>
+</div>
+
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // --- Utility: get query param ---
+    function getQueryParam(name) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    }
+
+    const guidingId = getQueryParam('guiding_id') ||
+                      localStorage.getItem('lgo_last_guiding_id');
+
+    const subtitleEl   = document.getElementById('guidingSubtitle');
+    const btnBack      = document.getElementById('btnLiveBack');
+    const btnFinish    = document.getElementById('btnLiveFinish');
+
+    if (!guidingId) {
+      subtitleEl.textContent = 'Missing guiding ID. Please go back to step 1.';
+    } else {
+      subtitleEl.textContent = `Guiding #${guidingId} — Live configuration`;
+    }
+
+    // TODO: fetch existing Live details for this guiding if needed
+    // e.g. GET /api/letsgetout/guidings/:id/live
+
+    btnBack.addEventListener('click', () => {
+      window.location.href =
+        `/modules/Let's Get Out!/manage/page 1.html?guiding_id=${encodeURIComponent(guidingId)}`;
+    });
+
+    btnFinish.addEventListener('click', async () => {
+      if (!guidingId) return;
+
+      const payload = {
+        guiding_id: guidingId,
+        session_duration_min: Number(document.getElementById('sessionDuration').value) || 60,
+        session_price_eur: parseFloat(document.getElementById('sessionPrice').value.replace(',', '.')) || 0,
+        session_notes: document.getElementById('sessionNotes').value.trim(),
+        calendar_hint: document.getElementById('liveCalendarHint').value.trim()
+      };
+
+      try {
+        const res = await fetch(`/api/letsgetout/guidings/${encodeURIComponent(guidingId)}/live`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          alert('Could not save Live configuration.\n\n' + (text || ''));
+          return;
+        }
+
+        // After finishing, go to management overview (page 2.html)
+        window.location.href = "/modules/Let's Get Out!/manage/page 2.html";
+      } catch (err) {
+        console.error('Error saving Live configuration:', err);
+        alert('Network or script error while saving Live configuration.');
+      }
+    });
+
+    // Drawer + FAB chrome
+    if (window.Drawer && typeof window.Drawer.mount === 'function') {
+      window.Drawer.mount({ mode: 'visitor' });
+    }
+
+    if (window.FAB && typeof window.FAB.mount === 'function') {
+      window.FAB.mount({
+        useTopBand: true,
+        useBottomBand: true,
+        home: {
+          title: 'Home / Services',
+          label: '🏠',
+          onClick: () =>
+            window.Drawer &&
+            window.Drawer.open &&
+            window.Drawer.open()
+        },
+        config: {
+          title: "Let’s Get Out! — Settings",
+          label: "⚙️",
+          href: "/modules/Let's Get Out!/settings.html"
+        },
+        onBack: () => {
+          window.location.href = "/modules/Let's Get Out!/manage/main.html";
+        }
+      });
+    }
+  });
+</script>
+</body>
+</html>

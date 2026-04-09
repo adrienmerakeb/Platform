@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Book a spot — In-Time</title>
+<link rel="stylesheet" href="/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --v:#7c3aed;--v-s:#ede9fc;--v-d:#6d28d9;
+  --green:#16a34a;--green-s:#f0fdf4;
+  --amber:#d97706;--amber-s:#fffbeb;
+  --red:#dc2626;--red-s:#fef2f2;
+  --txt:#1a1825;--muted:#6b6880;--hint:#9b98aa;
+  --surf:#fff;--bg:#f4f3f8;--bord:#e2e0ea;--bord-f:#7c3aed;
+  --gray:#f0eff5;--gray-m:#d4d2de;
+  --r:14px;--ri:9px;
+  --sh:0 2px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --ring:0 0 0 3px rgba(124,58,237,.18);
+  --font:"DM Sans",sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:var(--font);background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55}
+.shell{max-width:560px;margin:0 auto;padding:84px 18px 120px}
+
+/* ── Hero — the single main container ───────────────────── */
+.hero{
+  background:linear-gradient(135deg,var(--v) 0%,var(--v-d) 100%);
+  border-radius:var(--r);padding:20px 20px 22px;
+  color:#fff;position:relative;overflow:hidden;
+  box-shadow:0 6px 24px rgba(124,58,237,.3);
+}
+.hero::before{content:"";position:absolute;top:-40px;right:-40px;width:160px;height:160px;
+  border-radius:50%;background:rgba(255,255,255,.07);pointer-events:none;}
+
+/* Base header */
+.hero-hd{margin-bottom:16px}
+.hero h1{font-size:20px;font-weight:700;margin-bottom:3px;line-height:1.25}
+.hero-sub{font-size:13px;opacity:.82;margin-bottom:2px}
+.hero-addr{font-size:12px;opacity:.65}
+
+/* Frozen completed-step row */
+.frozen{
+  background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.2);
+  border-radius:var(--ri);padding:9px 13px;margin-bottom:8px;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+}
+.fr-body{flex:1;min-width:0}
+.fr-lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.6;margin-bottom:2px}
+.fr-val{font-size:13.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fr-val small{font-size:11.5px;font-weight:400;opacity:.75;margin-left:5px}
+
+/* Active step card */
+.step{
+  background:rgba(255,255,255,.97);border-radius:var(--ri);
+  padding:16px 16px 14px;margin-top:2px;color:var(--txt);
+}
+.step-lbl{font-size:11px;font-weight:700;color:var(--hint);text-transform:uppercase;
+  letter-spacing:.06em;margin-bottom:12px}
+.step-back{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;
+  color:var(--hint);cursor:pointer;margin-bottom:10px;background:none;border:none;
+  font-family:var(--font);padding:0}
+.step-back:hover{color:var(--muted)}
+
+/* Mode boxes */
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:380px){.mode-grid{grid-template-columns:1fr}}
+.mode-box{border:1.5px solid var(--bord);border-radius:var(--ri);padding:16px 12px;
+  cursor:pointer;transition:all .15s;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--surf)}
+.mode-box:hover{border-color:var(--v);background:var(--v-s)}
+.mode-box:hover .mb-title{color:var(--v)}
+.mb-ico{font-size:24px}.mb-title{font-size:13px;font-weight:700;color:var(--txt)}
+
+/* Type row */
+.type-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:380px){.type-row{grid-template-columns:1fr}}
+.fld-grp{display:flex;flex-direction:column;gap:4px}
+.fld-lbl{font-size:11px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.05em}
+.fld-sel{width:100%;padding:9px 10px;border:1.5px solid var(--bord);border-radius:var(--ri);
+  font-family:var(--font);font-size:13.5px;color:var(--txt);background:var(--surf);
+  outline:none;cursor:pointer;transition:border-color .15s;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%236b6880' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;padding-right:26px}
+.fld-sel:focus{border-color:var(--bord-f);box-shadow:var(--ring)}
+.fld-static{padding:9px 10px;border:1.5px solid var(--bord);border-radius:var(--ri);
+  font-size:13.5px;font-weight:600;color:var(--txt);background:var(--gray)}
+
+/* Mode fixed info */
+.mode-fixed{display:flex;align-items:center;gap:10px;padding:2px 0 8px;
+  border-bottom:1px solid var(--bord);margin-bottom:12px}
+.mf-ico{font-size:18px}
+.mf-lbl{font-size:13px;font-weight:700;color:var(--txt)}
+.mf-sub{font-size:11.5px;color:var(--muted);margin-top:1px}
+.locked-pill{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;
+  text-transform:uppercase;padding:2px 7px;border-radius:999px;
+  background:var(--amber-s);color:var(--amber);border:1px solid #fcd34d;margin-left:8px}
+
+/* Calendar */
+.date-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.date-row label{font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap}
+.date-row input[type=date]{flex:1;border:1.5px solid var(--bord);border-radius:var(--ri);
+  padding:8px 10px;font-family:var(--font);font-size:14px;color:var(--txt);background:var(--surf);
+  outline:none;transition:border-color .15s}
+.date-row input:focus{border-color:var(--bord-f);box-shadow:var(--ring)}
+.wave-lbl{font-size:10.5px;font-weight:700;color:var(--hint);text-transform:uppercase;
+  letter-spacing:.06em;margin-bottom:8px}
+.wave-outer{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.wave-scroll{flex:1;display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px;
+  scroll-snap-type:x mandatory;scrollbar-width:none}
+.wave-scroll::-webkit-scrollbar{display:none}
+.nav-arr{flex-shrink:0;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bord);
+  background:var(--surf);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:12px;color:var(--muted);transition:all .15s}
+.nav-arr:hover{border-color:var(--v);color:var(--v)}
+.wave-card{min-width:112px;flex:0 0 auto;scroll-snap-align:center;background:var(--surf);
+  border:1.5px solid var(--bord);border-radius:var(--ri);padding:10px 11px 8px;
+  cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .12s;position:relative}
+.wave-card:hover{border-color:var(--v);transform:translateY(-2px);box-shadow:0 5px 14px rgba(124,58,237,.12)}
+.wave-card.sel{border-color:var(--v);background:var(--v-s);transform:translateY(-2px)}
+.wave-card.past,.wave-card.full{opacity:.35;pointer-events:none}
+.wave-card.now-wave{border-color:var(--green)}
+.wave-card.now-wave .wt{color:var(--green)}
+.wave-now-badge{position:absolute;top:5px;right:6px;font-size:9px;font-weight:700;
+  color:var(--green);background:var(--green-s);border-radius:999px;padding:1px 6px}
+.wt{font-size:14px;font-weight:700;color:var(--txt);margin-bottom:1px}
+.ww{font-size:10.5px;color:var(--muted)}.wr{font-size:11px;color:var(--muted);margin-top:3px}
+.wr strong{color:var(--txt)}
+
+/* Info rows */
+.info-rows{margin:8px 0 4px}
+.ir{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--bord)}
+.ir:last-child{border-bottom:none}
+.ir-k{font-size:12.5px;color:var(--muted);font-weight:500}
+.ir-v{font-size:13px;font-weight:700;color:var(--txt);text-align:right}
+.ir-v.hl{color:var(--v)}
+.tbadge{display:inline-flex;align-items:center;background:var(--amber-s);border:1.5px solid #fcd34d;
+  border-radius:var(--ri);padding:2px 9px;font-size:12px;font-weight:700;color:var(--amber)}
+.tbadge.g{background:var(--green-s);border-color:#86efac;color:var(--green)}
+
+/* Party size */
+.party-wrap{display:flex;align-items:center;justify-content:space-between;
+  padding:10px 0;border-top:1px solid var(--bord);margin-top:8px}
+.party-lbl strong{display:block;font-size:13px;font-weight:600;color:var(--txt)}
+.party-lbl small{font-size:11.5px;color:var(--muted)}
+.party-ctrl{display:flex;align-items:center;gap:10px}
+.ps-btn{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--bord);background:var(--surf);
+  font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-weight:700;transition:all .12s}
+.ps-btn:hover{background:var(--v);border-color:var(--v);color:#fff}
+.ps-val{font-size:18px;font-weight:700;color:var(--v);min-width:26px;text-align:center}
+
+/* Options (email + toggles) */
+.opts-sep{border-top:1px solid var(--bord);margin-top:12px;padding-top:2px}
+.togrow{display:flex;align-items:center;justify-content:space-between;
+  padding:9px 0;border-bottom:1px solid var(--bord)}
+.togrow:last-child{border-bottom:none}
+.toglbl strong{display:block;font-size:13px;font-weight:600;color:var(--txt)}
+.toglbl small{display:block;font-size:11.5px;color:var(--muted);margin-top:1px}
+.togsw{position:relative;display:inline-block;width:38px;height:21px;flex-shrink:0}
+.togsw input{opacity:0;width:0;height:0}
+.togtr{position:absolute;inset:0;background:var(--gray-m);border-radius:10px;transition:.22s;cursor:pointer}
+.togtr::before{content:'';position:absolute;width:15px;height:15px;left:3px;bottom:3px;
+  background:#fff;border-radius:50%;transition:.22s;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+input:checked+.togtr{background:var(--v)}
+input:checked+.togtr::before{transform:translateX(17px)}
+.email-inp{width:100%;padding:9px 11px;border:1.5px solid var(--bord);border-radius:var(--ri);
+  font-family:var(--font);font-size:13.5px;color:var(--txt);background:var(--surf);
+  outline:none;transition:border-color .15s;margin:4px 0 0;display:none}
+.email-inp.open{display:block}
+.email-inp:focus{border-color:var(--bord-f);box-shadow:var(--ring)}
+
+/* Step buttons */
+.step-btn{width:100%;padding:13px;border:none;border-radius:var(--ri);background:var(--v);
+  color:#fff;font-family:var(--font);font-size:14.5px;font-weight:700;cursor:pointer;
+  transition:background .15s,transform .1s;box-shadow:0 4px 14px rgba(124,58,237,.28);margin-top:14px}
+.step-btn:hover{background:var(--v-d)}.step-btn:active{transform:scale(.98)}.step-btn:disabled{opacity:.4;pointer-events:none}
+.step-btn.g{background:var(--green);box-shadow:0 4px 12px rgba(22,163,74,.25)}.step-btn.g:hover{background:#15803d}
+
+/* Confirmation (outside hero) */
+.conf-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);
+  box-shadow:var(--sh);padding:26px 22px 20px;text-align:center;margin-bottom:14px}
+.conf-ico{font-size:46px;margin-bottom:12px}
+.conf-title{font-size:20px;font-weight:700;color:var(--green);margin-bottom:6px}
+.conf-sub{font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6}
+.code-pill{display:inline-block;font-size:21px;font-weight:700;letter-spacing:.12em;
+  color:var(--v);background:var(--v-s);border:1.5px solid var(--v);border-radius:var(--ri);
+  padding:10px 22px;margin-bottom:6px;cursor:pointer;transition:all .15s}
+.code-pill:hover{background:var(--v);color:#fff}
+.conf-hint{font-size:12px;color:var(--hint);margin-bottom:14px}
+.conf-pos{display:inline-flex;align-items:center;gap:8px;background:var(--v-s);
+  border:1.5px solid var(--v);border-radius:var(--ri);padding:7px 16px;margin:0 0 14px;
+  font-size:14px;font-weight:700;color:var(--v)}
+.conf-qr{max-width:160px;border-radius:var(--ri);border:1px solid var(--bord);margin:0 auto 14px;display:block}
+.conf-recap{text-align:left;border-top:1px solid var(--bord);padding-top:4px;margin-top:4px}
+.cr{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--bord)}
+.cr:last-child{border-bottom:none}
+.cr-k{font-size:12.5px;color:var(--muted);font-weight:500}
+.cr-v{font-size:13px;font-weight:700;color:var(--txt);text-align:right}
+.book-btn{width:100%;padding:14px;border:none;border-radius:var(--r);background:var(--v);
+  color:#fff;font-family:var(--font);font-size:15px;font-weight:700;cursor:pointer;
+  transition:background .18s,transform .1s;box-shadow:0 4px 18px rgba(124,58,237,.28);margin-bottom:10px}
+.book-btn:hover{background:var(--v-d)}.book-btn:active{transform:scale(.98)}.book-btn:disabled{opacity:.4;pointer-events:none}
+.sec-btn{width:100%;padding:12px;border-radius:var(--r);border:1.5px solid var(--bord);
+  background:var(--gray);color:var(--txt);font-family:var(--font);font-size:14px;font-weight:600;
+  cursor:pointer;transition:all .15s;margin-bottom:10px}
+.sec-btn:hover{background:var(--bord)}
+
+/* Error + toast */
+.errbar{background:var(--red-s);border:1.5px solid #fca5a5;border-radius:var(--ri);
+  padding:10px 14px;font-size:13px;color:var(--red);font-weight:500;
+  margin-bottom:14px;display:none}
+.errbar.on{display:block}
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);
+  background:rgba(26,24,37,.9);color:#fff;padding:8px 18px;border-radius:999px;
+  font-size:13px;font-weight:600;opacity:0;pointer-events:none;
+  transition:opacity .2s,transform .2s;z-index:200;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body class="has-top-band has-bottom-band">
+<header class="site"><div class="title">Book a Spot</div></header>
+
+<div class="shell">
+  <div class="errbar" id="errbar"></div>
+
+  <!-- Hero: single main frame, all steps render inside -->
+  <div class="hero" id="hero">
+    <div class="hero-hd">
+      <h1 id="heroTitle">Loading&hellip;</h1>
+      <div id="heroSub" style="display:none"></div>
+      <div id="heroAddr"></div>
+    </div>
+    <div id="frozenRows"></div>
+    <div id="activeStep"></div>
+  </div>
+
+  <!-- Confirmation — shown outside hero after booking -->
+  <div id="scConf" style="display:none">
+    <div class="conf-card">
+      <div class="conf-ico">&#x1F389;</div>
+      <div class="conf-title">Booking confirmed!</div>
+      <div class="conf-sub" id="confSub"></div>
+      <div id="confPosWrap" style="display:none">
+        <div class="conf-pos">&#x1F522; Queue position: <span id="confPos">&#8212;</span></div>
+      </div>
+      <div class="code-pill" id="confCode" onclick="copyCode()" title="Tap to copy">&#8212;</div>
+      <div class="conf-hint">Tap to copy &middot; Show QR at entry</div>
+      <img class="conf-qr" id="confQr" src="" alt="Booking QR" style="display:none">
+      <div class="conf-recap" id="confRecap"></div>
+    </div>
+    <a class="book-btn" id="followBtn" href="#"
+      style="text-align:center;text-decoration:none;display:block">
+      &#x1F4CD; Follow my progression &rarr;
+    </a>
+    <button class="sec-btn" onclick="bookAnother()">Book another spot</button>
+    <button class="sec-btn"
+      onclick="location.href='/modules/In-Time/use/page 1.html'">My bookings &rarr;</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+<script>
+'use strict';
+
+/* ── URL params ─────────────────────────────────────────── */
+var params   = new URLSearchParams(location.search);
+var queueId  = params.get('queueId') || params.get('queue_id');
+var nameHint = params.get('name') || '';
+var addrHint = params.get('addr') || '';
+
+/* ── State ──────────────────────────────────────────────── */
+var queue = null, formula = 'LIVE_ONLY', arch = 'D';
+var slots = [], waves = [];
+var selectedWave = null, selectedSlotType = null, selectedDuration = null;
+var partySize = 1, chosenMode = null, MAX_PS = 5;
+var _liveDate = null, _liveStart = null, _liveStop = null;
+
+/*  step stack — each entry: { id, undoFn, rerenderFn }
+    undoFn:     resets state when going back one step
+    rerenderFn: re-draws this step as the active step    */
+var stepStack = [];
+
+/* ── Party defaults ─────────────────────────────────────── */
+/* A=1 hidden, B=1 hidden, C=5 shown, D=5 shown */
+function defaultMaxPS(a) { return (a === 'A' || a === 'B') ? 1 : 5; }
+
+/* ── Helpers ────────────────────────────────────────────── */
+var _tt;
+function toast(msg, ms) {
+  ms = ms || 2400;
+  var el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(_tt); _tt = setTimeout(function() { el.classList.remove('show'); }, ms);
+}
+function setErr(msg) {
+  var e = document.getElementById('errbar');
+  e.textContent = msg || ''; e.classList.toggle('on', !!msg);
+}
+function esc(s) {
+  var d = document.createElement('div');
+  d.textContent = String(s != null ? s : '');
+  return d.innerHTML;
+}
+function todayISO() {
+  var d = new Date();
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+}
+function getDeviceId() {
+  var id = localStorage.getItem('intime_device_id');
+  if (!id) { id = crypto.randomUUID(); localStorage.setItem('intime_device_id', id); }
+  return id;
+}
+function tMin(t) { var p = t.split(':').map(Number); return p[0]*60 + p[1]; }
+function toHHMM(min) {
+  return String(Math.floor(min/60)).padStart(2,'0') + ':' + String(min%60).padStart(2,'0');
+}
+function formatCode(raw) {
+  if (!raw) return '';
+  var s = String(raw).toUpperCase().replace(/-/g, '');
+  return s.length === 9 ? s.slice(0,3)+'-'+s.slice(3,6)+'-'+s.slice(6) : s;
+}
+function getSelectedDate() {
+  var el = document.getElementById('datePicker');
+  return (el && el.value) ? el.value : todayISO();
+}
+function ir(key, valHtml) {
+  return '<div class="ir"><span class="ir-k">' + key +
+         '</span><span class="ir-v">' + valHtml + '</span></div>';
+}
+
+/* ── Step engine ────────────────────────────────────────── */
+function setStep(html) {
+  document.getElementById('activeStep').innerHTML = html;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function addFrozen(labelText, valueHTML) {
+  var fr  = document.getElementById('frozenRows');
+  var div = document.createElement('div');
+  div.className = 'frozen';
+  div.innerHTML =
+    '<div class="fr-body">' +
+      '<div class="fr-lbl">' + esc(labelText) + '</div>' +
+      '<div class="fr-val">' + valueHTML + '</div>' +
+    '</div>';
+  fr.appendChild(div);
+}
+
+function removeFrozen() {
+  var fr = document.getElementById('frozenRows');
+  if (fr.lastChild) fr.removeChild(fr.lastChild);
+}
+
+function clearSteps() {
+  document.getElementById('frozenRows').innerHTML = '';
+  document.getElementById('activeStep').innerHTML = '';
+  stepStack.length = 0;
+}
+
+function goBack() {
+  if (!stepStack.length) {
+    location.href = '/modules/In-Time/use/page 2.html';
+    return;
+  }
+  var top = stepStack.pop();
+  if (top.undoFn)    top.undoFn();
+  if (top.hasFrozen) removeFrozen();
+  if (top.rerenderFn) top.rerenderFn();
+}
+
+/* ── Wave config ────────────────────────────────────────── */
+function getWaveConfig() {
+  var openMin = 9*60, closeMin = 18*60, cadence = 15, cap = 40;
+  if (queue.wave_config_json) {
+    var wc = typeof queue.wave_config_json === 'string'
+      ? JSON.parse(queue.wave_config_json) : queue.wave_config_json;
+    if (wc.wave_duration) cadence = Number(wc.wave_duration);
+    if (wc.wave_capacity) cap     = Number(wc.wave_capacity);
+  }
+  if (selectedSlotType) {
+    if (selectedSlotType.duration) cadence = selectedSlotType.duration;
+    if (selectedSlotType.capacity) cap     = selectedSlotType.capacity;
+  }
+  if (selectedDuration) cadence = selectedDuration;
+  if (queue.schedule_json) {
+    var sc = typeof queue.schedule_json === 'string'
+      ? JSON.parse(queue.schedule_json) : queue.schedule_json;
+    if (sc.globalOpen)  openMin  = tMin(sc.globalOpen);
+    if (sc.globalClose) closeMin = tMin(sc.globalClose);
+    var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    var dn = dayNames[new Date(getSelectedDate()+'T12:00:00').getDay()];
+    var dc = sc.days ? sc.days.find(function(d) { return d.n === dn; }) : null;
+    if (dc && !dc.on) return null;
+    if (dc && !sc.sameHours) {
+      openMin  = tMin(dc.open  || '09:00');
+      closeMin = tMin(dc.close || '17:00');
+    }
+  }
+  return { openMin: openMin, closeMin: closeMin, cadence: cadence, cap: cap };
+}
+
+/* ── STEP: Mode (MIXED only) ────────────────────────────── */
+function stepMode() {
+  stepStack.push({
+    id: 'mode', hasFrozen: false,
+    undoFn: function() { chosenMode = null; },
+    rerenderFn: stepMode
+  });
+  setStep(
+    '<div class="step">' +
+      '<div class="step-lbl">Would you like to book:</div>' +
+      '<div class="mode-grid">' +
+        '<div class="mode-box" onclick="onChooseLive()">' +
+          '<div class="mb-ico">&#x26A1;</div>' +
+          '<div class="mb-title">Next available slot</div>' +
+        '</div>' +
+        '<div class="mode-box" onclick="onChooseAdvance()">' +
+          '<div class="mb-ico">&#x1F4C5;</div>' +
+          '<div class="mb-title">Later on, in calendar</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function onChooseLive() {
+  chosenMode = 'live';
+  /* freeze the mode choice, then replace the mode step's entry
+     so goBack from type removes the frozen row correctly */
+  stepStack[stepStack.length - 1].hasFrozen = true;
+  addFrozen('Booking mode', '&#x26A1; Next available slot');
+  stepType();
+}
+function onChooseAdvance() {
+  chosenMode = 'advance';
+  stepStack[stepStack.length - 1].hasFrozen = true;
+  addFrozen('Booking mode', '&#x1F4C5; Later on, in calendar');
+  stepType();
+}
+
+/* ── STEP: Type ─────────────────────────────────────────── */
+function stepType() {
+  var isLive  = chosenMode === 'live' || formula === 'LIVE_ONLY';
+  var isMixed = formula === 'MIXED';
+  var hasMultiType = slots.length > 1;
+
+  /* Auto-select single slot type */
+  var initST = null;
+  if (!hasMultiType && slots.length === 1) {
+    initST = slots[0];
+    selectedSlotType = initST;
+    applyCap(initST);
+  }
+
+  stepStack.push({
+    id: 'type', hasFrozen: false,
+    undoFn: function() {
+      if (!isMixed) { /* can't go further back for single-mode */ }
+      selectedSlotType = null; selectedDuration = null;
+      MAX_PS = defaultMaxPS(arch);
+    },
+    rerenderFn: stepType
+  });
+
+  /* Mode info for single-mode queues */
+  var modeInfoHtml = '';
+  if (!isMixed) {
+    modeInfoHtml =
+      '<div class="mode-fixed">' +
+        '<div class="mf-ico">' + (isLive ? '&#x26A1;' : '&#x1F4C5;') + '</div>' +
+        '<div>' +
+          '<div class="mf-lbl">' + (isLive ? 'Next available slot' : 'In-advance booking') +
+            '<span class="locked-pill">&#x1F512; Fixed</span></div>' +
+          '<div class="mf-sub">' + (isLive ? 'Live queue' : 'Calendar booking') + '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  /* Slot type field */
+  var stypeHTML;
+  if (!hasMultiType) {
+    stypeHTML = '<div class="fld-static">' + esc(initST ? initST.name : 'Standard') + '</div>';
+  } else {
+    var opts = slots.map(function(s) {
+      return '<option value="' + s.id + '">' + esc(s.name) + '</option>';
+    }).join('');
+    stypeHTML =
+      '<select class="fld-sel" id="slotTypeSel" onchange="onTypeChange()">' +
+        '<option value="">&#8212; Select &#8212;</option>' + opts +
+      '</select>';
+  }
+
+  /* Duration field */
+  var durHTML = buildDurHTML(initST);
+
+  /* Back only for MIXED (after mode choice) */
+  var backHtml = isMixed
+    ? '<button class="step-back" onclick="goBack()">&#8592; Back</button>'
+    : '';
+
+  var partyHtml = MAX_PS > 1
+    ? '<div class="party-wrap">' +
+        '<div class="party-lbl"><strong>Party size</strong><small>How many places?</small></div>' +
+        '<div class="party-ctrl">' +
+          '<button class="ps-btn" onclick="adjustPS(-1)">&#8722;</button>' +
+          '<div class="ps-val" id="psVal">' + partySize + '</div>' +
+          '<button class="ps-btn" onclick="adjustPS(+1)">+</button>' +
+        '</div>' +
+      '</div>'
+    : '';
+
+  setStep(
+    '<div class="step">' +
+      backHtml +
+      '<div class="step-lbl">Slot type &amp; duration</div>' +
+      modeInfoHtml +
+      '<div class="type-row">' +
+        '<div class="fld-grp">' +
+          '<div class="fld-lbl">Type</div>' +
+          stypeHTML +
+        '</div>' +
+        '<div class="fld-grp" id="durGrp">' +
+          '<div class="fld-lbl">Duration</div>' +
+          durHTML +
+        '</div>' +
+      '</div>' +
+      partyHtml +
+      '<button class="step-btn" id="btnTypeCont" onclick="onTypeContinue()"' +
+        (hasMultiType ? ' disabled' : '') +
+      '>Continue &#8594;</button>' +
+    '</div>'
+  );
+}
+
+function buildDurHTML(st) {
+  if (!st) return '<div class="fld-static" id="durStatic">&#8212;</div>';
+  var durs = Array.isArray(st.durations) ? st.durations : [];
+  if (durs.length > 1) {
+    var opts = durs.map(function(d) {
+      return '<option value="' + d.minutes + '">' + d.minutes + ' min</option>';
+    }).join('');
+    return '<select class="fld-sel" id="durSel" onchange="onDurChange()">' + opts + '</select>';
+  }
+  var mins = st.duration || (durs.length === 1 ? durs[0].minutes : null);
+  return '<div class="fld-static" id="durStatic">' + (mins ? mins + ' min' : '&#8212;') + '</div>';
+}
+
+function applyCap(st) {
+  if (st && st.capacity >= 1) {
+    MAX_PS = st.capacity;
+    partySize = Math.min(partySize, MAX_PS);
+  }
+}
+
+function onTypeChange() {
+  var sel = document.getElementById('slotTypeSel');
+  if (!sel) return;
+  var id = parseInt(sel.value);
+  selectedSlotType = id ? (slots.find(function(s) { return s.id === id; }) || null) : null;
+  var grp = document.getElementById('durGrp');
+  if (grp) grp.innerHTML = '<div class="fld-lbl">Duration</div>' + buildDurHTML(selectedSlotType);
+  if (selectedSlotType) {
+    applyCap(selectedSlotType);
+    selectedDuration = selectedSlotType.duration || null;
+    var pv = document.getElementById('psVal');
+    if (pv) pv.textContent = partySize;
+  }
+  var btn = document.getElementById('btnTypeCont');
+  if (btn) btn.disabled = !selectedSlotType;
+}
+
+function onDurChange() {
+  var sel = document.getElementById('durSel');
+  if (sel) selectedDuration = parseInt(sel.value) || null;
+}
+
+function adjustPS(delta) {
+  partySize = Math.max(1, Math.min(MAX_PS, partySize + delta));
+  var pv = document.getElementById('psVal');
+  if (pv) pv.textContent = partySize;
+}
+
+function onTypeContinue() {
+  if (!selectedSlotType && slots.length > 1) { toast('Please select a slot type'); return; }
+  var typeName = selectedSlotType ? selectedSlotType.name : 'Standard';
+  var durMin   = selectedDuration || (selectedSlotType && selectedSlotType.duration);
+  /* Mark the type step as having a frozen row */
+  stepStack[stepStack.length - 1].hasFrozen = true;
+  addFrozen('Type', esc(typeName) + (durMin ? '<small>' + durMin + ' min</small>' : ''));
+  if (chosenMode === 'live' || formula === 'LIVE_ONLY') {
+    stepLive();
+  } else {
+    stepCalendar();
+  }
+}
+
+/* ── STEP: Calendar (advance) ───────────────────────────── */
+function stepCalendar() {
+  var today = todayISO();
+  stepStack.push({
+    id: 'calendar', hasFrozen: false,
+    undoFn: function() { selectedWave = null; },
+    rerenderFn: function() { stepCalendar(); }
+  });
+
+  var partyHtml = MAX_PS > 1
+    ? '<div class="party-wrap">' +
+        '<div class="party-lbl"><strong>Party size</strong><small>How many places?</small></div>' +
+        '<div class="party-ctrl">' +
+          '<button class="ps-btn" onclick="adjustPS(-1)">&#8722;</button>' +
+          '<div class="ps-val" id="psVal">' + partySize + '</div>' +
+          '<button class="ps-btn" onclick="adjustPS(+1)">+</button>' +
+        '</div>' +
+      '</div>'
+    : '';
+
+  setStep(
+    '<div class="step">' +
+      '<button class="step-back" onclick="goBack()">&#8592; Back</button>' +
+      '<div class="step-lbl">Choose a date &amp; time</div>' +
+      '<div class="date-row">' +
+        '<label for="datePicker">&#x1F4C5;</label>' +
+        '<input type="date" id="datePicker" min="' + today + '" value="' + today + '">' +
+      '</div>' +
+      '<div class="wave-lbl" id="waveLabel">Available slots</div>' +
+      '<div class="wave-outer">' +
+        '<button class="nav-arr" onclick="document.getElementById(\'waveScroll\').scrollBy({left:-280,behavior:\'smooth\'})">&#9664;</button>' +
+        '<div class="wave-scroll" id="waveScroll"></div>' +
+        '<button class="nav-arr" onclick="document.getElementById(\'waveScroll\').scrollBy({left:280,behavior:\'smooth\'})">&#9654;</button>' +
+      '</div>' +
+      partyHtml +
+      '<button class="step-btn" id="btnCalCont" onclick="stepRecap()" disabled>Continue &#8594;</button>' +
+    '</div>'
+  );
+
+  var dp = document.getElementById('datePicker');
+  if (dp) {
+    dp.onchange = function() {
+      selectedWave = null;
+      buildWaves();
+      var btn = document.getElementById('btnCalCont');
+      if (btn) btn.disabled = true;
+    };
+  }
+  buildWaves();
+}
+
+function buildWaves() {
+  var lbl = document.getElementById('waveLabel');
+  if (lbl) lbl.textContent = arch === 'C' ? 'Available waves' : 'Available time slots';
+  var scroll = document.getElementById('waveScroll');
+  if (!scroll) return;
+  var cfg = getWaveConfig();
+  if (!cfg) {
+    scroll.innerHTML = '<div style="padding:10px 0;color:var(--muted);font-size:13px">Closed on this day.</div>';
+    waves = []; return;
+  }
+  var openMin = cfg.openMin, closeMin = cfg.closeMin, cadence = cfg.cadence, cap = cfg.cap;
+  waves = []; var cur = openMin;
+  while (cur < closeMin) {
+    var stop = Math.min(cur + cadence, closeMin);
+    waves.push({ start: cur, stop: stop, label: toHHMM(cur), capacity: cap, remaining: cap, el: null });
+    cur = stop;
+  }
+  renderWaves();
+  var nowMin  = new Date().getHours()*60 + new Date().getMinutes();
+  var isToday = getSelectedDate() === todayISO();
+  var ti = isToday ? waves.findIndex(function(w) { return w.stop > nowMin; }) : 0;
+  if (ti >= 0 && waves[ti] && waves[ti].el) {
+    setTimeout(function() {
+      waves[ti].el.scrollIntoView({ behavior:'smooth', inline:'center', block:'nearest' });
+    }, 80);
+  }
+}
+
+function renderWaves() {
+  var scroll = document.getElementById('waveScroll');
+  if (!scroll) return;
+  scroll.innerHTML = '';
+  var nowMin  = new Date().getHours()*60 + new Date().getMinutes();
+  var isToday = getSelectedDate() === todayISO();
+  waves.forEach(function(w) {
+    var past  = isToday && w.stop <= nowMin;
+    var isCur = isToday && w.start <= nowMin && nowMin < w.stop;
+    var full  = w.remaining <= 0;
+    var el    = document.createElement('div');
+    el.className = 'wave-card' + (past || full ? ' past' : '') + (isCur ? ' now-wave' : '');
+    if (w === selectedWave) el.classList.add('sel');
+    el.innerHTML =
+      (isCur ? '<div class="wave-now-badge">Now</div>' : '') +
+      '<div class="wt">'  + esc(w.label)         + '</div>' +
+      '<div class="ww">'  + esc(toHHMM(w.start)) + '&#8211;' + esc(toHHMM(w.stop)) + '</div>' +
+      '<div class="wr">Left: <strong>' + w.remaining + '</strong></div>';
+    if (!past && !full) {
+      el.addEventListener('click', function() {
+        selectedWave = w;
+        waves.forEach(function(x) { if (x.el) x.el.classList.remove('sel'); });
+        el.classList.add('sel');
+        var btn = document.getElementById('btnCalCont');
+        if (btn) btn.disabled = false;
+      });
+    }
+    w.el = el; scroll.appendChild(el);
+  });
+}
+
+/* ── STEP: Recap (advance confirm) ─────────────────────── */
+function stepRecap() {
+  if (!selectedWave) return;
+  var dateVal = getSelectedDate();
+  var timeStr = selectedWave.label + '\u2013' + toHHMM(selectedWave.stop);
+  stepStack[stepStack.length - 1].hasFrozen = true;
+  addFrozen('Date & slot', esc(dateVal) + '<small>' + esc(timeStr) + '</small>');
+
+  var earlyEnabled = false;
+  if (queue.early_spot_json) {
+    try {
+      var ep = typeof queue.early_spot_json === 'string'
+        ? JSON.parse(queue.early_spot_json) : queue.early_spot_json;
+      earlyEnabled = !!ep.enabled;
+    } catch(ex) {}
+  }
+
+  stepStack.push({
+    id: 'recap', hasFrozen: false,
+    undoFn: function() {},
+    rerenderFn: stepRecap
+  });
+
+  var recapRows = [
+    ['&#x1F4CD; Venue',   esc(queue.venue_name || queue.name || '\u2014')],
+    ['&#x1F4C5; Date',    esc(dateVal)],
+    ['&#x23F0; Time slot', esc(timeStr)],
+    selectedSlotType ? ['&#x1F3F7; Type', esc(selectedSlotType.name)]  : null,
+    partySize > 1    ? ['&#x1F465; Party', partySize + ' people']       : null,
+  ].filter(Boolean).map(function(p) {
+    return '<div class="ir"><span class="ir-k">' + p[0] +
+           '</span><span class="ir-v">' + p[1] + '</span></div>';
+  }).join('');
+
+  setStep(
+    '<div class="step">' +
+      '<button class="step-back" onclick="goBack()">&#8592; Back</button>' +
+      '<div class="step-lbl">Confirm booking</div>' +
+      '<div class="info-rows">' + recapRows + '</div>' +
+      '<div class="opts-sep">' +
+        '<div class="togrow">' +
+          '<div class="toglbl"><strong>&#x1F4E7; Email confirmation</strong>' +
+            '<small>Receive your booking recap</small></div>' +
+          '<label class="togsw"><input type="checkbox" id="togEmail" onchange="toggleEmail()">' +
+            '<span class="togtr"></span></label>' +
+        '</div>' +
+        '<input class="email-inp" type="email" id="emailInput" placeholder="your@email.com">' +
+        '<div class="togrow">' +
+          '<div class="toglbl"><strong>Booking updates</strong>' +
+            '<small>Reminders &amp; notifications</small></div>' +
+          '<label class="togsw"><input type="checkbox" id="togNotif"><span class="togtr"></span></label>' +
+        '</div>' +
+      '</div>' +
+      '<button class="step-btn" id="btnConfirm" onclick="confirmBooking()">&#x2713; Confirm booking</button>' +
+    '</div>'
+  );
+}
+
+/* ── STEP: Live schedule ────────────────────────────────── */
+function stepLive() {
+  var nowMin = new Date().getHours()*60 + new Date().getMinutes();
+  var cfg    = getWaveConfig();
+
+  var earlyEnabled = false;
+  if (queue.early_spot_json && arch === 'C') {
+    try {
+      var ep2 = typeof queue.early_spot_json === 'string'
+        ? JSON.parse(queue.early_spot_json) : queue.early_spot_json;
+      earlyEnabled = !!ep2.enabled;
+    } catch(ex2) {}
+  }
+
+  stepStack.push({
+    id: 'live', hasFrozen: false,
+    undoFn: function() { _liveDate = null; _liveStart = null; _liveStop = null; },
+    rerenderFn: stepLive
+  });
+
+  var titleText = 'Next available slot';
+  var subText   = '';
+  var rowsHTML  = '';
+  var canBook   = true;
+
+  if (!cfg) {
+    titleText = 'Queue closed'; subText = 'No slots available today.';
+    rowsHTML  = ir('Status',
+      '<span class="tbadge" style="background:var(--red-s);border-color:#fca5a5;color:var(--red)">Closed today</span>');
+    canBook = false;
+  } else {
+    var openMin = cfg.openMin, closeMin = cfg.closeMin, cadence = cfg.cadence, cap = cfg.cap;
+    var showEET = queue.show_eet !== false;
+    var showETE = !!queue.show_ete;
+
+    if (arch === 'D') {
+      var isOpenD = nowMin >= openMin && nowMin < closeMin;
+      titleText = 'Join the queue';
+      subText   = isOpenD ? 'Queue is open \u2014 confirm to get your spot' : 'Queue not open yet';
+      canBook   = isOpenD;
+      rowsHTML += ir('&#x1F4CD; Venue', esc(queue.venue_name || queue.name || '\u2014'));
+      rowsHTML += ir('&#x1F4C5; Date',  esc(todayISO()));
+      rowsHTML += ir('&#x23F0; Hours',  esc(toHHMM(openMin) + ' \u2013 ' + toHHMM(closeMin)));
+      if (showETE)          rowsHTML += ir('&#x23F1; Est. wait', '<span class="tbadge">~' + cadence + ' min</span>');
+      if (!showEET && !showETE) rowsHTML += ir('&#x1F522; Your spot', 'Assigned at confirmation');
+      rowsHTML += ir('Status', '<span class="tbadge ' + (isOpenD ? 'g' : '') + '">' +
+        (isOpenD ? 'Open now \u2713' : 'Not open yet') + '</span>');
+      if (selectedSlotType) rowsHTML += ir('&#x1F3F7; Type', esc(selectedSlotType.name));
+      _liveDate = todayISO(); _liveStart = nowMin; _liveStop = nowMin + cadence;
+    } else {
+      /* A / B / C — next wave */
+      var ns = null, ne = null, cur2 = openMin;
+      while (cur2 < closeMin) {
+        var stop2 = Math.min(cur2 + cadence, closeMin);
+        if (stop2 > nowMin) { ns = cur2; ne = stop2; break; }
+        cur2 = stop2;
+      }
+      if (ns === null) {
+        titleText = 'No more slots'; subText = 'The queue is closed for today.';
+        rowsHTML  = ir('Status',
+          '<span class="tbadge" style="background:var(--red-s);border-color:#fca5a5;color:var(--red)">Closed for today</span>');
+        canBook = false;
+      } else {
+        var minsUntil = ns <= nowMin ? 0 : ns - nowMin;
+        var isNow     = ns <= nowMin && nowMin < ne;
+        titleText = arch === 'C' ? 'Next available wave' : 'Next available slot';
+        subText   = isNow ? 'Slot is open now \u2014 book your spot' : 'Opens in ' + minsUntil + ' min';
+        rowsHTML += ir('&#x1F4CD; Venue',    esc(queue.venue_name || queue.name || '\u2014'));
+        rowsHTML += ir('&#x1F4C5; Date',     esc(todayISO()));
+        rowsHTML += ir('&#x23F0; Time slot',
+          '<span class="ir-v hl">' + esc(toHHMM(ns) + ' \u2013 ' + toHHMM(ne)) + '</span>');
+        if (arch === 'C') rowsHTML += ir('&#x1F3DF; Wave capacity', cap + ' spots');
+        if (showEET) {
+          if (minsUntil > 0) rowsHTML += ir('&#x23F1; Entry in', '<span class="tbadge">' + minsUntil + ' min</span>');
+          else if (isNow)    rowsHTML += ir('&#x23F1; Entry',     '<span class="tbadge g">Now \u2713</span>');
+        }
+        if (showETE)                  rowsHTML += ir('&#x231B; Slot duration', '~' + cadence + ' min');
+        if (!showEET && !showETE)     rowsHTML += ir('&#x1F522; Queue position', 'Assigned on confirm');
+        if (selectedSlotType)         rowsHTML += ir('&#x1F3F7; Type', esc(selectedSlotType.name));
+        _liveDate = todayISO(); _liveStart = ns; _liveStop = ne;
+      }
+    }
+  }
+
+  if (partySize > 1) rowsHTML += ir('&#x1F465; Party', partySize + ' people');
+
+  var earlyTogHtml = earlyEnabled
+    ? '<div class="togrow">' +
+        '<div class="toglbl"><strong>&#x1F514; Earlier spot alert</strong>' +
+          '<small>Notify me if an earlier spot opens up</small></div>' +
+        '<label class="togsw"><input type="checkbox" id="togEarly"><span class="togtr"></span></label>' +
+      '</div>'
+    : '';
+
+  var psHtml = MAX_PS > 1
+    ? '<div class="party-wrap">' +
+        '<div class="party-lbl"><strong>Party size</strong><small>How many places?</small></div>' +
+        '<div class="party-ctrl">' +
+          '<button class="ps-btn" onclick="adjustPS(-1)">&#8722;</button>' +
+          '<div class="ps-val" id="psVal">' + partySize + '</div>' +
+          '<button class="ps-btn" onclick="adjustPS(+1)">+</button>' +
+        '</div>' +
+      '</div>'
+    : '';
+
+  setStep(
+    '<div class="step">' +
+      '<button class="step-back" onclick="goBack()">&#8592; Back</button>' +
+      '<div class="step-lbl">' + esc(titleText) + '</div>' +
+      (subText ? '<div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">' + esc(subText) + '</div>' : '') +
+      '<div class="info-rows">' + rowsHTML + '</div>' +
+      psHtml +
+      '<div class="opts-sep">' +
+        earlyTogHtml +
+        '<div class="togrow">' +
+          '<div class="toglbl"><strong>&#x1F4E7; Email confirmation</strong>' +
+            '<small>Receive your booking recap</small></div>' +
+          '<label class="togsw"><input type="checkbox" id="togEmail" onchange="toggleEmail()">' +
+            '<span class="togtr"></span></label>' +
+        '</div>' +
+        '<input class="email-inp" type="email" id="emailInput" placeholder="your@email.com">' +
+        '<div class="togrow">' +
+          '<div class="toglbl"><strong>Queue updates</strong>' +
+            '<small>Reminders &amp; notifications</small></div>' +
+          '<label class="togsw"><input type="checkbox" id="togNotif"><span class="togtr"></span></label>' +
+        '</div>' +
+      '</div>' +
+      '<button class="step-btn g" id="btnLiveConfirm" onclick="confirmBooking()"' +
+        (canBook ? '' : ' disabled') + '>&#x2713; Confirm my spot</button>' +
+    '</div>'
+  );
+}
+
+function toggleEmail() {
+  var cb  = document.getElementById('togEmail');
+  var inp = document.getElementById('emailInput');
+  if (inp) inp.classList.toggle('open', !!(cb && cb.checked));
+}
+
+/* ── Confirm booking API call ───────────────────────────── */
+async function confirmBooking() {
+  if (!queue) { toast('Queue not loaded yet'); return; }
+  setErr('');
+  var isLive   = chosenMode === 'live' || formula === 'LIVE_ONLY';
+  var slotDate = isLive ? (_liveDate || todayISO()) : getSelectedDate();
+  var deviceId = getDeviceId();
+  var btnEl    = document.getElementById(isLive ? 'btnLiveConfirm' : 'btnConfirm');
+  if (btnEl)   { btnEl.disabled = true; btnEl.textContent = 'Booking\u2026'; }
+
+  var emailEl = document.getElementById('emailInput');
+  var notifEl = document.getElementById('togNotif');
+  var earlyEl = document.getElementById('togEarly');
+  var email   = ((emailEl && emailEl.value) || '').trim() || null;
+  var wantNotif = !!(notifEl && notifEl.checked);
+  var wantEarly = !!(earlyEl && earlyEl.checked);
+
+  try {
+    var r = await fetch('/api/intime/bookings', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        queue_id: Number(queueId), device_id: deviceId,
+        source: isLive ? 'live' : 'advance',
+        slots: [{ slot_date: slotDate, party_size: partySize }],
+        include_qr: true,
+        visitor_email: email,
+        wants_notifications: wantNotif,
+        wants_early_slot: wantEarly,
+      })
+    });
+    var d = await r.json().catch(function() { return {}; });
+    if (!r.ok || !d.ok) throw new Error(d.error || 'HTTP ' + r.status);
+    showConf(d, slotDate, isLive, email);
+  } catch (err) {
+    setErr('Booking failed: ' + err.message);
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.textContent = isLive ? '\u2713 Confirm my spot' : '\u2713 Confirm booking';
+    }
+  }
+}
+
+/* ── Show confirmation ──────────────────────────────────── */
+function showConf(d, slotDate, isLive, email) {
+  var b    = d.bookings && d.bookings[0];
+  var code = formatCode(b && b.human_ref);
+
+  document.getElementById('hero').style.display   = 'none';
+  document.getElementById('scConf').style.display = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  document.getElementById('confCode').textContent = code || '\u2014';
+
+  var posWrap = document.getElementById('confPosWrap');
+  if (arch === 'D' && b && b.booking_id) {
+    document.getElementById('confPos').textContent = '#' + b.booking_id;
+    posWrap.style.display = '';
+  } else { posWrap.style.display = 'none'; }
+
+  var qrImg = d.qr && d.qr[0] && d.qr[0].image_base64;
+  var qi    = document.getElementById('confQr');
+  if (qrImg) { qi.src = qrImg; qi.style.display = ''; } else qi.style.display = 'none';
+
+  document.getElementById('confSub').textContent =
+    (queue.name || 'Queue') + ' \u00b7 ' + slotDate +
+    (email ? ' \u00b7 Confirmation sent to ' + email : '');
+
+  var timeStr = (isLive && _liveStart != null)
+    ? toHHMM(_liveStart) + '\u2013' + toHHMM(_liveStop) : null;
+  var items = [
+    ['&#x1F4CD; Venue',   queue.venue_name || queue.name || '\u2014'],
+    ['&#x1F4C5; Date',    slotDate],
+    timeStr          ? ['&#x23F0; Time',   timeStr]                 : null,
+    selectedSlotType ? ['&#x1F3F7; Type',  selectedSlotType.name]   : null,
+    partySize > 1    ? ['&#x1F465; Party', partySize + ' people']   : null,
+    email            ? ['&#x1F4E7; Sent to', email]                 : null,
+  ].filter(Boolean);
+  document.getElementById('confRecap').innerHTML = items.map(function(p) {
+    return '<div class="cr"><span class="cr-k">' + p[0] +
+           '</span><span class="cr-v">' + esc(String(p[1])) + '</span></div>';
+  }).join('');
+
+  var fu = new URL('/modules/In-Time/use/page 4.html', location.origin);
+  if (b && b.token_id)   fu.searchParams.set('token',   b.token_id);
+  if (b && b.booking_id) fu.searchParams.set('bid',     b.booking_id);
+  fu.searchParams.set('queueId', queueId);
+  document.getElementById('followBtn').href = fu.toString();
+}
+
+function copyCode() {
+  var c = document.getElementById('confCode').textContent;
+  navigator.clipboard.writeText(c)
+    .then(function() { toast('Copied!'); })
+    .catch(function() { toast(c); });
+}
+
+/* ── Book another ───────────────────────────────────────── */
+function bookAnother() {
+  selectedWave = null; selectedSlotType = null; selectedDuration = null;
+  partySize = 1; chosenMode = null;
+  _liveDate = null; _liveStart = null; _liveStop = null;
+  MAX_PS = defaultMaxPS(arch);
+  document.getElementById('hero').style.display   = '';
+  document.getElementById('scConf').style.display = 'none';
+  clearSteps();
+  startFlow();
+}
+
+/* ── Update hero header ─────────────────────────────────── */
+function updateHero(q) {
+  document.getElementById('heroTitle').textContent = q.name || nameHint || 'Virtual Queue';
+  var subEl = document.getElementById('heroSub');
+  if (q.venue_name && q.venue_name !== q.name) {
+    subEl.textContent = q.venue_name; subEl.style.display = '';
+  } else { subEl.style.display = 'none'; }
+  var addrText = q.location_text || addrHint || '';
+  document.getElementById('heroAddr').innerHTML = addrText ? '&#x1F4CD; ' + esc(addrText) : '';
+  document.title = 'Book \u2014 ' + (q.name || 'Queue') + ' \u2014 In-Time';
+}
+
+/* ── Start flow ─────────────────────────────────────────── */
+function startFlow() {
+  clearSteps();
+  if (formula === 'MIXED') { stepMode(); return; }
+  chosenMode = formula === 'LIVE_ONLY' ? 'live' : 'advance';
+  stepType();
+}
+
+/* ── Load queue ─────────────────────────────────────────── */
+async function loadQueue() {
+  document.getElementById('heroTitle').textContent = nameHint || 'Loading\u2026';
+  if (addrHint) document.getElementById('heroAddr').innerHTML = '&#x1F4CD; ' + esc(addrHint);
+  if (!queueId) { setErr('No queue ID. Please scan a venue QR code to start.'); return; }
+  try {
+    var ctrl = new AbortController();
+    var tmo  = setTimeout(function() { ctrl.abort(); }, 8000);
+    var r;
+    try {
+      r = await fetch('/api/intime/queues/' + encodeURIComponent(queueId), {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+        signal: ctrl.signal,
+      });
+    } finally { clearTimeout(tmo); }
+    var d = await r.json().catch(function() { return {}; });
+    if (!r.ok || !d.ok || !d.queue) throw new Error(d.error || 'Queue not found');
+    queue     = d.queue;
+    formula   = queue.booking_formula || 'LIVE_ONLY';
+    arch      = queue.archetype || 'D';
+    MAX_PS    = defaultMaxPS(arch);
+    partySize = 1;
+    if (queue.slots_json) {
+      var raw = typeof queue.slots_json === 'string'
+        ? JSON.parse(queue.slots_json) : queue.slots_json;
+      if (Array.isArray(raw)) slots = raw;
+    }
+    updateHero(queue);
+    startFlow();
+  } catch (err) {
+    var isAbort = err.name === 'AbortError';
+    setErr(isAbort
+      ? 'Request timed out. Please check your connection and retry.'
+      : 'Could not load queue: ' + err.message);
+    document.getElementById('heroTitle').textContent = isAbort ? 'Connection timeout' : 'Error';
+    console.error('[p3]', err.name, err.message);
+  }
+}
+
+loadQueue();
+
+if (window.Drawer && window.Drawer.mount) Drawer.mount({ mode: 'visitor' });
+if (window.FAB && window.FAB.mount) FAB.mount({
+  useTopBand: true, useBottomBand: true,
+  home:   { label: '&#x1F3E0;', title: 'Home',    onClick: function() { if (window.Drawer) Drawer.open(); } },
+  config: { label: '&#x21BA;',  title: 'Restart', onClick: function() { bookAnother(); } },
+  onBack: function() {
+    if (stepStack.length > 0) goBack();
+    else location.href = '/modules/In-Time/use/page 2.html';
+  },
+});
+</script>
+</body>
+</html>

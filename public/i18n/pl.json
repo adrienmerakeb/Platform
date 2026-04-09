@@ -1,0 +1,64 @@
+{
+  "appTitle": "WanderPal",
+  "langLabel": "Język",
+
+  "loginTitle": "Logowanie",
+  "registerTitle": "Rejestracja",
+
+  "email": "Adres e-mail",
+  "password": "Hasło",
+  "createPassword": "Utwórz hasło",
+  "namePlaceholder": "Imię i nazwisko",
+  "companyName": "Nazwa firmy",
+  "website": "Oficjalna strona",
+
+  "remember": "Zapamiętaj mnie",
+  "forgot": "Zapomniałeś hasła?",
+  "forgotTitle": "Reset hasła",
+  "forgotDesc": "Podaj adres e-mail, a wyślemy link do zresetowania hasła.",
+  "forgotCancel": "Anuluj",
+  "forgotSend": "Wyślij",
+  "forgotSuccess": "Jeśli konto istnieje, wysłaliśmy link do resetu.",
+  "forgotError": "Nie udało się przetworzyć żądania.",
+
+  "loginBtn": "Zaloguj się",
+  "registerBtn": "Zarejestruj się",
+  "or": "lub",
+  "noAccount": "Nie masz konta?",
+  "signup": "Zarejestruj się",
+  "haveAccount": "Masz już konto?",
+  "signin": "Zaloguj się",
+
+  "invalidCreds": "Nieprawidłowe dane logowania",
+  "suspendedMsg": "To konto jest zawieszone. Skontaktuj się z pomocą techniczną.",
+
+  "networkError": "Błąd sieci",
+  "registerSuccess": "Konto utworzone. Możesz się zalogować.",
+  "registerFail": "Nie udało się utworzyć konta (e-mail już używany?)",
+
+  "hostTitle": "Gospodarz",
+  "hostLogin": "Gospodarz — Logowanie",
+  "hostRegister": "Gospodarz — Rejestracja",
+  "hostForgotTitle": "Reset hasła (Gospodarz)",
+  "hostForgotDesc": "Otrzymasz link, jeśli ten e-mail jest zarejestrowany jako gospodarz.",
+
+  "partnerTitle": "Partner",
+  "partnerLogin": "Partner — Logowanie",
+  "partnerRegister": "Partner — Rejestracja",
+  "partnerForgotTitle": "Reset hasła (Partner)",
+  "partnerForgotDesc": "Otrzymasz link, jeśli ten e-mail jest zarejestrowany jako partner.",
+
+  "chooseSector": "Wybierz sektor",
+  "recommendedServices": "Polecane usługi",
+
+  "museum": "Muzeum / Galeria / Zabytek",
+  "doctor": "Lekarz / Klinika / Stomatolog",
+  "salon": "Uroda / Spa / Fryzjer",
+  "event": "Organizator wydarzeń / Obiekt",
+  "restaurant": "Restauracja / Kawiarnia / Bar",
+  "hotel": "Hotel / Pensjonat / BnB",
+  "retail": "Sklep / Centrum handlowe",
+  "sports": "Ośrodek sportowy / Siłownia / Stadion",
+  "public": "Administracja / Bank / Poczta",
+  "other": "Inne"
+}

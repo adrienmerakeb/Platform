@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>My booking — In-Time</title>
+<link rel="stylesheet" href="/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --v:#7c3aed;--v-s:#ede9fc;--v-d:#6d28d9;
+  --green:#16a34a;--green-s:#f0fdf4;
+  --amber:#d97706;--amber-s:#fffbeb;
+  --red:#dc2626;--red-s:#fef2f2;
+  --blue:#2563eb;--blue-s:#eff6ff;
+  --txt:#1a1825;--muted:#6b6880;--hint:#9b98aa;
+  --surf:#fff;--bg:#f4f3f8;--bord:#e2e0ea;
+  --gray:#f0eff5;--gray-m:#d4d2de;
+  --r:14px;--ri:9px;
+  --sh:0 2px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --font:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:var(--font);background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55}
+.shell{max-width:560px;margin:0 auto;padding:84px 18px 120px}
+
+/* ── Status hero ── */
+.status-hero{
+  border-radius:var(--r);padding:26px 22px 22px;margin-bottom:18px;
+  color:#fff;position:relative;overflow:hidden;
+  box-shadow:0 6px 24px rgba(0,0,0,.18);
+  transition:background .5s;
+}
+.status-hero::before{content:'';position:absolute;top:-50px;right:-50px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.07);pointer-events:none;}
+.status-hero.s-booked  {background:linear-gradient(135deg,var(--v) 0%,var(--v-d) 100%)}
+.status-hero.s-redeemed{background:linear-gradient(135deg,var(--green) 0%,#15803d 100%)}
+.status-hero.s-cancelled{background:linear-gradient(135deg,#64748b 0%,#475569 100%)}
+.status-hero.s-expired {background:linear-gradient(135deg,#64748b 0%,#475569 100%)}
+.status-hero.s-loading {background:linear-gradient(135deg,var(--v) 0%,var(--v-d) 100%);opacity:.7}
+
+.sh-label{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+.sh-name{font-size:22px;font-weight:700;margin-bottom:3px;line-height:1.2}
+.sh-venue{font-size:13px;opacity:.82;margin-bottom:1px;font-weight:500}
+.sh-addr{font-size:12px;opacity:.65}
+
+/* Status badge inside hero */
+.sh-status-row{display:flex;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.2)}
+.sh-status-ico{font-size:24px}
+.sh-status-lbl{font-size:16px;font-weight:700}
+.sh-status-sub{font-size:12px;opacity:.75;margin-top:1px}
+
+/* Pulse dot for live/waiting status */
+.pulse-dot{width:10px;height:10px;border-radius:50%;background:#4ade80;flex-shrink:0;
+  box-shadow:0 0 0 3px rgba(74,222,128,.3);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(74,222,128,.3)}50%{box-shadow:0 0 0 7px rgba(74,222,128,.1)}}
+
+/* ── Info card (booking details) ── */
+.info-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:14px;}
+.info-hd{padding:13px 18px;border-bottom:1px solid var(--bord);display:flex;align-items:center;justify-content:space-between;}
+.info-hd-title{font-size:13.5px;font-weight:700;color:var(--txt)}
+.refresh-btn{font-size:12px;font-weight:600;color:var(--v);cursor:pointer;background:none;border:none;font-family:var(--font);padding:0;display:flex;align-items:center;gap:4px;}
+.refresh-btn:hover{text-decoration:underline}
+.refresh-btn.spinning .ri{display:inline-block;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ri{display:inline-block}
+
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid var(--bord);}
+.info-row:last-child{border-bottom:none}
+.ik{font-size:13px;color:var(--muted);font-weight:500}
+.iv{font-size:13.5px;font-weight:700;color:var(--txt);text-align:right}
+.iv.hl{color:var(--v)}
+.iv.green{color:var(--green)}
+
+/* Time / EET badge */
+.badge-amber{display:inline-flex;align-items:center;gap:5px;background:var(--amber-s);border:1.5px solid #fcd34d;border-radius:var(--ri);padding:3px 11px;font-size:13px;font-weight:700;color:var(--amber);}
+.badge-green{display:inline-flex;align-items:center;gap:5px;background:var(--green-s);border:1.5px solid #86efac;border-radius:var(--ri);padding:3px 11px;font-size:13px;font-weight:700;color:var(--green);}
+.badge-v    {display:inline-flex;align-items:center;gap:5px;background:var(--v-s);border:1.5px solid var(--v);border-radius:var(--ri);padding:3px 11px;font-size:13px;font-weight:700;color:var(--v);}
+
+/* ── QR card ── */
+.qr-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);padding:22px 18px;text-align:center;margin-bottom:14px;}
+.qr-title{font-size:13.5px;font-weight:700;color:var(--txt);margin-bottom:4px}
+.qr-sub{font-size:12px;color:var(--muted);margin-bottom:14px}
+.qr-img{max-width:180px;border-radius:var(--ri);border:1px solid var(--bord);margin:0 auto 12px;display:block}
+.code-pill{display:inline-block;font-size:19px;font-weight:700;letter-spacing:.12em;color:var(--v);background:var(--v-s);border:1.5px solid var(--v);border-radius:var(--ri);padding:8px 20px;cursor:pointer;transition:all .15s;}
+.code-pill:hover{background:var(--v);color:#fff}
+.code-hint{font-size:11.5px;color:var(--hint);margin-top:6px}
+
+/* ── Position tracker (arch D) ── */
+.pos-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);padding:18px 20px;margin-bottom:14px;text-align:center;}
+.pos-label{font-size:12px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.pos-number{font-size:48px;font-weight:700;color:var(--v);line-height:1}
+.pos-sub{font-size:13px;color:var(--muted);margin-top:6px}
+
+/* ── Auto-refresh strip ── */
+.refresh-strip{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--gray);border:1px solid var(--bord);border-radius:var(--ri);margin-bottom:14px;font-size:13px;color:var(--muted);}
+.rf-dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0;animation:pulse 2s infinite}
+.rf-right{margin-left:auto;font-size:12px;font-weight:600;color:var(--v);cursor:pointer;}
+.rf-right:hover{text-decoration:underline}
+
+/* ── Action buttons ── */
+.action-btn{width:100%;padding:13px;border:none;border-radius:var(--r);background:var(--v);color:#fff;font-family:var(--font);font-size:15px;font-weight:700;cursor:pointer;transition:background .18s,transform .1s;box-shadow:0 4px 18px rgba(124,58,237,.28);margin-bottom:10px;}
+.action-btn:hover{background:var(--v-d)}.action-btn:active{transform:scale(.98)}
+.sec-btn{width:100%;padding:12px;border-radius:var(--r);border:1.5px solid var(--bord);background:var(--surf);color:var(--txt);font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;margin-bottom:10px;}
+.sec-btn:hover{background:var(--gray)}
+
+/* ── Skeleton loader ── */
+.skel{background:linear-gradient(90deg,var(--gray) 25%,var(--bord) 50%,var(--gray) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px;}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ── Error bar ── */
+.errbar{background:var(--red-s);border:1.5px solid #fca5a5;border-radius:var(--ri);padding:10px 14px;font-size:13px;color:var(--red);font-weight:500;margin-bottom:14px;display:none}
+.errbar.on{display:block}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(26,24,37,.9);color:#fff;padding:8px 18px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:200;white-space:nowrap;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Animated status segment ─────────────────────────────── */
+.status-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:14px;}
+.status-card-inner{padding:20px 18px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;}
+.sc-icon{font-size:36px}
+.sc-title{font-size:17px;font-weight:700;color:var(--txt)}
+.sc-sub{font-size:13px;color:var(--muted);line-height:1.5}
+
+/* 3-dot waiting animation */
+.dot-anim{display:flex;gap:7px;justify-content:center;margin-top:2px}
+.dot-anim span{width:12px;height:12px;border-radius:50%;background:var(--v);display:inline-block;animation:dotpop 1.2s infinite ease-in-out}
+.dot-anim span:nth-child(2){animation-delay:.2s}
+.dot-anim span:nth-child(3){animation-delay:.4s}
+@keyframes dotpop{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+
+/* Calling bright animation */
+.calling-anim{display:flex;gap:7px;justify-content:center;margin-top:2px}
+.calling-anim span{width:12px;height:12px;border-radius:50%;background:#4ade80;display:inline-block;animation:callingpop 1s infinite ease-in-out}
+.calling-anim span:nth-child(2){animation-delay:.15s;background:#34d399}
+.calling-anim span:nth-child(3){animation-delay:.3s;background:#6ee7b7}
+@keyframes callingpop{0%,100%{transform:scaleY(.4);opacity:.5}50%{transform:scaleY(1.4);opacity:1}}
+
+/* Collapsible info card */
+.info-hd{cursor:pointer;user-select:none}
+.info-hd-toggle{font-size:11px;color:var(--hint);transition:transform .2s}
+.info-hd-toggle.open{transform:rotate(180deg)}
+.info-body{overflow:hidden;max-height:0;transition:max-height .3s cubic-bezier(.4,0,.2,1)}
+.info-body.open{max-height:600px}
+
+/* Email send ──────────────────────────────────────── */
+.email-card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);padding:16px 18px;margin-bottom:14px;}
+.email-card-title{font-size:13.5px;font-weight:700;color:var(--txt);margin-bottom:10px}
+.email-row{display:flex;gap:8px}
+.email-inp{flex:1;padding:9px 12px;border:1.5px solid var(--bord);border-radius:var(--ri);font-family:var(--font);font-size:14px;color:var(--txt);background:var(--surf);outline:none;transition:border-color .18s}
+.email-inp:focus{border-color:var(--v)}
+.email-send-btn{padding:9px 16px;border:none;border-radius:var(--ri);background:var(--v);color:#fff;font-family:var(--font);font-size:13.5px;font-weight:700;cursor:pointer;transition:background .15s;white-space:nowrap}
+.email-send-btn:hover{background:var(--v-d)}
+</style>
+</head>
+<body class="has-top-band has-bottom-band">
+<header class="site"><div class="title">My Booking</div></header>
+
+<div class="shell">
+
+  <div class="errbar" id="errbar"></div>
+
+  <!-- Status hero -->
+  <div class="status-hero s-loading" id="statusHero">
+    <div class="sh-label">In-Time booking</div>
+    <div class="sh-name" id="shName">Loading&hellip;</div>
+    <div class="sh-venue" id="shVenue" style="display:none"></div>
+    <div class="sh-addr"  id="shAddr"  style="display:none"></div>
+    <div class="sh-status-row">
+      <div class="sh-status-ico" id="shIco">&#x231B;</div>
+      <div>
+        <div class="sh-status-lbl" id="shStatusLbl">Checking status&hellip;</div>
+        <div class="sh-status-sub" id="shStatusSub"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auto-refresh indicator -->
+  <div class="refresh-strip" id="refreshStrip" style="display:none">
+    <div class="rf-dot"></div>
+    <span id="refreshLabel">Refreshing automatically</span>
+    <span class="rf-right" onclick="doRefresh()">Refresh now</span>
+  </div>
+
+  <!-- Animated status segment -->
+  <div class="status-card" id="statusCard" style="display:none">
+    <div class="status-card-inner" id="statusCardInner"></div>
+  </div>
+
+  <!-- Booking details (collapsible) -->
+  <div class="info-card" id="infoCard" style="display:none">
+    <div class="info-hd" onclick="toggleInfoCard()">
+      <span class="info-hd-title">📋 Booking details</span>
+      <span class="info-hd-toggle" id="infoToggle">▼</span>
+    </div>
+    <div class="info-body" id="infoBody">
+      <div id="infoRows"></div>
+    </div>
+  </div>
+
+  <!-- Send recap by email -->
+  <div class="email-card" id="emailCard" style="display:none">
+    <div class="email-card-title">📧 Send recap to email</div>
+    <div class="email-row">
+      <input class="email-inp" type="email" id="recapEmail" placeholder="your@email.com">
+      <button class="email-send-btn" onclick="sendRecapEmail()">Send</button>
+    </div>
+  </div>
+
+  <!-- Queue position (arch D) -->
+  <div class="pos-card" id="posCard" style="display:none">
+    <div class="pos-label">Your position in queue</div>
+    <div class="pos-number" id="posNumber">&mdash;</div>
+    <div class="pos-sub" id="posSub"></div>
+  </div>
+
+  <!-- QR code -->
+  <div class="qr-card" id="qrCard" style="display:none">
+    <div class="qr-title">Entry QR code</div>
+    <div class="qr-sub">Show this at the venue entrance</div>
+    <img class="qr-img" id="qrImg" src="" alt="QR code" style="display:none">
+    <div class="code-pill" id="codePill" onclick="copyCode()" title="Tap to copy">&mdash;</div>
+    <div class="code-hint">Tap code to copy &middot; Your booking reference</div>
+  </div>
+
+  <!-- Actions -->
+  <div id="actionsArea"></div>
+
+</div>
+
+<div id="toast"></div>
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+<script>
+'use strict';
+
+/* ── URL params ── */
+const params  = new URLSearchParams(location.search);
+const token   = params.get('token')   || '';
+const bid     = params.get('bid')     || '';
+const queueId = params.get('queueId') || '';
+
+/* ── State ── */
+let booking     = null;
+let queue       = null;
+let pollTimer   = null;
+let nextRefresh = 30;   // seconds until next auto-refresh
+let countdownId = null;
+
+/* ── Helpers ── */
+let _tt;
+function toast(msg, ms) {
+  ms = ms || 2400;
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(_tt); _tt = setTimeout(function() { el.classList.remove('show'); }, ms);
+}
+function setErr(msg) {
+  const e = document.getElementById('errbar');
+  e.textContent = msg || ''; e.classList.toggle('on', !!msg);
+}
+function mapsUrl(txt,lat,lng){if(lat&&lng)return'https://www.google.com/maps?q='+encodeURIComponent(lat+','+lng);if(txt)return'https://www.google.com/maps/search/'+encodeURIComponent(txt);return null;}
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = String(s != null ? s : '');
+  return d.innerHTML;
+}
+function todayISO() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function tMin(t) { const p = String(t).split(':').map(Number); return p[0]*60+(p[1]||0); }
+function toHHMM(min) {
+  return String(Math.floor(min/60)).padStart(2,'0') + ':' + String(min%60).padStart(2,'0');
+}
+function formatCode(raw) {
+  if (!raw) return '';
+  const s = String(raw).toUpperCase().replace(/-/g,'');
+  return s.length >= 9 ? s.slice(0,3)+'-'+s.slice(3,6)+'-'+s.slice(6) : s;
+}
+
+/* ── Fetch booking status ── */
+async function fetchBooking() {
+  if (!token && !bid) {
+    setErr('No booking token in URL. Please use the link from your booking confirmation.');
+    return null;
+  }
+  const url = token
+    ? '/api/intime/bookings/by-token/' + encodeURIComponent(token)
+    : '/api/intime/bookings/' + encodeURIComponent(bid);
+  const r = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+  const d = await r.json().catch(function() { return {}; });
+  if (!r.ok || !d.ok) throw new Error(d.error || 'HTTP ' + r.status);
+  return d.booking || d;
+}
+
+/* ── Fetch queue details ── */
+async function fetchQueue(qid) {
+  if (!qid) return null;
+  const r = await fetch('/api/intime/queues/' + encodeURIComponent(qid), {
+    credentials: 'same-origin', headers: { Accept: 'application/json' }
+  });
+  const d = await r.json().catch(function() { return {}; });
+  if (!r.ok || !d.ok) return null;
+  return d.queue;
+}
+
+/* ── Render ── */
+function render() {
+  if (!booking) return;
+  const b      = booking;
+  const q      = queue;
+  const status = String(b.status || '').toUpperCase();
+  const arch   = q ? (q.archetype || 'D') : 'D';
+  const showEET= q ? q.show_eet !== false : true;
+  const showETE= q ? !!q.show_ete : false;
+
+  /* ── Hero ── */
+  const hero = document.getElementById('statusHero');
+  hero.className = 'status-hero ' + {
+    BOOKED:    's-booked',
+    REDEEMED:  's-redeemed',
+    CANCELLED: 's-cancelled',
+    EXPIRED:   's-expired',
+  }[status] || 's-booked';
+
+  document.getElementById('shName').textContent = b.queue_name || 'Queue';
+  const venueEl = document.getElementById('shVenue');
+  if (b.venue_name && b.venue_name !== b.queue_name) {
+    venueEl.textContent = b.venue_name; venueEl.style.display = '';
+  } else venueEl.style.display = 'none';
+  const addrEl = document.getElementById('shAddr');
+  if (q && q.location_text) {
+    var mu = mapsUrl(q.location_text, q.gps_lat, q.gps_lng);
+    addrEl.innerHTML = '&#x1F4CD; ' + (mu
+      ? '<a href="'+mu+'" target="_blank" rel="noopener" style="color:rgba(255,255,255,.82);text-decoration:underline;text-underline-offset:2px">'+esc(q.location_text)+' &#x2197;</a>'
+      : esc(q.location_text));
+    addrEl.style.display = '';
+  } else addrEl.style.display = 'none';
+
+  /* Status label in hero */
+  const icoEl = document.getElementById('shIco');
+  const lblEl = document.getElementById('shStatusLbl');
+  const subEl = document.getElementById('shStatusSub');
+  switch (status) {
+    case 'BOOKED':
+      icoEl.innerHTML = '<div class="pulse-dot"></div>';
+      lblEl.textContent = 'Booking confirmed';
+      subEl.textContent = 'Your spot is reserved — show QR at entry';
+      break;
+    case 'REDEEMED':
+      icoEl.textContent = '&#x2705;';
+      lblEl.textContent = 'Redeemed ✓';
+      subEl.textContent = b.redeemed_at
+        ? 'Checked in at ' + new Date(b.redeemed_at).toLocaleTimeString('en', {hour:'2-digit',minute:'2-digit'})
+        : 'Entry confirmed';
+      break;
+    case 'CANCELLED':
+      icoEl.textContent = '&#x274C;';
+      lblEl.textContent = 'Booking cancelled';
+      subEl.textContent = 'This booking has been cancelled';
+      break;
+    case 'EXPIRED':
+      icoEl.textContent = '&#x23F0;';
+      lblEl.textContent = 'Booking expired';
+      subEl.textContent = 'The slot has passed';
+      break;
+    default:
+      icoEl.textContent = '&#x2753;';
+      lblEl.textContent = status || 'Unknown';
+      subEl.textContent = '';
+  }
+
+  /* ── Info rows ── */
+  const rows = [];
+  function row(k, vHtml) {
+    return '<div class="info-row"><span class="ik">' + k + '</span><span class="iv">' + vHtml + '</span></div>';
+  }
+
+  rows.push(row('&#x1F4C5; Date', esc(b.valid_use_day || todayISO())));
+  /* EET — show booked time if available */
+  if (showEET && b.valid_use_day) {
+    rows.push(row('&#x23F0; EET (your slot)',
+      '<span class="badge-v">&#x23F0; ' + esc(b.valid_use_day) + '</span>'));
+  }
+
+  /* ETE — for live/continuous flow */
+  if (showETE && q) {
+    let cadence = 15;
+    if (q.wave_config_json) {
+      try {
+        const wc = typeof q.wave_config_json === 'string' ? JSON.parse(q.wave_config_json) : q.wave_config_json;
+        if (wc.wave_duration) cadence = Number(wc.wave_duration);
+      } catch(e) {}
+    }
+    rows.push(row('&#x231B; Est. Time (ETE)',
+      '<span class="badge-amber">~' + cadence + ' min</span>'));
+  }
+
+  /* Queue position for arch D */
+  if (arch === 'D' && b.booking_id) {
+    const posCard = document.getElementById('posCard');
+    posCard.style.display = '';
+    document.getElementById('posNumber').textContent = '#' + b.booking_id;
+    document.getElementById('posSub').textContent =
+      status === 'REDEEMED' ? 'Checked in' :
+      status === 'BOOKED'   ? 'Your place in the queue' : '';
+  } else {
+    document.getElementById('posCard').style.display = 'none';
+  }
+
+  if (b.party_size && b.party_size > 1) {
+    rows.push(row('&#x1F465; Party size', esc(b.party_size) + ' people'));
+  }
+
+  rows.push(row('&#x1F3F7; Booking ref',
+    '<span class="badge-v" style="cursor:pointer" onclick="copyCode()">' +
+    esc(formatCode(b.human_ref || b.short_code || '')) + '</span>'));
+
+  /* status shown in animated status card above, not repeated here */
+
+  document.getElementById('infoCard').style.display = '';
+  document.getElementById('infoRows').innerHTML = rows.join('');
+  /* Open body by default */
+  document.getElementById('infoBody')?.classList.add('open');
+  document.getElementById('infoToggle')?.classList.add('open');
+  /* Animated status card */
+  renderStatusCard(status, q);
+  /* Email card — always shown */
+  document.getElementById('emailCard').style.display = '';
+
+  /* ── QR card ── */
+  const qrCard = document.getElementById('qrCard');
+  if (status === 'BOOKED') {
+    qrCard.style.display = '';
+    const code = formatCode(b.human_ref || b.short_code || '');
+    document.getElementById('codePill').textContent = code || '—';
+    /* Generate QR client-side from token */
+    generateQR(token || 'intime:booking:' + (b.token_id || bid));
+  } else {
+    qrCard.style.display = 'none';
+  }
+
+  /* ── Auto-refresh strip: only when BOOKED ── */
+  const strip = document.getElementById('refreshStrip');
+  if (status === 'BOOKED') {
+    strip.style.display = '';
+    startAutoRefresh();
+  } else {
+    strip.style.display = 'none';
+    stopAutoRefresh();
+  }
+
+  /* ── Action buttons ── */
+  renderActions(status);
+}
+
+/* ── QR generation (client-side) ── */
+function generateQR(payload) {
+  const img = document.getElementById('qrImg');
+  /* Use a free QR API — works offline if the token is embedded */
+  const size = 180;
+  img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=' + size + 'x' + size + '&data=' + encodeURIComponent(payload);
+  img.style.display = '';
+  img.onerror = function() { img.style.display = 'none'; };
+}
+
+/* ── Actions ── */
+function renderActions(status) {
+  const area = document.getElementById('actionsArea');
+  let html = '';
+  if (status === 'BOOKED') {
+    const qid = (booking && booking.queue_id) || queueId;
+    const bid2 = booking && booking.booking_id;
+    if (qid) {
+      html += '<button class="action-btn" onclick="location.href='/modules/In-Time/use/page 3-2.html?queueId='+encodeURIComponent(qid)+(bid2?'&modify='+encodeURIComponent(bid2):'')+''">' +
+        '✏️ Modify this booking</button>';
+    }
+    html += '<button class="sec-btn" onclick="cancelBooking()">❌ Cancel this booking</button>';
+  }
+  html += '<button class="sec-btn" onclick="location.href='/modules/In-Time/use/page 1.html'">🎟 My bookings</button>';
+  html += '<button class="sec-btn" onclick="location.href='/modules/In-Time/use/main.html'">🏠 Home</button>';
+  area.innerHTML = html;
+}
+
+/* ── Cancel ── */
+async function cancelBooking() {
+  if (!confirm('Cancel this booking? This cannot be undone.')) return;
+  const deviceId = localStorage.getItem('intime_device_id') || '';
+  try {
+    const id = booking.booking_id || bid;
+    const r = await fetch('/api/intime/bookings/' + id + '/cancel', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_id: deviceId }),
+    });
+    const d = await r.json().catch(function() { return {}; });
+    if (!r.ok && !d.already) throw new Error(d.error || 'HTTP ' + r.status);
+    toast('Booking cancelled.');
+    booking.status = 'CANCELLED';
+    render();
+  } catch(err) {
+    toast('Could not cancel: ' + err.message);
+  }
+}
+
+/* ── Copy code ── */
+function copyCode() {
+  const c = document.getElementById('codePill').textContent;
+  navigator.clipboard.writeText(c)
+    .then(function() { toast('Copied!'); })
+    .catch(function() { toast(c); });
+}
+
+/* ── Auto-refresh ── */
+function startAutoRefresh() {
+  stopAutoRefresh();
+  nextRefresh = 30;
+  updateCountdown();
+  pollTimer = setInterval(function() {
+    nextRefresh--;
+    updateCountdown();
+    if (nextRefresh <= 0) {
+      nextRefresh = 30;
+      doRefresh();
+    }
+  }, 1000);
+}
+function stopAutoRefresh() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+function updateCountdown() {
+  const el = document.getElementById('refreshLabel');
+  if (el) el.textContent = 'Auto-refreshing in ' + nextRefresh + 's';
+}
+
+async function doRefresh() {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) btn.classList.add('spinning');
+  nextRefresh = 30;
+  try {
+    const b = await fetchBooking();
+    if (b) { booking = b; render(); }
+  } catch(err) {
+    toast('Refresh failed: ' + err.message);
+  } finally {
+    if (btn) btn.classList.remove('spinning');
+  }
+}
+
+
+/* ── Collapsible info card ── */
+function toggleInfoCard() {
+  const body = document.getElementById('infoBody');
+  const tog  = document.getElementById('infoToggle');
+  if (!body) return;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  if (tog) tog.classList.toggle('open', !isOpen);
+}
+
+/* ── Animated status card ── */
+function renderStatusCard(status, q) {
+  const card = document.getElementById('statusCard');
+  const inner = document.getElementById('statusCardInner');
+  if (!card || !inner) return;
+  card.style.display = '';
+  const addr = q && q.location_text;
+  const mu = addr ? mapsUrl(q.location_text, q.gps_lat, q.gps_lng) : null;
+  const locLink = addr ? (mu ? '<a href="'+mu+'" target="_blank" rel="noopener" style="color:var(--v);font-weight:700">'+esc(addr)+' ↗</a>' : esc(addr)) : '';
+  if (status === 'BOOKED') {
+    inner.innerHTML =
+      '<div class="sc-icon">🕐</div>' +
+      '<div class="sc-title">Waiting — queue in progress</div>' +
+      '<div class="dot-anim"><span></span><span></span><span></span></div>' +
+      (locLink ? '<div class="sc-sub" style="margin-top:4px">📍 '+locLink+'</div>' : '');
+  } else if (status === 'REDEEMED') {
+    inner.innerHTML =
+      '<div class="sc-icon">✅</div>' +
+      '<div class="sc-title" style="color:var(--green)">Calling — you're expected!</div>' +
+      '<div class="calling-anim"><span></span><span></span><span></span></div>' +
+      (locLink ? '<div class="sc-sub" style="margin-top:4px">📍 '+locLink+'</div>' : '');
+  } else if (status === 'EXPIRED') {
+    inner.innerHTML =
+      '<div class="sc-icon">⏰</div>' +
+      '<div class="sc-title" style="color:var(--muted)">Missed — you did not show up on time</div>' +
+      '<div class="sc-sub">Your slot has passed. You can book again anytime.</div>';
+  } else if (status === 'CANCELLED') {
+    inner.innerHTML =
+      '<div class="sc-icon">❌</div>' +
+      '<div class="sc-title" style="color:var(--muted)">Booking cancelled</div>' +
+      '<div class="sc-sub">This booking has been cancelled.</div>';
+  } else {
+    card.style.display = 'none';
+  }
+}
+
+/* ── Send recap email ── */
+function sendRecapEmail() {
+  const inp = document.getElementById('recapEmail');
+  const email = inp ? inp.value.trim() : '';
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    toast('Please enter a valid email address.'); return;
+  }
+  if (!booking) { toast('Booking not loaded yet.'); return; }
+  /* Build a simple mailto: fallback — real sending would need a backend endpoint */
+  const code = formatCode(booking.human_ref || booking.short_code || '');
+  const subject = encodeURIComponent('Your In-Time booking — ' + (booking.queue_name||'Queue') + ' — ' + (booking.valid_use_day||''));
+  const body = encodeURIComponent(
+    'Queue: ' + (booking.queue_name||'') + '\n' +
+    'Venue: ' + (booking.venue_name||'') + '\n' +
+    'Date: ' + (booking.valid_use_day||'') + '\n' +
+    'Reference: ' + code + '\n' +
+    'Status: ' + (booking.status||'') + '\n'
+  );
+  /* Send via mailto: as a simple, no-backend approach */
+  window.open('mailto:' + encodeURIComponent(email) + '?subject=' + subject + '&body=' + body);
+  toast('Opening email client…');
+}
+
+/* ── Initial load ── */
+async function init() {
+  /* Show skeleton hero */
+  document.getElementById('shName').innerHTML =
+    '<div class="skel" style="width:180px;height:20px;margin-bottom:4px"></div>';
+
+  if (!token && !bid) {
+    setErr('No booking token in URL. Please use the link from your confirmation page.');
+    document.getElementById('statusHero').className = 'status-hero s-cancelled';
+    document.getElementById('shName').textContent = 'Booking not found';
+    document.getElementById('shStatusLbl').textContent = 'Invalid link';
+    return;
+  }
+
+  try {
+    /* Parallel fetch: booking + queue */
+    const bookingPromise = fetchBooking();
+    const queuePromise   = queueId ? fetchQueue(queueId) : Promise.resolve(null);
+    const [b, q] = await Promise.all([bookingPromise, queuePromise]);
+    booking = b;
+    queue   = q;
+    if (!booking) throw new Error('Booking not found');
+    setErr('');
+    render();
+  } catch(err) {
+    setErr('Could not load booking: ' + err.message);
+    document.getElementById('statusHero').className = 'status-hero s-cancelled';
+    document.getElementById('shName').textContent = 'Error';
+    document.getElementById('shStatusLbl').textContent = err.message;
+    console.error('[p4]', err);
+  }
+}
+
+init();
+
+if (window.Drawer && window.Drawer.mount) Drawer.mount({ mode: 'visitor' });
+if (window.FAB && window.FAB.mount) FAB.mount({
+  useTopBand: true, useBottomBand: true,
+  home:   { label: '&#x1F3E0;', title: 'Home',     onClick: function() { if(window.Drawer) Drawer.open(); } },
+  config: { label: '🏠',  title: 'Home',  href: '/modules/In-Time/use/main.html' },
+  onBack: function() { history.length > 1 ? history.back() : (location.href = '/modules/In-Time/use/page 1.html'); },
+});
+</script>
+</body>
+</html>

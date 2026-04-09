@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Calendar Sync — In-Time</title>
+<link rel="stylesheet" href="/css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --v:#7c3aed;--v-s:#ede9fc;--v-d:#6d28d9;--white:#fff;
+  --blue:#2563eb;--blue-s:#eff6ff;
+  --green:#16a34a;--green-s:#f0fdf4;
+  --amber:#d97706;--amber-s:#fffbeb;
+  --red:#dc2626;--red-s:#fef2f2;
+  --txt:#1a1825;--muted:#6b6880;--hint:#9b98aa;
+  --surf:#fff;--bg:#f4f3f8;--bord:#e2e0ea;--bord-f:#7c3aed;
+  --gray:#f0eff5;--gray-m:#d4d2de;
+  --r:14px;--ri:9px;
+  --sh:0 2px 16px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --font:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:var(--font);background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55}
+
+.topbar{background:var(--v);color:#fff;padding:10px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 12px rgba(124,58,237,.3)}
+.topbar-title{font-size:15px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topbar-sub{font-size:11.5px;opacity:.7;white-space:nowrap}
+.topbar a{color:#fff;text-decoration:none;font-weight:700;font-size:12px;padding:5px 12px;border:1.5px solid rgba(255,255,255,.4);border-radius:999px;white-space:nowrap;transition:background .15s}
+.topbar a:hover{background:rgba(255,255,255,.15)}
+
+.shell{max-width:680px;margin:0 auto;padding:20px 16px 80px}
+
+.card{background:var(--surf);border:1px solid var(--bord);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:16px}
+.card-hd{padding:16px 18px 14px;border-bottom:1px solid var(--bord);display:flex;align-items:center;gap:10px}
+.card-hd-icon{font-size:20px;flex-shrink:0}
+.card-hd-body{flex:1;min-width:0}
+.card-hd-title{font-size:14px;font-weight:700;color:var(--txt)}
+.card-hd-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.card-bd{padding:16px 18px}
+
+.provider-row{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--bord)}
+.provider-row:last-child{border-bottom:none}
+.prov-icon{font-size:24px;flex-shrink:0;width:36px;text-align:center}
+.prov-info{flex:1;min-width:0}
+.prov-name{font-size:13.5px;font-weight:700;color:var(--txt)}
+.prov-desc{font-size:11.5px;color:var(--muted);margin-top:1px}
+.prov-status{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.prov-status.not-connected{background:var(--gray);color:var(--hint);border:1px solid var(--bord)}
+.prov-status.connected{background:var(--green-s);color:var(--green);border:1px solid #86efac}
+.prov-status.enabled{background:var(--v-s);color:var(--v);border:1px solid #c4b5fd}
+
+.prov-actions{display:flex;gap:6px;flex-shrink:0}
+.btn{display:inline-flex;align-items:center;gap:5px;font-family:var(--font);font-size:12px;font-weight:600;padding:7px 14px;border-radius:var(--ri);cursor:pointer;transition:all .18s;border:1.5px solid;text-decoration:none;white-space:nowrap}
+.btn-v{background:var(--v);color:#fff;border-color:var(--v)}
+.btn-v:hover{background:var(--v-d)}
+.btn-s{background:var(--surf);color:var(--txt);border-color:var(--bord)}
+.btn-s:hover{background:var(--gray)}
+.btn-green{background:var(--green);color:#fff;border-color:var(--green)}
+.btn-green:hover{background:#15803d}
+.btn-red{background:var(--surf);color:var(--red);border-color:var(--red)}
+.btn-red:hover{background:var(--red-s)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+.co{border-radius:var(--ri);padding:10px 14px;font-size:12.5px;line-height:1.5;margin-top:12px}
+.co-note{background:var(--blue-s);border:1.5px solid #93c5fd;color:var(--blue)}
+.co-warn{background:var(--amber-s);border:1.5px solid #fcd34d;color:var(--amber)}
+.co-ok{background:var(--green-s);border:1.5px solid #86efac;color:var(--green)}
+.co-err{background:var(--red-s);border:1.5px solid #fca5a5;color:var(--red)}
+
+.togrow{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bord)}
+.togrow:last-child{border-bottom:none}
+.togi{flex:1;min-width:0;margin-right:12px}
+.tog-title{font-size:13px;font-weight:600;color:var(--txt)}
+.tog-desc{font-size:11.5px;color:var(--muted);margin-top:1px}
+.togsw{position:relative;display:inline-block;width:38px;height:20px;flex-shrink:0}
+.togsw input{opacity:0;width:0;height:0}
+.togtr{position:absolute;inset:0;background:var(--gray-m);border-radius:10px;transition:.25s;cursor:pointer}
+.togtr::before{content:'';position:absolute;width:14px;height:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.25s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+input:checked+.togtr{background:var(--v)}
+input:checked+.togtr::before{transform:translateX(18px)}
+
+/* Review overlay */
+.review-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999}
+.review-dialog{background:var(--surf);border-radius:18px;max-width:1080px;width:96%;max-height:92vh;display:flex;flex-direction:column;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.25);overflow:hidden}
+.review-header{margin-bottom:12px}
+.review-header h2{font-size:16px;font-weight:700;color:var(--txt);margin:0 0 4px}
+.review-header p{font-size:13px;color:var(--muted);margin:0}
+.review-body{flex:1;overflow:auto;border:1px solid var(--bord);border-radius:var(--ri);min-height:260px}
+.review-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:10px}
+
+.status-msg{font-size:12px;margin-top:8px;display:none}
+.status-msg.on{display:block}
+.status-msg.ok{color:var(--green)}
+.status-msg.err{color:var(--red)}
+
+@media(max-width:600px){
+  .shell{padding:12px 8px 60px}
+  .provider-row{flex-wrap:wrap;gap:8px}
+  .prov-actions{width:100%}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="flex:1;min-width:0">
+    <div class="topbar-title" id="tb-title">⚙ Calendar Sync</div>
+    <div class="topbar-sub" id="tb-sub">Loading…</div>
+  </div>
+  <a href="#" id="backLink">← Back</a>
+</div>
+
+<div class="shell">
+
+  <!-- Current sync status -->
+  <div class="card">
+    <div class="card-hd">
+      <span class="card-hd-icon">🔗</span>
+      <div class="card-hd-body">
+        <div class="card-hd-title">Calendar providers</div>
+        <div class="card-hd-sub">Connect an external calendar to import busy blocks and prevent double-bookings.</div>
+      </div>
+    </div>
+    <div class="card-bd" id="providersBody">
+      <div style="color:var(--hint);font-size:13px">Loading providers…</div>
+    </div>
+  </div>
+
+  <!-- Queue-level settings -->
+  <div class="card">
+    <div class="card-hd">
+      <span class="card-hd-icon">📅</span>
+      <div class="card-hd-body">
+        <div class="card-hd-title">Sync settings for this queue</div>
+        <div class="card-hd-sub">Control how the connected calendar integrates with this queue.</div>
+      </div>
+    </div>
+    <div class="card-bd">
+      <div class="togrow">
+        <div class="togi"><div class="tog-title">Enable calendar sync</div><div class="tog-desc">Import busy times from the connected provider into this queue.</div></div>
+        <label class="togsw"><input type="checkbox" id="tog-cal-sync"><span class="togtr"></span></label>
+      </div>
+      <div id="sync-opts" style="display:none">
+        <div class="togrow">
+          <div class="togi"><div class="tog-title">Allow manual refresh</div><div class="tog-desc">Trigger a sync manually from the dashboard at any time.</div></div>
+          <label class="togsw"><input type="checkbox" id="tog-manual-refresh" checked><span class="togtr"></span></label>
+        </div>
+        <div class="togrow">
+          <div class="togi"><div class="tog-title">Review conflicts manually</div><div class="tog-desc">Conflicts appear for your individual review.</div></div>
+          <label class="togsw"><input type="checkbox" id="tog-conf-review" checked><span class="togtr"></span></label>
+        </div>
+        <div class="togrow">
+          <div class="togi"><div class="tog-title">Allow bulk resolution</div><div class="tog-desc">Apply resolution to multiple conflicting bookings at once.</div></div>
+          <label class="togsw"><input type="checkbox" id="tog-bulk-res" checked><span class="togtr"></span></label>
+        </div>
+        <div class="togrow">
+          <div class="togi"><div class="tog-title">Notify impacted visitors</div><div class="tog-desc">Send messages when bookings change due to a calendar conflict.</div></div>
+          <label class="togsw"><input type="checkbox" id="tog-notify-imp" checked><span class="togtr"></span></label>
+        </div>
+        <div style="margin-top:12px">
+          <label style="font-size:12px;font-weight:600;color:var(--txt);display:block;margin-bottom:4px">Sync horizon</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="number" id="f-horizon" min="7" max="365" value="90" style="width:70px;padding:6px 8px;border:1.5px solid var(--bord);border-radius:var(--ri);font-family:var(--font);font-size:13px">
+            <span style="font-size:12px;color:var(--muted)">days ahead</span>
+          </div>
+        </div>
+      </div>
+      <div class="status-msg" id="saveStatus"></div>
+      <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end">
+        <a class="btn btn-s" id="btnViewCal" href="#">📅 View calendar</a>
+        <button type="button" class="btn btn-green" id="btnSave">💾 Save</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="/js/drawer.js"></script>
+<script src="/js/fab.js"></script>
+<script>
+'use strict';
+
+const _qid=new URLSearchParams(location.search).get('queue');
+let _queue=null;
+const _hostConnected={google:false,microsoft:false,other:false};
+
+function jp(v){if(v==null)return null;if(typeof v==='object')return v;try{return JSON.parse(v);}catch(_){return null;}}
+
+/* ─── Provider rendering ─── */
+const PROVIDERS=[
+  {key:'google',icon:'📅',name:'Google Calendar',desc:'Connect via Google OAuth'},
+  {key:'microsoft',icon:'📆',name:'Outlook / Microsoft 365',desc:'Connect via Microsoft OAuth'},
+  {key:'other',icon:'🗓',name:'CalDAV / iCal',desc:'Generic calendar feed — coming soon'},
+];
+
+function renderProviders(){
+  const body=document.getElementById('providersBody');
+  body.innerHTML=PROVIDERS.map(p=>{
+    const connected=_hostConnected[p.key];
+    const enabled=_queue&&_queue.cal_sync&&_queue.cal_provider===p.key;
+    let statusCls='not-connected',statusText='Not connected';
+    if(connected&&enabled){statusCls='enabled';statusText='✓ Active';}
+    else if(connected){statusCls='connected';statusText='Connected';}
+    return `<div class="provider-row">
+      <span class="prov-icon">${p.icon}</span>
+      <div class="prov-info"><div class="prov-name">${p.name}</div><div class="prov-desc">${p.desc}</div></div>
+      <span class="prov-status ${statusCls}">${statusText}</span>
+      <div class="prov-actions">
+        ${!connected&&p.key!=='other'?`<button class="btn btn-v" data-connect="${p.key}">Connect</button>`:''}
+        ${!connected&&p.key==='other'?`<button class="btn btn-s" disabled>Coming soon</button>`:''}
+        ${connected&&!enabled?`<button class="btn btn-green" data-review="${p.key}">Review & enable</button>`:''}
+        ${connected&&enabled?`<button class="btn btn-red" data-disable="${p.key}">Disable</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  /* Wire buttons */
+  body.querySelectorAll('[data-connect]').forEach(btn=>btn.addEventListener('click',()=>startOAuth(btn.dataset.connect)));
+  body.querySelectorAll('[data-review]').forEach(btn=>btn.addEventListener('click',()=>openReview(btn.dataset.review)));
+  body.querySelectorAll('[data-disable]').forEach(btn=>btn.addEventListener('click',()=>{
+    if(confirm('Disable this calendar provider for this queue?')){
+      document.getElementById('tog-cal-sync').checked=false;
+      document.getElementById('sync-opts').style.display='none';
+      setStatus('Provider disabled — save to apply.','ok');
+    }
+  }));
+}
+
+/* ─── OAuth ─── */
+async function startOAuth(provider){
+  const returnTo=window.location.href;
+  const url=provider==='google'
+    ?`/api/host/calendar/google/start?returnTo=${encodeURIComponent(returnTo)}`
+    :`/api/host/calendar/microsoft/start?returnTo=${encodeURIComponent(returnTo)}`;
+  try{
+    const res=await fetch(url,{credentials:'include',headers:{Accept:'application/json'}});
+    const data=await res.json().catch(()=>null);
+    if(!res.ok||!data?.authUrl){setStatus('OAuth not configured on server yet.','err');return;}
+    window.location.href=data.authUrl;
+  }catch(e){setStatus('Failed to start OAuth: '+e.message,'err');}
+}
+
+/* ─── Review modal ─── */
+function openReview(provider){
+  const overlay=document.createElement('div');overlay.className='review-overlay';
+  overlay.innerHTML=`
+    <div class="review-dialog">
+      <div class="review-header">
+        <h2>Review imported busy blocks — ${provider}</h2>
+        <p>Verify the extracted busy times before enabling sync for this queue.</p>
+      </div>
+      <div class="review-body" id="reviewGrid"><div style="padding:20px;color:var(--muted);font-size:13px">Loading availability…</div></div>
+      <div class="review-footer">
+        <button type="button" class="btn btn-s" id="reviewCancel">Cancel</button>
+        <button type="button" class="btn btn-green" id="reviewApprove">✓ Approve & enable</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#reviewCancel').addEventListener('click',()=>overlay.remove());
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+
+  overlay.querySelector('#reviewApprove').addEventListener('click',()=>{
+    /* Set the queue to use this provider */
+    _queue.cal_sync=true;
+    _queue.cal_provider=provider;
+    _hostConnected[provider]=true;
+    document.getElementById('tog-cal-sync').checked=true;
+    document.getElementById('sync-opts').style.display='';
+    renderProviders();
+    overlay.remove();
+    setStatus('Provider approved — save to apply.','ok');
+  });
+
+  /* Load availability preview (best-effort) */
+  loadReviewGrid(provider,overlay.querySelector('#reviewGrid'));
+}
+
+async function loadReviewGrid(provider,container){
+  try{
+    const today=new Date();today.setHours(0,0,0,0);
+    const horizon=parseInt(document.getElementById('f-horizon')?.value)||90;
+    const chunks=[];
+    for(let i=0;i<Math.ceil(horizon/7);i++){
+      const d=new Date(today);d.setDate(d.getDate()+i*7);
+      chunks.push(`/api/host/calendar/availability?provider=${encodeURIComponent(provider)}&view=week&date=${isoDate(d)}`);
+    }
+    let allBusy=[];
+    for(const url of chunks){
+      try{
+        const res=await fetch(url,{credentials:'include',headers:{Accept:'application/json'}});
+        if(!res.ok)continue;
+        const json=await res.json().catch(()=>null);
+        if(!json?.ok)continue;
+        (json.busySlots||[]).forEach(b=>{if(b.start&&b.end)allBusy.push(b);});
+      }catch(_){}
+    }
+    if(!allBusy.length){
+      container.innerHTML='<div style="padding:20px;color:var(--hint);font-size:13px;text-align:center">No busy blocks found in the next '+horizon+' days. The calendar may be empty or the endpoint is not configured yet.<br><br>You can still approve to enable sync — blocks will appear once the backend availability endpoint is implemented.</div>';
+      return;
+    }
+    container.innerHTML=`<div style="padding:12px;font-size:13px;color:var(--green);font-weight:600">${allBusy.length} busy block(s) found over the next ${horizon} days.</div>`;
+    /* Simple list preview */
+    const list=document.createElement('div');list.style.padding='0 12px 12px';list.style.maxHeight='400px';list.style.overflow='auto';
+    allBusy.slice(0,50).forEach(b=>{
+      const s=new Date(b.start),e=new Date(b.end);
+      const el=document.createElement('div');
+      el.style.cssText='display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--bord);font-size:12px';
+      el.innerHTML=`<span style="font-weight:700;color:var(--amber);min-width:90px">${s.toLocaleDateString(undefined,{month:'short',day:'numeric'})}</span>
+        <span style="color:var(--txt)">${pad2(s.getHours())}:${pad2(s.getMinutes())} – ${pad2(e.getHours())}:${pad2(e.getMinutes())}</span>`;
+      list.appendChild(el);
+    });
+    if(allBusy.length>50){
+      const more=document.createElement('div');more.style.cssText='padding:8px 0;font-size:11px;color:var(--hint)';
+      more.textContent=`…and ${allBusy.length-50} more`;list.appendChild(more);
+    }
+    container.appendChild(list);
+  }catch(err){
+    container.innerHTML=`<div style="padding:20px;color:var(--red);font-size:13px">${err.message}</div>`;
+  }
+}
+
+const pad2=n=>String(n).padStart(2,'0');
+const isoDate=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+
+/* ─── Status ─── */
+function setStatus(msg,type){
+  const el=document.getElementById('saveStatus');
+  el.textContent=msg;el.className='status-msg on'+(type?' '+type:'');
+  if(type==='ok')setTimeout(()=>{el.className='status-msg';},3000);
+}
+
+/* ─── Save ─── */
+document.getElementById('btnSave').addEventListener('click',async()=>{
+  if(!_qid)return setStatus('No queue specified.','err');
+  const payload={
+    cal_sync:!!document.getElementById('tog-cal-sync').checked,
+    cal_provider:_queue?.cal_provider||null,
+    sync_horizon:parseInt(document.getElementById('f-horizon')?.value)||90,
+    manual_refresh:!!document.getElementById('tog-manual-refresh')?.checked,
+    conf_review:!!document.getElementById('tog-conf-review')?.checked,
+    bulk_res:!!document.getElementById('tog-bulk-res')?.checked,
+    notify_imp:!!document.getElementById('tog-notify-imp')?.checked,
+  };
+  try{
+    const res=await fetch(`/api/intime/queues/${encodeURIComponent(_qid)}`,{
+      method:'PATCH',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    const data=await res.json().catch(()=>null);
+    if(!res.ok)throw new Error((data&&data.error)||`HTTP ${res.status}`);
+    setStatus('Saved ✓','ok');
+  }catch(err){setStatus('Save failed: '+err.message,'err');}
+});
+
+/* ─── Toggle sync options visibility ─── */
+document.getElementById('tog-cal-sync').addEventListener('change',function(){
+  document.getElementById('sync-opts').style.display=this.checked?'':'none';
+});
+
+/* ─── Load ─── */
+async function loadQueue(){
+  if(!_qid){document.getElementById('providersBody').innerHTML='<div style="color:var(--red);font-size:13px">No queue specified in URL.</div>';return;}
+  try{
+    const res=await fetch(`/api/intime/queues/${encodeURIComponent(_qid)}`,{credentials:'same-origin',headers:{Accept:'application/json'}});
+    const data=await res.json().catch(()=>null);
+    if(!res.ok||!data)throw new Error((data&&data.error)||`HTTP ${res.status}`);
+    _queue=data.queue||data;
+    document.getElementById('tb-title').textContent=`⚙ ${_queue.name||'Queue'} — Calendar Sync`;
+    document.getElementById('tb-sub').textContent=(_queue.venue_name||'')+(_queue.timezone?' · '+_queue.timezone:'');
+    document.getElementById('btnViewCal').href=`calendar view.html?queue=${encodeURIComponent(_qid)}`;
+    /* Hydrate toggles */
+    document.getElementById('tog-cal-sync').checked=!!_queue.cal_sync;
+    document.getElementById('sync-opts').style.display=_queue.cal_sync?'':'none';
+    document.getElementById('f-horizon').value=_queue.sync_horizon||90;
+    if(typeof _queue.manual_refresh==='boolean')document.getElementById('tog-manual-refresh').checked=_queue.manual_refresh;
+    if(typeof _queue.conf_review==='boolean')document.getElementById('tog-conf-review').checked=_queue.conf_review;
+    if(typeof _queue.bulk_res==='boolean')document.getElementById('tog-bulk-res').checked=_queue.bulk_res;
+    if(typeof _queue.notify_imp==='boolean')document.getElementById('tog-notify-imp').checked=_queue.notify_imp;
+    /* Set back link */
+    const ref=document.referrer;
+    document.getElementById('backLink').href=ref&&ref.includes('page')?ref:`../page 2.html`;
+  }catch(err){
+    document.getElementById('providersBody').innerHTML=`<div style="color:var(--red);font-size:13px">Load failed: ${err.message}</div>`;
+    return;
+  }
+  /* Check host-level connections */
+  try{
+    const res=await fetch('/api/host/calendar/status',{credentials:'include',headers:{Accept:'application/json'}});
+    const data=await res.json().catch(()=>null);
+    if(data?.ok&&data.providers){
+      _hostConnected.google=!!data.providers.google;
+      _hostConnected.microsoft=!!data.providers.microsoft;
+      _hostConnected.other=!!data.providers.other;
+    }
+  }catch(_){}
+  /* If current provider is set, mark it as connected */
+  if(_queue.cal_provider&&_queue.cal_sync)_hostConnected[_queue.cal_provider]=true;
+  renderProviders();
+  /* Handle OAuth return */
+  const params=new URLSearchParams(location.search);
+  const calReturn=params.get('calendar');
+  const statusReturn=params.get('status');
+  if(calReturn&&statusReturn==='connected'){
+    _hostConnected[calReturn]=true;
+    renderProviders();
+    openReview(calReturn);
+    if(history.replaceState){const u=new URL(location.href);u.searchParams.delete('calendar');u.searchParams.delete('status');history.replaceState({},'',u);}
+  }
+}
+
+/* ─── Boot ─── */
+document.addEventListener('DOMContentLoaded',()=>{
+  if(window.Drawer?.mount)window.Drawer.mount({mode:'host'});
+  if(window.FAB?.mount)window.FAB.mount({useTopBand:true,useBottomBand:true,
+    home:{title:'Home',label:'🏠',onClick:()=>window.Drawer?.open?.()},
+    config:{title:'Settings',label:'⚙️',href:'/pages/visitor/settings.html#host'},
+    onBack:()=>{history.back();}});
+  loadQueue();
+});
+</script>
+</body>
+</html>
