@@ -388,6 +388,59 @@ async function initDb() {
       updated_at          TIMESTAMPTZ DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS lgo_audio_cast_subscriptions (
+      id                       SERIAL PRIMARY KEY,
+      guide_id                 INTEGER NOT NULL UNIQUE REFERENCES lgo_guides(id) ON DELETE CASCADE,
+      provider                 TEXT NOT NULL DEFAULT 'stripe',
+      provider_customer_id     TEXT,
+      provider_subscription_id TEXT,
+      status                   TEXT NOT NULL DEFAULT 'inactive',
+      price_cents              INTEGER NOT NULL DEFAULT 2500,
+      currency                 TEXT NOT NULL DEFAULT 'EUR',
+      current_period_end       TIMESTAMPTZ,
+      created_at               TIMESTAMPTZ DEFAULT NOW(),
+      updated_at               TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS lgo_audio_cast_sessions (
+      session_id             UUID PRIMARY KEY,
+      guide_id               INTEGER NOT NULL REFERENCES lgo_guides(id) ON DELETE CASCADE,
+      title                  TEXT NOT NULL DEFAULT 'Live Audio Cast',
+      status                 TEXT NOT NULL DEFAULT 'READY',
+      join_secret_hash       TEXT NOT NULL,
+      join_secret_encrypted  TEXT NOT NULL,
+      participant_limit      INTEGER NOT NULL DEFAULT 25 CHECK (participant_limit BETWEEN 1 AND 25),
+      created_at             TIMESTAMPTZ DEFAULT NOW(),
+      started_at             TIMESTAMPTZ,
+      paused_at              TIMESTAMPTZ,
+      ended_at               TIMESTAMPTZ,
+      updated_at             TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS lgo_audio_cast_participants (
+      participant_id UUID PRIMARY KEY,
+      session_id     UUID NOT NULL REFERENCES lgo_audio_cast_sessions(session_id) ON DELETE CASCADE,
+      visitor_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      status         TEXT NOT NULL DEFAULT 'CONNECTED',
+      signal_quality TEXT,
+      latency_ms     REAL,
+      jitter_ms      REAL,
+      transport_mode TEXT,
+      joined_at      TIMESTAMPTZ DEFAULT NOW(),
+      last_seen_at   TIMESTAMPTZ DEFAULT NOW(),
+      left_at        TIMESTAMPTZ,
+      kicked_at      TIMESTAMPTZ,
+      UNIQUE(session_id, visitor_user_id)
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_audio_cast_one_open_session_per_guide
+      ON lgo_audio_cast_sessions(guide_id)
+      WHERE status <> 'ENDED';
+    CREATE INDEX IF NOT EXISTS idx_audio_cast_participants_session
+      ON lgo_audio_cast_participants(session_id, status);
+    CREATE INDEX IF NOT EXISTS idx_audio_cast_participants_visitor
+      ON lgo_audio_cast_participants(visitor_user_id, status);
+
     CREATE INDEX IF NOT EXISTS idx_queue_calendar_blocks_calendar
       ON queue_calendar_blocks(calendar_id, start_utc);
     CREATE INDEX IF NOT EXISTS idx_queue_calendar_blocks_range
