@@ -40,9 +40,16 @@ function renderNative(event={}){
 }
 async function join(raw){
   const payload=typeof raw==='string'?decodePayload(raw):raw;
-  $('acScannerStatus').textContent='Connecting…';
-  const native=await nativeJoin(payload);
+  $('acScannerStatus').textContent='Authorizing session…';
   const joined=await api('/visitor/join',{method:'POST',body:JSON.stringify({session_id:payload.session_id,join_token:payload.join_token})});
+  $('acScannerStatus').textContent='Connecting to guide audio…';
+  let native;
+  try{
+    native=await nativeJoin(payload);
+  }catch(err){
+    await api(`/visitor/sessions/${encodeURIComponent(payload.session_id)}/leave`,{method:'POST',body:'{}'}).catch(()=>{});
+    throw err;
+  }
   active={...joined,payload};
   closeScanner();
   $('acVisitorIdle').hidden=true;$('acVisitorConnected').hidden=false;
@@ -107,6 +114,13 @@ async function resumeExisting(){
   }catch{}
 }
 async function openScanner(){
+  const nativeScanner=window.Capacitor?.Plugins?.LgoAudioCastClient;
+  if(nativeScanner?.scanQr){
+    try{
+      const result=await nativeScanner.scanQr();
+      if(result?.value){await join(result.value);return}
+    }catch{}
+  }
   openModal('acScannerModal');$('acScannerStatus').textContent='Point the camera at the guide\'s QR code.';
   try{
     cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
