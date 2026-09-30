@@ -260,6 +260,7 @@ function mountChrome(me) {
 function wireCards() {
   const btnCreate = document.getElementById('btnCreateGuiding');
   const btnManage = document.getElementById('btnManageGuidings');
+  const btnAudioCast = document.getElementById('btnAudioCast');
 
   if (btnCreate) {
     // Go to page 1.html in modules/Let's Get Out!/manage
@@ -272,6 +273,12 @@ function wireCards() {
     // Go to page 2.html in modules/Let's Get Out!/manage
     btnManage.addEventListener('click', () => {
       window.location.href = "/modules/Let's Get Out!/manage/page 2.html";
+    });
+  }
+
+  if (btnAudioCast) {
+    btnAudioCast.addEventListener('click', () => {
+      window.location.href = "/modules/Let's Get Out!/audio-cast/guide.html";
     });
   }
 }
