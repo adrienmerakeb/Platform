@@ -81,7 +81,7 @@ async function createNativeTransport(){
     const result=await plugin.prepare({sessionId:session.session_id,participantLimit:session.participant_limit});
     return result.transport||result;
   }
-  return {mode:'internet-fallback',host:location.hostname,port:Number(location.port)||443,protocol:location.protocol.replace(':','')};
+  throw new Error('Local Audio Cast requires the LGO mobile app on the guide device.');
 }
 async function prepareTransport(recovery=false){
   if(!session)return;
