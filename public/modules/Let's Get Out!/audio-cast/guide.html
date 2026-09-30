@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>LGO — Audio Cast</title>
+<link rel="stylesheet" href="./audio-cast.css">
+</head>
+<body>
+<main class="ac-shell">
+  <header class="ac-top">
+    <button class="ac-back" id="acBack" aria-label="Back">‹</button>
+    <div class="ac-top-copy"><h1>Audio Cast</h1><p>Broadcast your microphone locally to up to 25 visitors.</p></div>
+    <button class="ac-help" id="acHelp" aria-label="How Audio Cast works">?</button>
+  </header>
+
+  <section class="ac-card" id="acProfileCard">
+    <h2>Guide access</h2>
+    <p class="ac-muted" id="acProfileCopy">Checking your guide profile…</p>
+    <div class="ac-actions"><button class="ac-btn primary" id="acActivateGuide" hidden>Activate guide profile</button></div>
+  </section>
+
+  <section class="ac-card" id="acSubscriptionCard" hidden>
+    <div class="ac-status-row"><span class="ac-pill" id="acSubStatus">Subscription</span></div>
+    <h2 style="margin-top:10px">Local Audio Cast — €25/month</h2>
+    <p class="ac-muted">€25 net per month, VAT added where applicable. Includes session QR, visitor roster and one-way local audio broadcasting.</p>
+    <div class="ac-actions"><button class="ac-btn primary" id="acSubscribe">Subscribe / manage access</button></div>
+  </section>
+
+  <section class="ac-card" id="acCreateCard" hidden>
+    <h2>Create a session</h2>
+    <div class="ac-field"><label for="acTitle">Session name</label><input id="acTitle" maxlength="160" placeholder="Paris Historic Centre"></div>
+    <div class="ac-field"><label for="acLimit">Maximum listeners</label><select id="acLimit"><option>10</option><option>15</option><option>20</option><option selected>25</option></select></div>
+    <div class="ac-actions"><button class="ac-btn primary" id="acCreateSession">Create Audio Cast session</button></div>
+    <p class="ac-note">Only one live Audio Cast session can exist per guide at a time.</p>
+  </section>
+
+  <section class="ac-card" id="acSessionCard" hidden>
+    <div class="ac-status-row">
+      <span class="ac-pill good" id="acHostState">Ready</span>
+      <span class="ac-pill" id="acMicState">Microphone off</span>
+    </div>
+    <h2 id="acHostTitle" style="margin-top:12px">Live Audio Cast</h2>
+
+    <div class="ac-grid">
+      <div class="ac-stat"><strong id="acListenerCount">0 / 25</strong><span>Listeners</span></div>
+      <div class="ac-stat"><strong id="acHostSignal">—</strong><span>Network</span></div>
+      <div class="ac-stat"><strong id="acHostLatency">—</strong><span>Avg latency</span></div>
+      <div class="ac-stat"><strong id="acElapsed">00:00</strong><span>Session time</span></div>
+    </div>
+
+    <div class="ac-field">
+      <span class="ac-note">Microphone level</span>
+      <div class="ac-level"><span id="acMicLevel"></span></div>
+    </div>
+
+    <img id="acQr" class="ac-qr" alt="Audio Cast session QR code" hidden>
+    <p class="ac-note" id="acQrHelp">Create the local transport to generate the QR visitors will scan.</p>
+
+    <div class="ac-actions">
+      <button class="ac-btn secondary" id="acPrepare">Prepare local connection</button>
+      <button class="ac-btn primary" id="acStart" disabled>Start broadcast</button>
+      <button class="ac-btn secondary" id="acPause" disabled>Pause</button>
+      <button class="ac-btn danger" id="acEnd">End session</button>
+    </div>
+  </section>
+
+  <section class="ac-card" id="acListenersCard" hidden>
+    <div class="ac-inline"><h2 style="flex:1">Listeners</h2><button class="ac-icon-btn" id="acRefresh" aria-label="Refresh listeners">↻</button></div>
+    <div id="acRoster" class="ac-roster"></div>
+  </section>
+</main>
+
+<div class="ac-modal" id="acHelpModal" aria-hidden="true">
+  <section class="ac-sheet">
+    <div class="ac-sheet-head"><h2>How Audio Cast works</h2><button class="ac-icon-btn" id="acCloseHelp">✕</button></div>
+    <div class="ac-help-grid">
+      <div class="ac-help-item"><strong>1. Create</strong><span>Create one temporary session. LGO generates a session-specific QR code.</span></div>
+      <div class="ac-help-item"><strong>2. Visitors scan</strong><span>Visitors sign in, open My contents → My live guidings → Scan for a live session, then scan your QR.</span></div>
+      <div class="ac-help-item"><strong>3. One-way audio</strong><span>Your microphone is sent to connected listeners. Visitors cannot transmit audio back.</span></div>
+      <div class="ac-help-item"><strong>4. Control</strong><span>Monitor listener IDs, connection quality and remove an unknown listener selectively.</span></div>
+      <div class="ac-help-item"><strong>5. Recover</strong><span>If your app closes unexpectedly, reopen Audio Cast to recover the same unended session. Visitors do not need a new QR.</span></div>
+      <div class="ac-help-item"><strong>6. End</strong><span>Ending the session invalidates the QR permanently and disconnects all listeners.</span></div>
+    </div>
+  </section>
+</div>
+<script src="./guide.js"></script>
+</body>
+</html>
