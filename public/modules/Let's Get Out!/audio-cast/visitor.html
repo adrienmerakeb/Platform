@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>LGO — My live guidings</title>
+<link rel="stylesheet" href="./audio-cast.css">
+</head>
+<body>
+<main class="ac-shell">
+  <header class="ac-top">
+    <button class="ac-back" id="acBack" aria-label="Back">‹</button>
+    <div class="ac-top-copy"><h1>My live guidings</h1><p>Audio Cast — listen to your guide through your own headphones.</p></div>
+    <button class="ac-help" id="acHelp" aria-label="What else can LGO do?">?</button>
+  </header>
+
+  <section class="ac-card" id="acVisitorIdle">
+    <h2>Join a live session</h2>
+    <p class="ac-muted">Ask your guide for the session QR code. You must be signed in to join.</p>
+    <div class="ac-actions">
+      <button class="ac-btn primary" id="acScan">Scan for a live session</button>
+    </div>
+    <p class="ac-note">Session QR codes are temporary and stop working when the guide ends the session.</p>
+    <div id="acVisitorMessage"></div>
+  </section>
+
+  <section class="ac-card" id="acVisitorConnected" hidden>
+    <div class="ac-status-row">
+      <span class="ac-pill good" id="acConnectionPill">Connected</span>
+      <span class="ac-pill" id="acSessionState">Active</span>
+    </div>
+    <h2 id="acSessionTitle" style="margin-top:12px">Live Audio Cast</h2>
+    <p class="ac-muted" id="acGuideName"></p>
+
+    <div class="ac-grid">
+      <div class="ac-stat"><strong id="acSignal">—</strong><span>Signal</span></div>
+      <div class="ac-stat"><strong id="acLatency">—</strong><span>Latency</span></div>
+      <div class="ac-stat"><strong id="acTransport">—</strong><span>Connection</span></div>
+      <div class="ac-stat"><strong id="acListenerId">—</strong><span>Listener ID</span></div>
+    </div>
+
+    <div class="ac-field">
+      <span class="ac-note">Incoming guide audio</span>
+      <div class="ac-level"><span id="acAudioLevel"></span></div>
+    </div>
+
+    <div class="ac-actions">
+      <button class="ac-btn secondary" id="acMute">Mute locally</button>
+      <button class="ac-btn danger" id="acLeave">Leave session</button>
+    </div>
+    <p class="ac-note">Audio is one-way: guide → visitors. LGO does not record the live Audio Cast session.</p>
+  </section>
+</main>
+
+<div class="ac-modal" id="acScannerModal" aria-hidden="true">
+  <section class="ac-sheet">
+    <div class="ac-sheet-head">
+      <h2>Scan session QR</h2>
+      <button class="ac-icon-btn" id="acCloseScanner" aria-label="Close">✕</button>
+    </div>
+    <div class="ac-video-wrap">
+      <video id="acCamera" playsinline muted></video>
+      <div class="ac-scan-frame" aria-hidden="true"></div>
+    </div>
+    <p class="ac-muted" id="acScannerStatus">Point the camera at the guide's QR code.</p>
+    <div class="ac-field">
+      <label for="acManualCode">Can't scan? Paste the session code</label>
+      <input id="acManualCode" autocomplete="off" placeholder="LGOAC1:…">
+    </div>
+    <button class="ac-btn secondary" id="acJoinManual">Join from code</button>
+  </section>
+</div>
+
+<div class="ac-modal" id="acHelpModal" aria-hidden="true">
+  <section class="ac-sheet">
+    <div class="ac-sheet-head"><h2>Discover LGO</h2><button class="ac-icon-btn" id="acCloseHelp">✕</button></div>
+    <p class="ac-muted">Your live guiding is one part of LGO. Explore more before or after your session.</p>
+    <div class="ac-help-grid">
+      <div class="ac-help-item"><strong>Free Green content</strong><span>Location-aware cultural stories and city discovery.</span></div>
+      <div class="ac-help-item"><strong>My Journey — free</strong><span>Record your trip, build a personal slideshow and share it.</span></div>
+      <div class="ac-help-item"><strong>Offline / ad-free</strong><span>Download destination content for reliable offline use.</span></div>
+      <div class="ac-help-item"><strong>Offers, discounts & virtual queues</strong><span>Discover useful local Partner services while travelling.</span></div>
+      <div class="ac-help-item"><strong>Orange content</strong><span>Paid specialist content from guides, creators and personalities.</span></div>
+      <div class="ac-help-item"><strong>Guides & marketplace</strong><span>Find bookable guides, activities and other travel services.</span></div>
+    </div>
+  </section>
+</div>
+<script src="./visitor.js"></script>
+</body>
+</html>

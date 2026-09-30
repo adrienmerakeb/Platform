@@ -25,6 +25,7 @@ import calendarHostRoutes from './routes/calendarHost.js'; // Host calendar (Goo
 
 // Let's Get Out! manage-side API
 import letsGetOutRoutes from './routes/letsgetout.js';
+import audioCastRoutes from './routes/audioCast.js';
 
 dotenv.config();
 
@@ -83,6 +84,7 @@ app.use('/api', intimeHostRoutes);
 
 // Let's Get Out! host/manage APIs (/api/letsgetout/...)
 app.use('/api/letsgetout', letsGetOutRoutes);
+app.use('/api/audio-cast', audioCastRoutes);
 
 // Calendar integration for HOSTS (/api/host/calendar/...)
 app.use('/api', calendarHostRoutes);

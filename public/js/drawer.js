@@ -12,6 +12,7 @@
       // services
       lgo_map:   '/pages/visitor/map.html',
       lgo_main:  '/pages/visitor/my-guidings.html',
+      lgo_live:  "/modules/Let's Get Out!/audio-cast/visitor.html",
       qless_hub: '/pages/visitor/booking.html',
       qless_scan:'/pages/visitor/qless-scan.html',
       events_map:'/pages/visitor/events-map.html',
@@ -41,7 +42,8 @@
       settings:  '/pages/visitor/settings.html',
       // services (guide tools)
       tours_my:   '/pages/guide/manage-guidings.html',
-      tours_new:  '/pages/guide/create-guiding.html'
+      tours_new:  '/pages/guide/create-guiding.html',
+      audio_cast: "/modules/Let's Get Out!/audio-cast/guide.html"
     },
     partner: {
       dashboard: '/pages/partner/dashboard.html',
@@ -165,8 +167,10 @@
       name:'Let’s Get Out',
       mapHref:  withIdentity(R.lgo_map,  role, userId),
       mainHref: withIdentity(R.lgo_main, role, userId),
+      secHref: withIdentity(R.lgo_live, role, userId),
       line1:'Guided visits around me - Map',
-      line2:'My virtual guidings & tours'
+      line2:'My virtual guidings & tours',
+      line3:'My live guidings — Audio Cast'
     }));
 
     svc.appendChild(serviceCard({
@@ -305,8 +309,10 @@
       name:'Let’s Get Out',
       mapHref:  withIdentity(R.tours_my,  role, userId),
       mainHref: withIdentity(R.tours_new, role, userId),
+      secHref: withIdentity(R.audio_cast, role, userId),
       line1:'My Tours',
-      line2:'Create Guiding'
+      line2:'Create Guiding',
+      line3:'Audio Cast — live local audio'
     }));
 
     wrap.appendChild(svc);

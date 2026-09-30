@@ -1,0 +1,70 @@
+:root{
+  color-scheme:light;
+  --ac-blue:#1d4ed8;
+  --ac-ink:#172033;
+  --ac-muted:#667085;
+  --ac-bg:#f4f7fb;
+  --ac-card:#fff;
+  --ac-line:#dfe5ee;
+  --ac-good:#168447;
+  --ac-warn:#b7791f;
+  --ac-bad:#c43d24;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ac-bg);color:var(--ac-ink);font:15px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.ac-shell{max-width:900px;margin:0 auto;padding:18px 16px 88px}
+.ac-top{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.ac-back,.ac-help,.ac-icon-btn{border:1px solid var(--ac-line);background:#fff;border-radius:12px;min-width:44px;min-height:44px;cursor:pointer}
+.ac-top-copy{flex:1;min-width:0}
+.ac-top h1{font-size:1.35rem;margin:0}
+.ac-top p{margin:2px 0 0;color:var(--ac-muted);font-size:.9rem}
+.ac-card{background:var(--ac-card);border:1px solid var(--ac-line);border-radius:18px;padding:16px;box-shadow:0 8px 30px rgba(30,45,70,.06);margin-bottom:14px}
+.ac-card h2,.ac-card h3{margin:0 0 8px}
+.ac-muted{color:var(--ac-muted)}
+.ac-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.ac-btn{border:0;border-radius:12px;padding:12px 16px;font-weight:750;cursor:pointer}
+.ac-btn.primary{background:var(--ac-blue);color:#fff}
+.ac-btn.secondary{background:#eef3ff;color:#183b8f}
+.ac-btn.danger{background:#fff1ee;color:#9c2d19;border:1px solid #f1c4bb}
+.ac-btn:disabled{opacity:.45;cursor:not-allowed}
+.ac-status-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ac-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 10px;font-weight:700;font-size:.78rem;background:#eef2f6}
+.ac-pill.good{background:#e8f7ee;color:#126533}
+.ac-pill.warn{background:#fff6dc;color:#7d5310}
+.ac-pill.bad{background:#ffebe7;color:#9c2d19}
+.ac-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ac-stat{border:1px solid var(--ac-line);border-radius:14px;padding:12px}
+.ac-stat strong{display:block;font-size:1.1rem}
+.ac-stat span{color:var(--ac-muted);font-size:.82rem}
+.ac-qr{width:min(100%,320px);aspect-ratio:1;border-radius:14px;border:1px solid var(--ac-line);display:block;margin:12px auto;background:#fff}
+.ac-roster{display:grid;gap:8px;margin-top:10px}
+.ac-listener{display:flex;align-items:center;gap:10px;border:1px solid var(--ac-line);border-radius:14px;padding:10px 12px}
+.ac-listener-copy{flex:1;min-width:0}
+.ac-listener-copy strong,.ac-listener-copy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ac-listener-copy small{color:var(--ac-muted)}
+.ac-empty{text-align:center;padding:20px;color:var(--ac-muted)}
+.ac-modal{position:fixed;inset:0;background:rgba(9,16,30,.72);display:none;align-items:flex-end;justify-content:center;z-index:10000}
+.ac-modal.open{display:flex}
+.ac-sheet{width:min(760px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:22px 22px 0 0;padding:18px}
+.ac-sheet-head{display:flex;align-items:center;gap:10px}
+.ac-sheet-head h2{flex:1;margin:0}
+.ac-video-wrap{position:relative;background:#0d1424;border-radius:18px;overflow:hidden;aspect-ratio:3/4;margin:14px 0}
+#acCamera{width:100%;height:100%;object-fit:cover}
+.ac-scan-frame{position:absolute;inset:18% 12%;border:3px solid rgba(255,255,255,.9);border-radius:20px;box-shadow:0 0 0 999px rgba(0,0,0,.24)}
+.ac-help-grid{display:grid;gap:10px}
+.ac-help-item{border:1px solid var(--ac-line);border-radius:14px;padding:12px}
+.ac-help-item strong{display:block;margin-bottom:3px}
+.ac-inline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ac-field{display:grid;gap:6px;margin:10px 0}
+.ac-field input,.ac-field select{width:100%;border:1px solid var(--ac-line);border-radius:12px;padding:11px;background:#fff}
+.ac-note{font-size:.82rem;color:var(--ac-muted)}
+.ac-alert{border-radius:12px;padding:10px 12px;margin:10px 0;background:#eef3ff;color:#1c3f83}
+.ac-alert.error{background:#ffebe7;color:#912c19}
+.ac-level{height:8px;border-radius:999px;background:#e6ebf1;overflow:hidden}
+.ac-level>span{display:block;height:100%;width:0;background:#168447;transition:width .12s linear}
+@media(min-width:700px){
+  .ac-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .ac-modal{align-items:center}
+  .ac-sheet{border-radius:22px;max-height:88vh}
+  .ac-video-wrap{aspect-ratio:16/10}
+}
